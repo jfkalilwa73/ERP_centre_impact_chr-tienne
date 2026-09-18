@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class RoleMetier extends Model
 {
+    // ⚠️ CES 4 LIGNES SONT CRUCIALES POUR LES UUID
     protected $table = 'role_metier';
-    protected $primaryKey = 'id_role';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $primaryKey = 'id_role';      // Nom de la clé primaire
+    public $incrementing = false;           // Ce n'est pas un entier auto-incrémenté
+    protected $keyType = 'string';          // C'est une chaîne (UUID)
 
     const CREATED_AT = 'date_creation';
     const UPDATED_AT = null;

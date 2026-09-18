@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str; // <-- INDISPENSABLE
 use Illuminate\Database\QueryException;
 use App\Models\User;
 use App\Models\Personne;
@@ -28,12 +29,16 @@ class Phase0ScenarioSeeder extends Seeder
         // ---------------------------------------------------------
         $this->command->info("1. Création d'une Personne et d'un Compte (User)...");
         
+        // Génération explicite de l'UUID pour contourner le bug de récupération PostgreSQL
+        $personneId = (string) Str::uuid();
+        
         $personne = Personne::create([
+            'id_personne' => $personneId, // <-- Injecté explicitement
             'nom' => 'Nuru',
             'prenom' => 'Jean',
             'date_naissance' => '1990-05-15',
             'sexe' => 'M',
-            'telephone' => '+243819999999', // Préfixe Kinshasa (Airtel/Vodacom)
+            'telephone' => '+243819999999',
             'adresse' => 'Avenue 12, Quartier UPN, Commune de Mont-Ngafula, Kinshasa',
             'statut' => 'actif', 
         ]);
@@ -46,7 +51,6 @@ class Phase0ScenarioSeeder extends Seeder
             'statut' => 'actif',
         ]);
 
-        // Liaison Personne <-> Compte (User)
         $personne->user_id = $user->id;
         $personne->save();
 
@@ -57,7 +61,9 @@ class Phase0ScenarioSeeder extends Seeder
         // ---------------------------------------------------------
         $this->command->info("2. Création d'un Rôle et d'une Permission...");
 
+        $roleId = (string) Str::uuid();
         $role = RoleMetier::create([
+            'id_role' => $roleId,
             'code' => 'ADMIN_FONCTIONNEL',
             'nom' => 'Administrateur Fonctionnel',
             'description' => 'Gestion globale de l\'ERP',
@@ -65,7 +71,9 @@ class Phase0ScenarioSeeder extends Seeder
             'actif' => true,
         ]);
 
+        $permissionId = (string) Str::uuid();
         $permission = PermissionMetier::create([
+            'id_permission' => $permissionId,
             'code' => 'membres.read',
             'module' => 'membres',
             'action' => 'read',
@@ -99,37 +107,30 @@ class Phase0ScenarioSeeder extends Seeder
         // ---------------------------------------------------------
         $this->command->info("4. Création d'un Site et d'un Département...");
 
-        // Site Principal : Proche de l'UPN (Route de Matadi)
+        // Génération explicite des UUID pour éviter le bug "null" de PostgreSQL
+        $siteId = (string) Str::uuid();
         $site = Site::create([
+            'id_site' => $siteId, // <-- Injecté explicitement
             'code' => 'SITE-UPN-01',
             'nom' => 'Campus Principal (Mont-Ngafula)',
             'adresse' => 'Route de Matadi, Km 28 (Proximité UPN), Mont-Ngafula',
             'ville' => 'Kinshasa',
             'pays' => 'RDC',
-            'telephone' => '+243810000001', // Numéro d'accueil du site
+            'telephone' => '+243810000001',
             'actif' => true,
         ]);
 
-        // (Optionnel) Second site pour tester le multi-site
-        $site2 = Site::create([
-            'code' => 'SITE-LEMBA-02',
-            'nom' => 'Annexe Lemba',
-            'adresse' => 'Avenue de l\'Université, Quartier Kimwenza',
-            'ville' => 'Kinshasa',
-            'pays' => 'RDC',
-            'telephone' => '+243990000002',
-            'actif' => true,
-        ]);
-
+        $departementId = (string) Str::uuid();
         $departement = Departement::create([
+            'id_departement' => $departementId, // <-- Injecté explicitement
             'code' => 'DEPT-FIN',
             'nom' => 'Département Finance',
             'mission' => 'Gestion des recettes, dîmes, offrandes et budgets institutionnels',
-            'id_site' => $site->id_site, // Rattaché au site principal près de l'UPN
+            'id_site' => $site->id_site, // ✅ Maintenant, ceci n'est plus null !
             'actif' => true,
         ]);
 
-        $this->command->info("   ✅ Sites ({$site->nom} & {$site2->nom}) et Département ({$departement->nom}) créés.");
+        $this->command->info("   ✅ Site ({$site->nom}) et Département ({$departement->nom}) créés.");
 
         // ---------------------------------------------------------
         // Scénario 9 : Affecter une personne à un département
@@ -158,7 +159,7 @@ class Phase0ScenarioSeeder extends Seeder
             'id_entite' => $personne->id_personne,
             'anciennes_valeurs' => null,
             'nouvelles_valeurs' => ['nom' => 'Nuru', 'statut' => 'actif', 'commune' => 'Mont-Ngafula'],
-            'adresse_ip' => '192.168.1.15', // IP locale réaliste
+            'adresse_ip' => '192.168.1.15',
             'user_agent' => 'Laravel Seeder CLI / Windows 11',
         ]);
 
@@ -183,13 +184,23 @@ class Phase0ScenarioSeeder extends Seeder
         // ---------------------------------------------------------
         $this->command->info("8. Test du trigger de protection contre la suppression d'une personne active...");
 
+        // Création d'une personne "fantôme" sans aucune affectation pour éviter les erreurs de clés étrangères
+        $dummyPersonneId = (string) Str::uuid();
+        $dummyPersonne = Personne::create([
+            'id_personne' => $dummyPersonneId,
+            'nom' => 'Test',
+            'prenom' => 'Trigger',
+            'statut' => 'actif', // Statut actif pour déclencher le trigger
+        ]);
+
         try {
-            $personne->delete();
-            $this->command->error("   ❌ ÉCHEC CRITIQUE : La personne active a été supprimée ! Le trigger ne fonctionne pas.");
+            // On tente de supprimer cette personne active
+            $dummyPersonne->delete();
+            $this->command->error("    ÉCHEC CRITIQUE : La personne active a été supprimée ! Le trigger ne fonctionne pas.");
         } catch (QueryException $e) {
+            // On vérifie si l'erreur vient bien de notre trigger personnalisé
             if (str_contains($e->getMessage(), 'Impossible de supprimer une personne active')) {
                 $this->command->info("   ✅ SUCCÈS : Le trigger a correctement bloqué la suppression.");
-                $this->command->info("      Message DB : " . $e->getMessage());
             } else {
                 $this->command->error("   ❌ ÉCHEC : Une autre erreur SQL est survenue : " . $e->getMessage());
             }

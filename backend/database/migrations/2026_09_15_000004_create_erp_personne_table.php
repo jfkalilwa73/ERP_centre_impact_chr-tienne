@@ -25,14 +25,32 @@ return new class extends Migration {
             CREATE INDEX idx_personne_nom ON personne(nom, prenom);
             CREATE INDEX idx_personne_statut ON personne(statut);
 
+            -- Trigger 1 : Mise à jour automatique de la date
             CREATE TRIGGER trg_personne_modification
             BEFORE UPDATE ON personne
             FOR EACH ROW EXECUTE FUNCTION update_date_modification();
+
+            -- Trigger 2 : EMPÊCHER la suppression d\'une personne active (AJOUT MANQUANT)
+            CREATE OR REPLACE FUNCTION prevent_active_personne_delete()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                IF OLD.statut = \'actif\' THEN
+                    RAISE EXCEPTION \'Impossible de supprimer une personne active. Passer le statut à inactif ou archive d\'\'abord.\';
+                END IF;
+                RETURN OLD;
+            END;
+            $$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER trg_prevent_active_personne_delete
+            BEFORE DELETE ON personne
+            FOR EACH ROW EXECUTE FUNCTION prevent_active_personne_delete();
         ');
     }
 
     public function down(): void
     {
+        DB::unprepared('DROP TRIGGER IF EXISTS trg_prevent_active_personne_delete ON personne;');
+        DB::unprepared('DROP FUNCTION IF EXISTS prevent_active_personne_delete();');
         DB::unprepared('DROP TRIGGER IF EXISTS trg_personne_modification ON personne;');
         DB::unprepared('DROP TABLE IF EXISTS personne;');
     }
