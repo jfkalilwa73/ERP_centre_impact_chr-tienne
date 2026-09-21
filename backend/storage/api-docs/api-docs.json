@@ -162,6 +162,80 @@
                 ]
             }
         },
+        "/api/v1/identite/comptes": {
+            "post": {
+                "tags": [
+                    "Identité"
+                ],
+                "summary": "Créer un compte de connexion",
+                "description": "Crée un User Laravel et le lie à une personne existante. Nécessite une session cookie. Le mot de passe n'est jamais renvoyé.",
+                "operationId": "79872c4c5267924cbfe60deee25dc34f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id_personne",
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "id_personne": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "example": "849ba161-9f40-440c-ada3-2ebbb1279944"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "bienvenu.karagi@eglise-upn.org"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "Secret123!"
+                                    },
+                                    "statut": {
+                                        "type": "string",
+                                        "example": "actif",
+                                        "nullable": true,
+                                        "enum": [
+                                            "actif",
+                                            "suspendu",
+                                            "desactive"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Compte créé"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "404": {
+                        "description": "Personne introuvable"
+                    },
+                    "409": {
+                        "description": "Personne déjà liée ou email déjà utilisé"
+                    },
+                    "422": {
+                        "description": "Données invalides"
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/identite/personnes": {
             "post": {
                 "tags": [
