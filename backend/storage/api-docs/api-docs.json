@@ -161,6 +161,85 @@
                     }
                 ]
             }
+        },
+        "/api/v1/identite/personnes": {
+            "post": {
+                "tags": [
+                    "Identité"
+                ],
+                "summary": "Créer une personne",
+                "description": "Crée une fiche personne sans compte de connexion. Nécessite une session cookie.",
+                "operationId": "ac5f3a9c9bd14a95d8848d4ed29dcaca",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nom",
+                                    "prenom"
+                                ],
+                                "properties": {
+                                    "nom": {
+                                        "type": "string",
+                                        "example": "Nuru"
+                                    },
+                                    "prenom": {
+                                        "type": "string",
+                                        "example": "Jean"
+                                    },
+                                    "date_naissance": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "1990-05-15",
+                                        "nullable": true
+                                    },
+                                    "sexe": {
+                                        "type": "string",
+                                        "example": "M",
+                                        "nullable": true,
+                                        "enum": [
+                                            "M",
+                                            "F"
+                                        ]
+                                    },
+                                    "telephone": {
+                                        "type": "string",
+                                        "example": "+243819999999",
+                                        "nullable": true
+                                    },
+                                    "adresse": {
+                                        "type": "string",
+                                        "example": "Mont-Ngafula, Kinshasa",
+                                        "nullable": true
+                                    },
+                                    "photo_url": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Personne créée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "422": {
+                        "description": "Données invalides"
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -177,6 +256,10 @@
         {
             "name": "Auth",
             "description": "Auth"
+        },
+        {
+            "name": "Identité",
+            "description": "Identité"
         }
     ]
 }
