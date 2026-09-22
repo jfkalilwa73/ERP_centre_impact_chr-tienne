@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Identite\PersonneController;
 use App\Http\Controllers\Api\V1\Identite\CompteController;
 use App\Http\Controllers\Api\V1\Acces\RoleController;
+use App\Http\Controllers\Api\V1\Acces\PermissionController;
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [SessionController::class, 'login'])
         ->middleware('throttle:5,1');
@@ -15,5 +16,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/identite/personnes', [PersonneController::class, 'store']);
         Route::post('/identite/comptes', [CompteController::class, 'store']);
         Route::post('/acces/roles', [RoleController::class, 'store']);
+        Route::post('/acces/permissions', [PermissionController::class, 'store']);
     });
 });
