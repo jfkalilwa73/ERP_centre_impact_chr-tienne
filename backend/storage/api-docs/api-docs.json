@@ -12,6 +12,74 @@
         }
     ],
     "paths": {
+        "/api/v1/acces/permissions": {
+            "post": {
+                "tags": [
+                    "Accès"
+                ],
+                "summary": "Créer une permission",
+                "description": "Crée une permission métier (permission_metier). Nécessite une session cookie. Le code et le couple module+action doivent être uniques.",
+                "operationId": "6761138d2fb126ddc02b14ef2c11b9d2",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "code",
+                                    "module",
+                                    "action"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "type": "string",
+                                        "example": "finances.read"
+                                    },
+                                    "module": {
+                                        "type": "string",
+                                        "example": "finances"
+                                    },
+                                    "action": {
+                                        "type": "string",
+                                        "example": "read"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Consulter les données financières",
+                                        "nullable": true
+                                    },
+                                    "actif": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Permission créée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "409": {
+                        "description": "Code ou couple module+action déjà utilisé"
+                    },
+                    "422": {
+                        "description": "Données invalides"
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/acces/roles": {
             "post": {
                 "tags": [
