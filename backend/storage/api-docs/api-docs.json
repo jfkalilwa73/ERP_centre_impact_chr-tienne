@@ -587,6 +587,84 @@
                     }
                 ]
             }
+        },
+        "/api/v1/organisation/sites": {
+            "post": {
+                "tags": [
+                    "Organisation"
+                ],
+                "summary": "Créer un site",
+                "description": "Crée un site (campus / lieu). Nécessite une session cookie. Le code doit être unique.",
+                "operationId": "b3e6ea0863a60b8287fba24912b6b581",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "code",
+                                    "nom",
+                                    "telephone"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "type": "string",
+                                        "example": "SITE-GOMBE-01"
+                                    },
+                                    "nom": {
+                                        "type": "string",
+                                        "example": "Site Gombe"
+                                    },
+                                    "telephone": {
+                                        "type": "string",
+                                        "example": "+243810000002"
+                                    },
+                                    "adresse": {
+                                        "type": "string",
+                                        "example": "Boulevard du 30 Juin, Gombe",
+                                        "nullable": true
+                                    },
+                                    "ville": {
+                                        "type": "string",
+                                        "example": "Kinshasa",
+                                        "nullable": true
+                                    },
+                                    "pays": {
+                                        "type": "string",
+                                        "example": "RDC",
+                                        "nullable": true
+                                    },
+                                    "actif": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Site créé"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "409": {
+                        "description": "Code de site déjà utilisé"
+                    },
+                    "422": {
+                        "description": "Données invalides"
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -611,6 +689,10 @@
         {
             "name": "Identité",
             "description": "Identité"
+        },
+        {
+            "name": "Organisation",
+            "description": "Organisation"
         }
     ]
 }
