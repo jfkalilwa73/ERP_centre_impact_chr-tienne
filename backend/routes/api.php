@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Acces\AttribuerPermissionController;
 use App\Http\Controllers\Api\V1\Organisation\SiteController;
 use App\Http\Controllers\Api\V1\Organisation\DepartementController;
 use App\Http\Controllers\Api\V1\Organisation\AffectationDepartementController;
+use App\Http\Controllers\Api\V1\Audit\AuditLogController;
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [SessionController::class, 'login'])
         ->middleware('throttle:5,1');
@@ -27,5 +28,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/organisation/sites', [SiteController::class, 'store']);
         Route::post('/organisation/departements', [DepartementController::class, 'store']);
         Route::post('/organisation/personnes/{personne}/departements', [AffectationDepartementController::class, 'store']);
+        Route::get('/audit/logs', [AuditLogController::class, 'index']);
     });
 });

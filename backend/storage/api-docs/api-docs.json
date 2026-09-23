@@ -285,6 +285,29 @@
                 ]
             }
         },
+        "/api/v1/audit/logs": {
+            "get": {
+                "tags": [
+                    "Audit"
+                ],
+                "summary": "Consulter les traces d'audit",
+                "description": "Lecture seule. Les traces sont écrites côté serveur, jamais par le client.",
+                "operationId": "fc1182b0b02ed272376654fe030ee93c",
+                "responses": {
+                    "200": {
+                        "description": "Liste des traces"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "tags": [
@@ -831,6 +854,10 @@
         {
             "name": "Accès",
             "description": "Accès"
+        },
+        {
+            "name": "Audit",
+            "description": "Audit"
         },
         {
             "name": "Auth",
