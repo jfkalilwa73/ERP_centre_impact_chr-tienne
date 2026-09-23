@@ -588,6 +588,84 @@
                 ]
             }
         },
+        "/api/v1/organisation/personnes/{personne}/departements": {
+            "post": {
+                "tags": [
+                    "Organisation"
+                ],
+                "summary": "Affecter une personne à un département",
+                "description": "Crée une affectation active dans affecter_departement. Nécessite une session cookie. {personne} est l'UUID id_personne.",
+                "operationId": "d8fde9ddff22f430314270a5076ddcf2",
+                "parameters": [
+                    {
+                        "name": "personne",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "849ba161-9f40-440c-ada3-2ebbb1279944"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id_departement"
+                                ],
+                                "properties": {
+                                    "id_departement": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "fonction": {
+                                        "type": "string",
+                                        "example": "Responsable accueil",
+                                        "nullable": true
+                                    },
+                                    "date_debut": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "nullable": true
+                                    },
+                                    "date_fin": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Affectation créée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "404": {
+                        "description": "Personne ou département introuvable"
+                    },
+                    "409": {
+                        "description": "Personne déjà affectée à ce département"
+                    },
+                    "422": {
+                        "description": "Données invalides"
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/organisation/departements": {
             "post": {
                 "tags": [
