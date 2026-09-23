@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Acces\PermissionController;
 use App\Http\Controllers\Api\V1\Acces\AffectationRoleController;
 use App\Http\Controllers\Api\V1\Acces\AttribuerPermissionController;
 use App\Http\Controllers\Api\V1\Organisation\SiteController;
+use App\Http\Controllers\Api\V1\Organisation\DepartementController;
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [SessionController::class, 'login'])
         ->middleware('throttle:5,1');
@@ -23,5 +24,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/acces/comptes/{user}/roles', [AffectationRoleController::class, 'store']);
         Route::post('/acces/roles/{role}/permissions', [AttribuerPermissionController::class, 'store']);
         Route::post('/organisation/sites', [SiteController::class, 'store']);
+        Route::post('/organisation/departements', [DepartementController::class, 'store']);
     });
 });
