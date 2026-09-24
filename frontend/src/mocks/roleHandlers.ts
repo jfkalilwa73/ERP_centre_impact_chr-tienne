@@ -1,5 +1,6 @@
 import type { Permission, Role, RoleCreate, RolePage, RoleUpdate } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
+import { canReadRoles } from './access'
 import { appendAuditLog, mockDb } from './db'
 import {
   apiUrl,
@@ -39,7 +40,7 @@ export const roleHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /roles', result.reason)
-    if (!requirePermission(result.account, PERMISSIONS.ROLES_MANAGE)) return forbidden()
+    if (!canReadRoles(result.account)) return forbidden()
 
     const url = new URL(request.url)
     const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1)
@@ -108,7 +109,7 @@ export const roleHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /roles/:id', result.reason)
-    if (!requirePermission(result.account, PERMISSIONS.ROLES_MANAGE)) return forbidden()
+    if (!canReadRoles(result.account)) return forbidden()
 
     const role = mockDb.roles.find((candidate) => candidate.idRole === params.roleId)
     if (!role) return errorResponse(404, 'NOT_FOUND', 'Rôle introuvable.')
@@ -204,7 +205,7 @@ export const roleHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /roles/:id/permissions', result.reason)
-    if (!requirePermission(result.account, PERMISSIONS.ROLES_MANAGE)) return forbidden()
+    if (!canReadRoles(result.account)) return forbidden()
 
     const role = mockDb.roles.find((candidate) => candidate.idRole === params.roleId)
     if (!role) return errorResponse(404, 'NOT_FOUND', 'Rôle introuvable.')

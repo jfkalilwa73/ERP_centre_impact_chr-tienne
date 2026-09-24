@@ -52,6 +52,12 @@ export function CompteDetailPage() {
   const affectations = affectationsQuery.data ?? []
   const roles = rolesQuery.data?.data ?? []
   const roleNames = new Map(roles.map((role) => [role.idRole, `${role.nom} (${role.code})`]))
+  const rolesDejaActifs = new Set(
+    affectations.filter((affectation) => affectation.actif).map((affectation) => affectation.idRole),
+  )
+  const rolesDisponibles = roles.filter(
+    (role) => role.actif && !rolesDejaActifs.has(role.idRole),
+  )
 
   const onAssign = handleSubmit((values) => {
     assignMutation.mutate(
@@ -268,7 +274,7 @@ export function CompteDetailPage() {
                 {...register('idRole')}
               >
                 <option value="">Choisir un rôle</option>
-                {roles.map((role) => (
+                {rolesDisponibles.map((role) => (
                   <option key={role.idRole} value={role.idRole}>
                     {role.nom} ({role.code})
                   </option>

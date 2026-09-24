@@ -1,5 +1,6 @@
 import type { Departement, DepartementCreate, DepartementPage, DepartementUpdate } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
+import { leadsDepartement } from './access'
 import { mockDb } from './db'
 import {
   apiUrl,
@@ -40,7 +41,10 @@ export const departementHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /departements', result.reason)
-    if (!requirePermission(result.account, PERMISSIONS.DEPARTEMENTS_READ)) return forbidden()
+    const canList =
+      requirePermission(result.account, PERMISSIONS.DEPARTEMENTS_READ) ||
+      requirePermission(result.account, PERMISSIONS.RAPPORTS_READ)
+    if (!canList) return forbidden()
 
     const url = new URL(request.url)
     const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1)
@@ -108,7 +112,10 @@ export const departementHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /departements/:id', result.reason)
-    if (!requirePermission(result.account, PERMISSIONS.DEPARTEMENTS_READ)) return forbidden()
+    const canRead =
+      requirePermission(result.account, PERMISSIONS.DEPARTEMENTS_READ) ||
+      leadsDepartement(result.account, String(params.departementId))
+    if (!canRead) return forbidden()
 
     const departement = mockDb.departements.find(
       (candidate) => candidate.idDepartement === params.departementId,

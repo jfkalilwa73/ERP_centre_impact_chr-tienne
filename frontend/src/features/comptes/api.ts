@@ -56,3 +56,15 @@ export async function assignRoleToCompte(
 export async function unassignRoleFromCompte(compteId: string, roleId: string): Promise<void> {
   await api.delete(`/comptes/${compteId}/roles/${roleId}`)
 }
+
+/** Ouvre le compte puis pose les rôles d’accès (contrat : deux appels). */
+export async function createCompteWithRoles(
+  payload: CompteCreate,
+  idRoles: string[],
+): Promise<Compte> {
+  const created = await createCompte(payload)
+  for (const idRole of idRoles) {
+    await assignRoleToCompte(created.idCompte, { idRole })
+  }
+  return created
+}

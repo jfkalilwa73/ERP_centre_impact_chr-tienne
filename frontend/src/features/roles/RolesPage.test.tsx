@@ -38,6 +38,14 @@ describe('écran Rôles', () => {
     expect(await screen.findByText('membres.read')).toBeTruthy()
   })
 
+  it("refuse l'administration des rôles au pasteur", async () => {
+    const { user } = renderApp('/roles')
+
+    await seConnecter(user, 'pasteur@eglise.org', 'Pasteur2026!')
+
+    expect(await screen.findByRole('heading', { name: 'Accès refusé' })).toBeTruthy()
+  })
+
   it("refuse la section Rôles à qui n'a pas roles.manage", async () => {
     const { user } = renderApp('/roles')
 

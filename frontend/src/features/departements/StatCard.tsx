@@ -9,9 +9,9 @@ export function StatCard({
   accent = false,
 }: {
   label: string
-  value: number
+  value: number | string
   hint: string
-  icon: LucideIcon
+  icon?: LucideIcon
   accent?: boolean
 }) {
   return (
@@ -23,14 +23,16 @@ export function StatCard({
     >
       <div className="flex items-start justify-between gap-3">
         <p className={cn('text-sm', accent ? 'text-white/80' : 'text-slate-500')}>{label}</p>
-        <span
-          className={cn(
-            'flex size-8 shrink-0 items-center justify-center',
-            accent ? 'bg-white/20 text-white' : 'bg-slate-50 text-slate-400',
-          )}
-        >
-          <Icon className="size-4" aria-hidden="true" />
-        </span>
+        {Icon && (
+          <span
+            className={cn(
+              'flex size-8 shrink-0 items-center justify-center',
+              accent ? 'bg-white/20 text-white' : 'bg-slate-50 text-slate-400',
+            )}
+          >
+            <Icon className="size-4" aria-hidden="true" />
+          </span>
+        )}
       </div>
       <p className={cn('mt-3 text-3xl font-semibold tracking-tight', accent ? 'text-white' : 'text-slate-900')}>
         {value}

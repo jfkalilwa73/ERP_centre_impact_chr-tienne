@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useDepartements } from '@/features/departements/hooks'
+import { useAssignPersonneFamille, useFamilles } from '@/features/familles/hooks'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useHasPermission } from '@/stores/authStore'
@@ -18,8 +19,8 @@ import {
   isThisMonth,
   matchesPersonneSearch,
 } from './duplicates'
-import { familleLabel, famillesImpact, getFamilleForPersonne } from './familles'
-import { useCreatePersonne, usePersonnes, usePersonnesAffectations } from './hooks'
+import { activeFamilleId, familleById, familleLabel } from './familles'
+import { useCreatePersonne, usePersonnes, usePersonnesAffectations, usePersonnesFamilles } from './hooks'
 import { STATUT_LABELS, statutBadgeClass } from './labels'
 import { PersonneAvatar } from './PersonneAvatar'
 import { toPersonneCreate, type PersonneEditFormValues } from './schema'
@@ -111,14 +112,19 @@ export function PersonnesPage() {
 
   const canCreate = useHasPermission(PERMISSIONS.MEMBRES_CREATE)
   const canReadDepartements = useHasPermission(PERMISSIONS.DEPARTEMENTS_READ)
+  const canReadFamilles = useHasPermission(PERMISSIONS.FAMILLES_READ)
 
   const catalogQuery = usePersonnes({ page: 1, limit: CATALOG_LIMIT })
   const departementsQuery = useDepartements({ page: 1, limit: 100 }, canReadDepartements)
+  const famillesQuery = useFamilles({ page: 1, limit: 100 }, canReadFamilles)
   const createMutation = useCreatePersonne()
+  const assignFamilleMutation = useAssignPersonneFamille()
 
   const catalog = catalogQuery.data?.data ?? []
+  const famillesImpact = famillesQuery.data?.data ?? []
   const personneIds = useMemo(() => catalog.map((personne) => personne.idPersonne), [catalog])
   const affectationQueries = usePersonnesAffectations(personneIds)
+  const familleAffectationQueries = usePersonnesFamilles(personneIds)
   const departements = departementsQuery.data?.data ?? []
   const departementNames = useMemo(
     () => new Map(departements.map((departement) => [departement.idDepartement, departement.nom])),
@@ -138,6 +144,15 @@ export function PersonnesPage() {
     })
     return map
   }, [affectationQueries, departementNames, personneIds])
+  const familleByPersonne = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof familleById>>()
+    familleAffectationQueries.forEach((query, index) => {
+      const personneId = personneIds[index]
+      const famille = familleById(famillesImpact, activeFamilleId(query.data))
+      if (personneId && famille) map.set(personneId, famille)
+    })
+    return map
+  }, [familleAffectationQueries, famillesImpact, personneIds])
 
   const stats = useMemo(() => {
     const total = catalogQuery.data?.pagination.total ?? catalog.length
@@ -167,12 +182,12 @@ export function PersonnesPage() {
       if (departementFilter && departementByPersonne.get(personne.idPersonne)?.id !== departementFilter) {
         return false
       }
-      if (familleFilter && getFamilleForPersonne(personne.idPersonne)?.idFamille !== familleFilter) {
+      if (familleFilter && familleByPersonne.get(personne.idPersonne)?.idFamille !== familleFilter) {
         return false
       }
       return true
     })
-  }, [catalog, departementByPersonne, departementFilter, familleFilter, statutFilter, submittedSearch])
+  }, [catalog, departementByPersonne, departementFilter, familleByPersonne, familleFilter, statutFilter, submittedSearch])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const personnes = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -191,7 +206,17 @@ export function PersonnesPage() {
   }
 
   const handleFormSubmit = (values: PersonneEditFormValues) => {
-    createMutation.mutate(toPersonneCreate(values), { onSuccess: () => setFormOpen(false) })
+    createMutation.mutate(toPersonneCreate(values), {
+      onSuccess: (created) => {
+        if (values.idFamille) {
+          assignFamilleMutation.mutate({
+            personneId: created.idPersonne,
+            payload: { idFamille: values.idFamille, fonction: 'Membre' },
+          })
+        }
+        setFormOpen(false)
+      },
+    })
   }
 
   return (
@@ -360,7 +385,7 @@ export function PersonnesPage() {
               <tbody>
                 {personnes.map((personne) => {
                   const statut = personne.statut ?? 'actif'
-                  const famille = getFamilleForPersonne(personne.idPersonne)
+                  const famille = familleByPersonne.get(personne.idPersonne)
                   return (
                     <tr key={personne.idPersonne} className="border-b border-slate-100 last:border-0">
                       <td className="px-4 py-3">
@@ -444,6 +469,8 @@ export function PersonnesPage() {
       <PersonneFormDialog
         open={formOpen}
         personne={null}
+        personnes={catalog}
+        familles={famillesImpact}
         errorMessage={createMutation.error?.message}
         isSubmitting={createMutation.isPending}
         onOpenChange={setFormOpen}

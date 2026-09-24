@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
 import {
   assignRoleToCompte,
   createCompte,
+  createCompteWithRoles,
   deleteCompte,
   listComptes,
   listCompteRoles,
@@ -55,6 +56,29 @@ describe('API comptes', () => {
 
     expect(created.email).toBe('ruth@eglise.org')
     expect(created.mfaActive).toBe(false)
+  })
+
+  it('crée un compte et lui attribue les rôles choisis', async () => {
+    await ouvrirSession()
+    const { createPersonne } = await import('@/features/personnes/api')
+    const nouvelle = await createPersonne({ nom: 'ILUNGA', prenom: 'Sarah', statut: 'actif' })
+    const accueilRole = seedRoles.find((role) => role.code === 'RESPONSABLE_ACCUEIL')
+    const pasteurRole = seedRoles.find((role) => role.code === 'PASTEUR')
+    if (!accueilRole || !pasteurRole) throw new Error('rôles absents')
+
+    const created = await createCompteWithRoles(
+      {
+        idPersonne: nouvelle.idPersonne,
+        email: 'sarah.ilunga@eglise.org',
+        motDePasse: 'SecurePass123!',
+        statut: 'actif',
+      },
+      [accueilRole.idRole, pasteurRole.idRole],
+    )
+
+    const affectations = await listCompteRoles(created.idCompte)
+    const actifs = affectations.filter((affectation) => affectation.actif).map((item) => item.idRole)
+    expect(actifs).toEqual(expect.arrayContaining([accueilRole.idRole, pasteurRole.idRole]))
   })
 
   it('refuse une adresse e-mail déjà prise', async () => {
@@ -142,7 +166,7 @@ describe('API comptes', () => {
   })
 
   it('interdit la lecture sans le droit comptes.read', async () => {
-    await ouvrirSession('pasteur@eglise.org', 'Pasteur2026!')
+    await ouvrirSession('accueil@eglise.org', 'Accueil2026!')
 
     await expect(listComptes()).rejects.toMatchObject({ status: 403 })
   })
@@ -162,7 +186,7 @@ describe('API rôles des comptes', () => {
   it('attribue un rôle puis refuse le doublon actif', async () => {
     await ouvrirSession()
     const accueil = seedComptes.find((compte) => compte.email === 'accueil@eglise.org')
-    const pasteurRole = seedRoles.find((role) => role.code === 'PASTEUR_SITE')
+    const pasteurRole = seedRoles.find((role) => role.code === 'PASTEUR')
     if (!accueil || !pasteurRole) throw new Error('jeu de démonstration incomplet')
 
     const created = await assignRoleToCompte(accueil.idCompte, { idRole: pasteurRole.idRole })
@@ -185,14 +209,14 @@ describe('API rôles des comptes', () => {
 
   it("retire un rôle sans l'effacer de l'historique", async () => {
     await ouvrirSession()
-    const admin = seedComptes[0]
-    const adminRole = seedRoles.find((role) => role.code === 'ADMIN_FONCTIONNEL')
-    if (!admin || !adminRole) throw new Error('jeu de démonstration incomplet')
+    const accueil = seedComptes.find((compte) => compte.email === 'accueil@eglise.org')
+    const accueilRole = seedRoles.find((role) => role.code === 'RESPONSABLE_ACCUEIL')
+    if (!accueil || !accueilRole) throw new Error('jeu de démonstration incomplet')
 
-    await unassignRoleFromCompte(admin.idCompte, adminRole.idRole)
+    await unassignRoleFromCompte(accueil.idCompte, accueilRole.idRole)
 
-    const affectations = await listCompteRoles(admin.idCompte)
-    const cloture = affectations.find((affectation) => affectation.idRole === adminRole.idRole)
+    const affectations = await listCompteRoles(accueil.idCompte)
+    const cloture = affectations.find((affectation) => affectation.idRole === accueilRole.idRole)
     expect(cloture?.actif).toBe(false)
     expect(cloture?.dateFin).toBeTruthy()
   })
@@ -206,5 +230,49 @@ describe('API rôles des comptes', () => {
     await expect(
       assignRoleToCompte(accueil.idCompte, { idRole: adminRole.idRole }),
     ).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('applique les droits du rôle à la prochaine connexion', async () => {
+    await ouvrirSession()
+    const accueil = seedComptes.find((compte) => compte.email === 'accueil@eglise.org')
+    const pasteurRole = seedRoles.find((role) => role.code === 'PASTEUR')
+    if (!accueil || !pasteurRole) throw new Error('jeu de démonstration incomplet')
+
+    await assignRoleToCompte(accueil.idCompte, { idRole: pasteurRole.idRole })
+
+    const session = await ouvrirSession('accueil@eglise.org', 'Accueil2026!')
+    expect(session.utilisateur.roles.some((role) => role.code === 'PASTEUR')).toBe(true)
+    expect(session.utilisateur.permissions).toContain('pastorale.notes')
+  })
+
+  it('permet de se connecter après création, puis d’activer un rôle', async () => {
+    await ouvrirSession()
+    const { createPersonne } = await import('@/features/personnes/api')
+    const { login } = await import('@/features/auth/api')
+    const nouvelle = await createPersonne({ nom: 'KABILA', prenom: 'Esther', statut: 'actif' })
+    const accueilRole = seedRoles.find((role) => role.code === 'RESPONSABLE_ACCUEIL')
+    if (!accueilRole) throw new Error('rôle accueil absent')
+
+    const created = await createCompte({
+      idPersonne: nouvelle.idPersonne,
+      email: 'esther.kabila@eglise.org',
+      motDePasse: 'SecurePass123!',
+      statut: 'actif',
+    })
+
+    const sansRole = await login({
+      email: 'esther.kabila@eglise.org',
+      motDePasse: 'SecurePass123!',
+    })
+    expect(sansRole.utilisateur.permissions).toEqual([])
+
+    await assignRoleToCompte(created.idCompte, { idRole: accueilRole.idRole })
+
+    const avecRole = await login({
+      email: 'esther.kabila@eglise.org',
+      motDePasse: 'SecurePass123!',
+    })
+    expect(avecRole.utilisateur.roles.some((role) => role.code === 'RESPONSABLE_ACCUEIL')).toBe(true)
+    expect(avecRole.utilisateur.permissions.length).toBeGreaterThan(0)
   })
 })

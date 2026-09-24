@@ -1,6 +1,8 @@
 import type {
   AffectationDepartement,
   AffectationDepartementCreate,
+  AffectationFamille,
+  AffectationFamilleCreate,
   Personne,
   PersonneCreate,
   PersonnePage,
@@ -9,6 +11,8 @@ import type {
 } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
 import { isLeadershipRole } from '@/features/departements/roles'
+import { isLeadershipRole as isFamilleLeadership } from '@/features/familles/roles'
+import { canReadPersonnes } from './access'
 import { mockAccounts, type MockAccount } from './fixtures'
 import { mockDb } from './db'
 import {
@@ -51,13 +55,26 @@ function canManageDepartementMembers(account: MockAccount, departementId: string
   )
 }
 
+function canManageFamilleMembers(account: MockAccount, familleId: string) {
+  if (requirePermission(account, PERMISSIONS.MEMBRES_UPDATE)) return true
+  if (requirePermission(account, PERMISSIONS.FAMILLES_UPDATE)) return true
+  const idPersonne = account.utilisateur.compte.idPersonne
+  return mockDb.affectationsFamille.some(
+    (affectation) =>
+      affectation.idPersonne === idPersonne &&
+      affectation.idFamille === familleId &&
+      affectation.actif &&
+      isFamilleLeadership(affectation.fonction),
+  )
+}
+
 export const personneHandlers = [
   http.get(apiUrl('personnes'), async ({ request }) => {
     await delay(200)
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /personnes', result.reason)
-    if (!requirePermission(result.account, PERMISSIONS.MEMBRES_READ)) return forbidden()
+    if (!canReadPersonnes(result.account)) return forbidden()
 
     const url = new URL(request.url)
     const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1)
@@ -125,7 +142,7 @@ export const personneHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /personnes/:id', result.reason)
-    if (!requirePermission(result.account, PERMISSIONS.MEMBRES_READ)) return forbidden()
+    if (!canReadPersonnes(result.account)) return forbidden()
 
     const personne = mockDb.personnes.find((candidate) => candidate.idPersonne === params.personneId)
     if (!personne) return errorResponse(404, 'NOT_FOUND', 'Personne introuvable.')
@@ -195,6 +212,9 @@ export const personneHandlers = [
     mockDb.affectations = mockDb.affectations.filter(
       (affectation) => affectation.idPersonne !== params.personneId,
     )
+    mockDb.affectationsFamille = mockDb.affectationsFamille.filter(
+      (affectation) => affectation.idPersonne !== params.personneId,
+    )
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -205,7 +225,7 @@ export const personneHandlers = [
     if (!result.authenticated) {
       return unauthenticated('GET /personnes/:id/departements', result.reason)
     }
-    if (!requirePermission(result.account, PERMISSIONS.MEMBRES_READ)) return forbidden()
+    if (!canReadPersonnes(result.account)) return forbidden()
 
     const personne = mockDb.personnes.find((candidate) => candidate.idPersonne === params.personneId)
     if (!personne) return errorResponse(404, 'NOT_FOUND', 'Personne introuvable.')
@@ -283,6 +303,111 @@ export const personneHandlers = [
         candidate.actif,
     )
     if (!affectation) return errorResponse(404, 'NOT_FOUND', 'Affectation active introuvable.')
+
+    affectation.actif = false
+    affectation.dateFin = new Date().toISOString()
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get(apiUrl('personnes/:personneId/familles-impact'), async ({ params, request }) => {
+    await delay(150)
+
+    const result = authenticate(request.headers.get('Authorization'))
+    if (!result.authenticated) {
+      return unauthenticated('GET /personnes/:id/familles-impact', result.reason)
+    }
+    if (!canReadPersonnes(result.account)) return forbidden()
+
+    const personne = mockDb.personnes.find((candidate) => candidate.idPersonne === params.personneId)
+    if (!personne) return errorResponse(404, 'NOT_FOUND', 'Personne introuvable.')
+
+    const url = new URL(request.url)
+    const actifParam = url.searchParams.get('actif')
+    const affectations = mockDb.affectationsFamille.filter((affectation) => {
+      if (affectation.idPersonne !== params.personneId) return false
+      if (actifParam === 'true') return affectation.actif
+      if (actifParam === 'false') return !affectation.actif
+      return true
+    })
+
+    return HttpResponse.json(affectations, { status: 200 })
+  }),
+
+  http.post(apiUrl('personnes/:personneId/familles-impact'), async ({ params, request }) => {
+    await delay(250)
+
+    const result = authenticate(request.headers.get('Authorization'))
+    if (!result.authenticated) {
+      return unauthenticated('POST /personnes/:id/familles-impact', result.reason)
+    }
+    const payload = (await request.json()) as Partial<AffectationFamilleCreate>
+    const idFamille = payload.idFamille?.trim()
+    if (!idFamille) {
+      return errorResponse(422, 'VALIDATION_ERROR', 'Données non conformes.', [
+        { field: 'idFamille', rule: 'required' },
+      ])
+    }
+    if (!canManageFamilleMembers(result.account, idFamille)) return forbidden()
+
+    const personne = mockDb.personnes.find((candidate) => candidate.idPersonne === params.personneId)
+    if (!personne) return errorResponse(404, 'NOT_FOUND', 'Personne introuvable.')
+
+    const famille = mockDb.familles.find((candidate) => candidate.idFamille === idFamille)
+    if (!famille) return errorResponse(404, 'NOT_FOUND', 'Famille d’impact introuvable.')
+
+    const dejaActive = mockDb.affectationsFamille.some(
+      (affectation) =>
+        affectation.idPersonne === params.personneId &&
+        affectation.idFamille === idFamille &&
+        affectation.actif,
+    )
+    if (dejaActive) {
+      return errorResponse(409, 'CONFLICT', 'Cette personne appartient déjà à cette famille.')
+    }
+
+    const autreFamilleActive = mockDb.affectationsFamille.find(
+      (affectation) =>
+        affectation.idPersonne === params.personneId &&
+        affectation.idFamille !== idFamille &&
+        affectation.actif,
+    )
+    if (autreFamilleActive) {
+      return errorResponse(
+        409,
+        'CONFLICT',
+        'Cette personne appartient déjà à une famille d’impact. Clôturez d’abord l’appartenance en cours.',
+      )
+    }
+
+    const created: AffectationFamille = {
+      idPersonne: String(params.personneId),
+      idFamille,
+      fonction: payload.fonction?.trim() || undefined,
+      dateDebut: payload.dateDebut ?? new Date().toISOString(),
+      dateFin: payload.dateFin,
+      actif: true,
+    }
+
+    mockDb.affectationsFamille.unshift(created)
+    return HttpResponse.json(created, { status: 201 })
+  }),
+
+  http.delete(apiUrl('personnes/:personneId/familles-impact/:familleId'), async ({ params, request }) => {
+    await delay(200)
+
+    const result = authenticate(request.headers.get('Authorization'))
+    if (!result.authenticated) {
+      return unauthenticated('DELETE /personnes/:id/familles-impact/:id', result.reason)
+    }
+    if (!canManageFamilleMembers(result.account, String(params.familleId))) return forbidden()
+
+    const affectation = mockDb.affectationsFamille.find(
+      (candidate) =>
+        candidate.idPersonne === params.personneId &&
+        candidate.idFamille === params.familleId &&
+        candidate.actif,
+    )
+    if (!affectation) return errorResponse(404, 'NOT_FOUND', 'Appartenance active introuvable.')
 
     affectation.actif = false
     affectation.dateFin = new Date().toISOString()

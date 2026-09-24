@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { usePersonnes } from '@/features/personnes/hooks'
+import { useRoles } from '@/features/roles/hooks'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useHasPermission } from '@/stores/authStore'
 import type { Compte, CompteStatut } from '@/types'
@@ -30,6 +31,7 @@ export function ComptesPage() {
   const canUpdate = useHasPermission(PERMISSIONS.COMPTES_UPDATE)
   const canDelete = useHasPermission(PERMISSIONS.COMPTES_DELETE)
   const canReadPersonnes = useHasPermission(PERMISSIONS.MEMBRES_READ)
+  const canManageRoles = useHasPermission(PERMISSIONS.ROLES_MANAGE)
 
   const listParams = useMemo(
     () => ({
@@ -42,6 +44,7 @@ export function ComptesPage() {
   )
   const comptesQuery = useComptes(listParams)
   const personnesQuery = usePersonnes({ page: 1, limit: 100 }, canReadPersonnes)
+  const rolesQuery = useRoles({ page: 1, limit: 100 }, canCreate && canManageRoles)
   const createMutation = useCreateCompte()
   const updateMutation = useUpdateCompte()
   const deleteMutation = useDeleteCompte()
@@ -89,7 +92,10 @@ export function ComptesPage() {
       return
     }
 
-    createMutation.mutate(toCompteCreate(values), { onSuccess: () => setFormOpen(false) })
+    createMutation.mutate(
+      { payload: toCompteCreate(values), idRoles: values.idRoles },
+      { onSuccess: () => setFormOpen(false) },
+    )
   }
 
   const formError = editingCompte ? updateMutation.error?.message : createMutation.error?.message
@@ -272,6 +278,8 @@ export function ComptesPage() {
         open={formOpen}
         compte={editingCompte}
         personnes={editingCompte ? personnes : personnesDisponibles}
+        roles={rolesQuery.data?.data ?? []}
+        rolesError={rolesQuery.error?.message}
         errorMessage={formError}
         isSubmitting={isSubmitting}
         onOpenChange={setFormOpen}

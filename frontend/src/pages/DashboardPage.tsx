@@ -1,9 +1,20 @@
+import { Navigate } from 'react-router-dom'
+import { useAccessScope } from '@/features/auth/accessScope'
 import { useCurrentUser } from '@/stores/authStore'
 
 export function DashboardPage() {
   const user = useCurrentUser()
+  const scope = useAccessScope()
 
   if (!user) return null
+  if (scope.isScoped) {
+    if (scope.isLoading) {
+      return <p className="text-sm text-slate-500">Chargement de votre espace…</p>
+    }
+    if (scope.homePath !== '/') {
+      return <Navigate to={scope.homePath} replace />
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">

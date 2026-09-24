@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import type { Personne } from '@/types'
-import { assignFamilleToPersonne } from './familles'
 import { complementFromEdit, criteresFiche, emptyFicheComplement } from './fiche'
 import { emptyPersonneEditForm } from './schema'
 
@@ -28,9 +27,9 @@ describe('qualité de la fiche', () => {
   })
 
   it('atteint 100 % lorsque tous les critères sont fournis', () => {
-    assignFamilleToPersonne(personne.idPersonne, 'f1a2b3c4-0008-4000-8000-000000000001')
     const qualite = criteresFiche({
       personne,
+      idFamille: 'f1a2b3c4-0008-4000-8000-000000000001',
       complement: {
         statutCivil: 'marie',
         competences: 'Accueil',

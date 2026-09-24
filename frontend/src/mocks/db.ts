@@ -1,9 +1,11 @@
 import {
   seedAffectations,
+  seedAffectationsFamille,
   seedAffectationsRole,
   seedAuditLogs,
   seedComptes,
   seedDepartements,
+  seedFamilles,
   seedPermissions,
   seedPersonnes,
   seedRolePermissions,
@@ -16,9 +18,11 @@ import {
 } from './fixtures'
 import type {
   AffectationDepartement,
+  AffectationFamille,
   AffectationRole,
   AuditLog,
   Compte,
+  FamilleImpact,
   Permission,
   Personne,
   Role,
@@ -29,6 +33,8 @@ type MockDb = {
   departements: MockDepartement[]
   personnes: Personne[]
   affectations: AffectationDepartement[]
+  familles: FamilleImpact[]
+  affectationsFamille: AffectationFamille[]
   comptes: Compte[]
   roles: Role[]
   affectationsRole: AffectationRole[]
@@ -43,6 +49,8 @@ function cloneSeed(): MockDb {
     departements: structuredClone(seedDepartements),
     personnes: structuredClone(seedPersonnes),
     affectations: structuredClone(seedAffectations),
+    familles: structuredClone(seedFamilles),
+    affectationsFamille: structuredClone(seedAffectationsFamille),
     comptes: structuredClone(seedComptes),
     roles: structuredClone(seedRoles),
     affectationsRole: structuredClone(seedAffectationsRole),
@@ -60,6 +68,8 @@ export function resetMockDb() {
   mockDb.departements.splice(0, mockDb.departements.length, ...next.departements)
   mockDb.personnes.splice(0, mockDb.personnes.length, ...next.personnes)
   mockDb.affectations.splice(0, mockDb.affectations.length, ...next.affectations)
+  mockDb.familles.splice(0, mockDb.familles.length, ...next.familles)
+  mockDb.affectationsFamille.splice(0, mockDb.affectationsFamille.length, ...next.affectationsFamille)
   mockDb.comptes.splice(0, mockDb.comptes.length, ...next.comptes)
   mockDb.roles.splice(0, mockDb.roles.length, ...next.roles)
   mockDb.affectationsRole.splice(0, mockDb.affectationsRole.length, ...next.affectationsRole)

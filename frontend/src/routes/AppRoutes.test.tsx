@@ -55,4 +55,27 @@ describe('navigation authentifiée', () => {
 
     expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeTruthy()
   })
+
+  it("n'ouvre qu'un groupe de menu à la fois et garde la déconnexion visible", async () => {
+    const { user } = renderApp()
+
+    await seConnecter(user)
+    await screen.findByRole('heading', { name: /Bonjour Jean/ })
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
+    await user.click(screen.getByRole('button', { name: 'Départements' }))
+
+    expect(screen.getByRole('button', { name: 'Départements' }).getAttribute('aria-expanded')).toBe(
+      'true',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Administration' }))
+
+    expect(screen.getByRole('button', { name: 'Départements' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    )
+    expect(screen.getByRole('button', { name: 'Administration' }).getAttribute('aria-expanded')).toBe(
+      'true',
+    )
+    expect(screen.getAllByRole('button', { name: /Déconnexion/ }).length).toBeGreaterThan(0)
+  })
 })

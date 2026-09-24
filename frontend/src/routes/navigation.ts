@@ -1,4 +1,6 @@
 import {
+  Bell,
+  Heart,
   KeyRound,
   LayoutDashboard,
   Layers,
@@ -38,6 +40,7 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
 
 export const navigation: NavEntry[] = [
   { to: '/', label: 'Accueil', icon: LayoutDashboard },
+  { to: '/notifications', label: 'Notifications', icon: Bell, permission: PERMISSIONS.DEMANDES_READ },
   { to: '/personnes', label: 'Personnes', icon: Users, permission: PERMISSIONS.MEMBRES_READ },
   {
     id: 'departements',
@@ -54,17 +57,31 @@ export const navigation: NavEntry[] = [
     ],
   },
   {
+    id: 'familles',
+    label: "Familles d'impact",
+    icon: Heart,
+    children: [
+      {
+        to: '/familles',
+        label: "Toutes les familles d'impact",
+        icon: List,
+        permission: PERMISSIONS.FAMILLES_READ,
+        end: true,
+      },
+    ],
+  },
+  {
     id: 'administration',
     label: 'Administration',
     icon: Settings,
     children: [
       { to: '/comptes', label: 'Comptes', icon: KeyRound, permission: PERMISSIONS.COMPTES_READ },
-      { to: '/roles', label: 'Rôles', icon: Shield, permission: PERMISSIONS.ROLES_MANAGE },
+      { to: '/roles', label: 'Rôles', icon: Shield, permission: PERMISSIONS.ROLES_READ },
       {
         to: '/permissions',
         label: 'Permissions',
         icon: ShieldCheck,
-        permission: PERMISSIONS.ROLES_MANAGE,
+        permission: PERMISSIONS.ROLES_READ,
       },
       { to: '/audit', label: 'Audit', icon: ScrollText, permission: PERMISSIONS.AUDIT_READ },
     ],

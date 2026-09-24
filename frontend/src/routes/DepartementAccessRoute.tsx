@@ -1,19 +1,21 @@
 import { Outlet, useParams } from 'react-router-dom'
-import { isLeadershipRole } from '@/features/departements/roles'
+import { canAccessDepartementUnit } from '@/features/departements/roles'
 import { usePersonneAffectations } from '@/features/personnes/hooks'
 import { PERMISSIONS } from '@/lib/permissions'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 
-/** Interface d'un département : managers, ou chef / adjoint de ce département. */
+/** Interface d'un département : lecture large, ou périmètre chef / adjoint / superviseur. */
 export function DepartementAccessRoute() {
   const { departementId } = useParams<{ departementId: string }>()
-  const canManage =
-    useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE) || useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE)
+  const canView =
+    useHasPermission(PERMISSIONS.DEPARTEMENTS_READ) ||
+    useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE) ||
+    useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE)
   const user = useCurrentUser()
   const affectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
 
-  if (!canManage && affectationsQuery.isLoading) {
+  if (!canView && affectationsQuery.isLoading) {
     return <p className="text-sm text-slate-500">Vérification de l'accès…</p>
   }
 
@@ -21,10 +23,10 @@ export function DepartementAccessRoute() {
     (affectation) =>
       affectation.idDepartement === departementId &&
       affectation.actif &&
-      isLeadershipRole(affectation.fonction),
+      canAccessDepartementUnit(affectation.fonction),
   )
 
-  if (!canManage && !leadsThisDepartment) return <ForbiddenPage />
+  if (!canView && !leadsThisDepartment) return <ForbiddenPage />
 
   return <Outlet />
 }

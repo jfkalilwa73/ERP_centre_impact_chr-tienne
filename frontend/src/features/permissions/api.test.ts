@@ -78,15 +78,15 @@ describe('API permissions', () => {
   it("supprime une permission inutilisée", async () => {
     await ouvrirSession()
     const created = await createPermission({
-      code: 'rapports.read',
+      code: 'rapports.archive',
       module: 'rapports',
-      action: 'read',
+      action: 'archive',
       actif: true,
     })
 
     await expect(deletePermission(created.idPermission)).resolves.toBeUndefined()
-    const remaining = await listPermissions({ q: 'rapports.read' })
-    expect(remaining.data.some((permission) => permission.code === 'rapports.read')).toBe(false)
+    const remaining = await listPermissions({ q: 'rapports.archive' })
+    expect(remaining.data.some((permission) => permission.code === 'rapports.archive')).toBe(false)
   })
 
   it('interdit la lecture sans le droit roles.manage', async () => {

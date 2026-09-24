@@ -138,6 +138,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/personnes/{personneId}/familles-impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personneId: components["parameters"]["PersonneId"];
+            };
+            cookie?: never;
+        };
+        /** Lister les appartenances d'une personne à des familles d'impact */
+        get: operations["listPersonneFamilles"];
+        put?: never;
+        /**
+         * Rattacher une personne à une famille d'impact
+         * @description Refusé (409) si la personne appartient déjà à une famille active :
+         *     clôturer d'abord l'appartenance en cours.
+         */
+        post: operations["assignPersonneFamille"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/personnes/{personneId}/familles-impact/{familleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personneId: components["parameters"]["PersonneId"];
+                familleId: components["parameters"]["FamilleId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Clôturer l'appartenance active à une famille d'impact */
+        delete: operations["unassignPersonneFamille"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comptes": {
         parameters: {
             query?: never;
@@ -432,6 +476,45 @@ export interface paths {
         head?: never;
         /** Modifier un département */
         patch: operations["updateDepartement"];
+        trace?: never;
+    };
+    "/familles-impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister les familles d'impact */
+        get: operations["listFamilles"];
+        put?: never;
+        /** Créer une famille d'impact */
+        post: operations["createFamille"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/familles-impact/{familleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                familleId: components["parameters"]["FamilleId"];
+            };
+            cookie?: never;
+        };
+        /** Consulter une famille d'impact */
+        get: operations["getFamille"];
+        put?: never;
+        post?: never;
+        /** Supprimer une famille d'impact sans membre actif */
+        delete: operations["deleteFamille"];
+        options?: never;
+        head?: never;
+        /** Modifier une famille d'impact */
+        patch: operations["updateFamille"];
         trace?: never;
     };
     "/audit-logs": {
@@ -808,6 +891,56 @@ export interface components {
             dateFin?: string;
             actif: boolean;
         };
+        FamilleImpactCreate: {
+            /** @example BATISSEURS */
+            code: string;
+            /** @example Bâtisseurs */
+            nom: string;
+            /** @example Nord */
+            zone?: string;
+            description?: string;
+            /** @default true */
+            actif: boolean;
+        };
+        FamilleImpactUpdate: {
+            code?: string;
+            nom?: string;
+            zone?: string;
+            description?: string;
+            actif?: boolean;
+        };
+        FamilleImpact: components["schemas"]["FamilleImpactCreate"] & {
+            /** Format: uuid */
+            readonly idFamille: string;
+            /** Format: date-time */
+            readonly dateCreation: string;
+        };
+        FamilleImpactPage: {
+            data: components["schemas"]["FamilleImpact"][];
+            pagination: components["schemas"]["Pagination"];
+        };
+        AffectationFamilleCreate: {
+            /** Format: uuid */
+            idFamille: string;
+            /** @example Responsable */
+            fonction?: string;
+            /** Format: date-time */
+            dateDebut?: string;
+            /** Format: date-time */
+            dateFin?: string;
+        };
+        AffectationFamille: {
+            /** Format: uuid */
+            idPersonne: string;
+            /** Format: uuid */
+            idFamille: string;
+            fonction?: string;
+            /** Format: date-time */
+            dateDebut: string;
+            /** Format: date-time */
+            dateFin?: string;
+            actif: boolean;
+        };
         AuditLog: {
             /** Format: uuid */
             readonly idAudit: string;
@@ -892,6 +1025,7 @@ export interface components {
         PermissionId: string;
         SiteId: string;
         DepartementId: string;
+        FamilleId: string;
         AuditId: string;
     };
     requestBodies: never;
@@ -1169,6 +1303,85 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Affectation clôturée */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    listPersonneFamilles: {
+        parameters: {
+            query?: {
+                actif?: boolean;
+            };
+            header?: never;
+            path: {
+                personneId: components["parameters"]["PersonneId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Appartenances trouvées */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AffectationFamille"][];
+                };
+            };
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    assignPersonneFamille: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personneId: components["parameters"]["PersonneId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AffectationFamilleCreate"];
+            };
+        };
+        responses: {
+            /** @description Appartenance créée */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AffectationFamille"];
+                };
+            };
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    unassignPersonneFamille: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personneId: components["parameters"]["PersonneId"];
+                familleId: components["parameters"]["FamilleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Appartenance clôturée */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -2009,6 +2222,137 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Departement"];
+                };
+            };
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    listFamilles: {
+        parameters: {
+            query?: {
+                /** @description Numéro de page */
+                page?: components["parameters"]["Page"];
+                /** @description Nombre d'éléments par page */
+                limit?: components["parameters"]["Limit"];
+                /** @description Recherche textuelle */
+                q?: components["parameters"]["Search"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste paginée */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilleImpactPage"];
+                };
+            };
+            403: components["responses"]["ForbiddenError"];
+        };
+    };
+    createFamille: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FamilleImpactCreate"];
+            };
+        };
+        responses: {
+            /** @description Famille créée */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilleImpact"];
+                };
+            };
+            403: components["responses"]["ForbiddenError"];
+            409: components["responses"]["ConflictError"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    getFamille: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                familleId: components["parameters"]["FamilleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Famille trouvée */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilleImpact"];
+                };
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    deleteFamille: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                familleId: components["parameters"]["FamilleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Famille supprimée */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["ConflictError"];
+        };
+    };
+    updateFamille: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                familleId: components["parameters"]["FamilleId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FamilleImpactUpdate"];
+            };
+        };
+        responses: {
+            /** @description Famille modifiée */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilleImpact"];
                 };
             };
             403: components["responses"]["ForbiddenError"];

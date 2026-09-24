@@ -1,5 +1,4 @@
 import type { Personne } from '@/types'
-import { getFamilleIdForPersonne } from './familles'
 import type { PersonneEditFormValues } from './schema'
 
 export type LienFamilial = {
@@ -236,6 +235,7 @@ export function complementFromEdit(
 export function criteresFiche(input: {
   personne: Personne
   complement?: FicheComplement
+  idFamille?: string
 }) {
   const complement = input.complement ?? getFicheComplement(input.personne.idPersonne)
   const { personne } = input
@@ -253,7 +253,7 @@ export function criteresFiche(input: {
     {
       id: 'famille',
       label: "Famille d'impact",
-      renseigne: Boolean(getFamilleIdForPersonne(personne.idPersonne)),
+      renseigne: Boolean(input.idFamille),
     },
     { id: 'liens', label: 'Liens familiaux', renseigne: complement.liens.length > 0 },
     {

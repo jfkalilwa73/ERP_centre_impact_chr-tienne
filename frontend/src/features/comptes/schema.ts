@@ -25,6 +25,9 @@ export function compteSchema(isEditing: boolean) {
       : z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères.'),
     statut: statutSchema,
     mfaActive: z.enum(['true', 'false']),
+    idRoles: isEditing
+      ? z.array(z.string())
+      : z.array(z.string().trim().min(1)).min(1, 'Attribuez au moins un rôle pour ouvrir l’accès.'),
   })
 }
 
@@ -36,6 +39,7 @@ export const emptyCompteForm: CompteFormValues = {
   motDePasse: '',
   statut: 'actif',
   mfaActive: 'false',
+  idRoles: [],
 }
 
 export function toCompteCreate(values: CompteFormValues): CompteCreate {

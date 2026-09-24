@@ -1,5 +1,5 @@
 import type { AffectationDepartement, Departement } from '@/types'
-import type { ActiviteDepartement } from './activites'
+import type { Activite } from './activites'
 
 export type PointEvolution = {
   mois: string
@@ -41,7 +41,10 @@ function lastMonthKeys(months = 6) {
   return keys
 }
 
-export function evolutionDepartement(affectations: AffectationDepartement[], months = 12): PointEvolution[] {
+export function evolutionDepartement(
+  affectations: Pick<AffectationDepartement, 'dateDebut' | 'dateFin'>[],
+  months = 12,
+): PointEvolution[] {
   const keys = lastMonthKeys(months)
   return keys.map((key) => ({
     mois: monthLabel(key),
@@ -50,7 +53,7 @@ export function evolutionDepartement(affectations: AffectationDepartement[], mon
   }))
 }
 
-export function evolutionActivites(activites: ActiviteDepartement[], months = 12): PointActivites[] {
+export function evolutionActivites(activites: Activite[], months = 12): PointActivites[] {
   const keys = lastMonthKeys(months)
   return keys.map((key) => ({
     mois: monthLabel(key),

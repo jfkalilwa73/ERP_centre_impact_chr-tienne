@@ -9,8 +9,8 @@ import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { errorId } from '@/lib/form'
-import type { Personne } from '@/types'
-import { familleLabel, famillesImpact, getFamilleIdForPersonne } from './familles'
+import type { FamilleImpact, Personne } from '@/types'
+import { familleLabel } from './familles'
 import {
   FORMATIONS,
   STATUT_CIVIL_LABELS,
@@ -29,13 +29,19 @@ type PersonneFormDialogProps = {
   open: boolean
   personne?: Personne | null
   personnes?: Personne[]
+  familles?: FamilleImpact[]
+  currentFamilleId?: string
   errorMessage?: string
   isSubmitting: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: PersonneEditFormValues) => void
 }
 
-function valuesFromPersonne(personne: Personne, complement: FicheComplement): PersonneEditFormValues {
+function valuesFromPersonne(
+  personne: Personne,
+  complement: FicheComplement,
+  currentFamilleId?: string,
+): PersonneEditFormValues {
   return {
     nom: personne.nom,
     prenom: personne.prenom,
@@ -46,7 +52,7 @@ function valuesFromPersonne(personne: Personne, complement: FicheComplement): Pe
     statut: personne.statut ?? 'actif',
     statutCivil: complement.statutCivil,
     competences: complement.competences,
-    idFamille: getFamilleIdForPersonne(personne.idPersonne) ?? '',
+    idFamille: currentFamilleId ?? '',
     liens: complement.liens,
     certificatBaptemeNom: complement.certificatBaptemeNom,
     formation001: complement.formations['001'],
@@ -59,6 +65,8 @@ export function PersonneFormDialog({
   open,
   personne,
   personnes = [],
+  familles = [],
+  currentFamilleId,
   errorMessage,
   isSubmitting,
   onOpenChange,
@@ -84,9 +92,11 @@ export function PersonneFormDialog({
     if (!open) return
     reset(
       personne
-        ? valuesFromPersonne(personne, getFicheComplement(personne.idPersonne))
+        ? valuesFromPersonne(personne, getFicheComplement(personne.idPersonne), currentFamilleId)
         : emptyPersonneEditForm,
     )
+    // currentFamilleId est lu à l'ouverture : ne pas reset si l'affectation change en cours d'édition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ouverture uniquement
   }, [open, personne, reset])
 
   const proches = personnes.filter((item) => item.idPersonne !== personne?.idPersonne)
@@ -192,6 +202,19 @@ export function PersonneFormDialog({
             </Select>
           </FormField>
 
+          {!isEditing && (
+            <FormField id="personne-famille" label="Famille d'impact">
+              <Select id="personne-famille" {...register('idFamille')}>
+                <option value="">Non affectée</option>
+                {familles.map((famille) => (
+                  <option key={famille.idFamille} value={famille.idFamille}>
+                    {familleLabel(famille)}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          )}
+
           {isEditing && personne && (
             <>
               <section className="flex flex-col gap-4 border-t border-slate-200 pt-4">
@@ -227,7 +250,7 @@ export function PersonneFormDialog({
                   <FormField id="personne-famille" label="Famille d'impact">
                     <Select id="personne-famille" {...register('idFamille')}>
                       <option value="">Non affectée</option>
-                      {famillesImpact.map((famille) => (
+                      {familles.map((famille) => (
                         <option key={famille.idFamille} value={famille.idFamille}>
                           {familleLabel(famille)}
                         </option>

@@ -23,8 +23,10 @@ describe('API rôles', () => {
 
     const page = await listRoles({ page: 1, limit: 20 })
 
-    expect(page.pagination.total).toBe(3)
+    expect(page.pagination.total).toBe(22)
     expect(page.data.map((role) => role.code)).toContain('ADMIN_FONCTIONNEL')
+    expect(page.data.map((role) => role.code)).toContain('PASTEUR')
+    expect(page.data.map((role) => role.code)).toContain('ADMIN_TECHNIQUE')
   })
 
   it('filtre par recherche textuelle', async () => {
@@ -93,7 +95,9 @@ describe('API rôles', () => {
 
   it("liste les permissions d'un rôle", async () => {
     await ouvrirSession()
-    const accueil = (await listRoles()).data.find((role) => role.code === 'RESPONSABLE_ACCUEIL')
+    const accueil = (await listRoles({ limit: 100 })).data.find(
+      (role) => role.code === 'RESPONSABLE_ACCUEIL',
+    )
     if (!accueil) throw new Error('rôle accueil absent')
 
     const permissions = await listRolePermissions(accueil.idRole)

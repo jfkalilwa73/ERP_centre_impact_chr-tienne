@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useComptes } from '@/features/comptes/hooks'
 import { useDepartements } from '@/features/departements/hooks'
+import { useFamille, useFamilles } from '@/features/familles/hooks'
 import { cn } from '@/lib/cn'
 import { errorId } from '@/lib/form'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -18,7 +19,7 @@ import { useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Personne } from '@/types'
 import { PersonneFormDialog } from './PersonneFormDialog'
 import { initials } from './duplicates'
-import { assignFamilleToPersonne, familleLabel, getFamilleForPersonne } from './familles'
+import { activeFamilleId, familleLabel } from './familles'
 import {
   FORMATIONS,
   STATUT_CIVIL_LABELS,
@@ -39,10 +40,13 @@ import {
 } from './fiche'
 import {
   useAssignDepartement,
+  useAssignFamille,
   usePersonne,
   usePersonneAffectations,
+  usePersonneFamilles,
   usePersonnes,
   useUnassignDepartement,
+  useUnassignFamille,
   useUpdatePersonne,
 } from './hooks'
 import { ROLES_DEPARTEMENT, roleDepartement } from '@/features/departements/roles'
@@ -301,12 +305,15 @@ export function PersonneDetailPage() {
 
   const canUpdate = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
   const canReadDepartements = useHasPermission(PERMISSIONS.DEPARTEMENTS_READ)
+  const canReadFamilles = useHasPermission(PERMISSIONS.FAMILLES_READ)
   const canReadComptes = useHasPermission(PERMISSIONS.COMPTES_READ)
 
   const personneQuery = usePersonne(personneId)
   const catalogQuery = usePersonnes({ page: 1, limit: 100 })
   const affectationsQuery = usePersonneAffectations(personneId)
+  const famillesAffectationsQuery = usePersonneFamilles(personneId)
   const departementsQuery = useDepartements({ page: 1, limit: 100 }, canReadDepartements)
+  const famillesQuery = useFamilles({ page: 1, limit: 100 }, canReadFamilles)
   const comptesQuery = useComptes({ page: 1, limit: 100 }, canReadComptes)
 
   useEffect(() => {
@@ -315,6 +322,8 @@ export function PersonneDetailPage() {
   const photoSrc = usePersonnePhoto(personneId ?? '', personneQuery.data?.photoUrl)
   const assignMutation = useAssignDepartement(personneId ?? '')
   const unassignMutation = useUnassignDepartement(personneId ?? '')
+  const assignFamilleMutation = useAssignFamille(personneId ?? '')
+  const unassignFamilleMutation = useUnassignFamille(personneId ?? '')
   const updateMutation = useUpdatePersonne()
 
   const {
@@ -331,6 +340,10 @@ export function PersonneDetailPage() {
   const affectations = affectationsQuery.data ?? []
   const affectationsActives = affectations.filter((affectation) => affectation.actif)
   const departements = departementsQuery.data?.data ?? []
+  const famillesImpact = famillesQuery.data?.data ?? []
+  const currentFamilleId = activeFamilleId(famillesAffectationsQuery.data)
+  const familleQuery = useFamille(currentFamilleId, !famillesImpact.some((item) => item.idFamille === currentFamilleId))
+  const famille = famillesImpact.find((item) => item.idFamille === currentFamilleId) ?? familleQuery.data
   const personnes = catalogQuery.data?.data ?? []
   const departementNames = new Map(
     departements.map((departement) => [
@@ -347,7 +360,7 @@ export function PersonneDetailPage() {
 
   const displayedPhoto = photoSrc
   const liens = complement.liens
-  const qualite = personne ? criteresFiche({ personne, complement }) : null
+  const qualite = personne ? criteresFiche({ personne, complement, idFamille: currentFamilleId }) : null
 
   const historique = useMemo(() => {
     if (!personne) return []
@@ -406,20 +419,38 @@ export function PersonneDetailPage() {
     )
   })
 
+  const persistFicheLocale = (values: PersonneEditFormValues) => {
+    if (!personne) return
+    setComplement(saveFicheComplement(personne.idPersonne, complementFromEdit(values, complement)))
+    addFicheEvenement(personne.idPersonne, {
+      categorie: 'modification',
+      libelle: 'Modification des informations générales',
+    })
+    setHistoryTick((current) => current + 1)
+    setEditOpen(false)
+  }
+
+  const syncFamille = (nextId: string | undefined) => {
+    const assignNext = () => {
+      if (nextId && nextId !== currentFamilleId) {
+        assignFamilleMutation.mutate({ idFamille: nextId, fonction: 'Membre' })
+      }
+    }
+    if (currentFamilleId && currentFamilleId !== nextId) {
+      unassignFamilleMutation.mutate(currentFamilleId, { onSettled: assignNext })
+      return
+    }
+    assignNext()
+  }
+
   const onEdit = (values: PersonneEditFormValues) => {
     if (!personne) return
     updateMutation.mutate(
       { personneId: personne.idPersonne, payload: toPersonneUpdate(values) },
       {
         onSuccess: () => {
-          assignFamilleToPersonne(personne.idPersonne, values.idFamille)
-          setComplement(saveFicheComplement(personne.idPersonne, complementFromEdit(values, complement)))
-          addFicheEvenement(personne.idPersonne, {
-            categorie: 'modification',
-            libelle: 'Modification des informations générales',
-          })
-          setHistoryTick((current) => current + 1)
-          setEditOpen(false)
+          persistFicheLocale(values)
+          syncFamille(values.idFamille || undefined)
         },
       },
     )
@@ -470,7 +501,6 @@ export function PersonneDetailPage() {
 
   const statut = personne.statut ?? 'actif'
   const sexeLabel = personne.sexe === 'M' ? 'Homme' : personne.sexe === 'F' ? 'Femme' : '—'
-  const famille = getFamilleForPersonne(personne.idPersonne)
   const prochesCatalog = personnes.filter((item) => item.idPersonne !== personne.idPersonne)
   const prochesFiltres = prochesCatalog.filter((item) => {
     const needle = lienSearch.trim().toLowerCase()
@@ -891,6 +921,12 @@ export function PersonneDetailPage() {
         open={editOpen}
         personne={personne}
         personnes={personnes}
+        familles={
+          famille && !famillesImpact.some((item) => item.idFamille === famille.idFamille)
+            ? [...famillesImpact, famille]
+            : famillesImpact
+        }
+        currentFamilleId={currentFamilleId}
         errorMessage={updateMutation.error?.message}
         isSubmitting={updateMutation.isPending}
         onOpenChange={setEditOpen}

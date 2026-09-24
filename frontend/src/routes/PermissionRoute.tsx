@@ -1,14 +1,16 @@
 import { Outlet } from 'react-router-dom'
-import { useHasPermission } from '@/stores/authStore'
+import { useCurrentUser } from '@/stores/authStore'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
 
 type PermissionRouteProps = {
-  permission: string
+  permission: string | string[]
 }
 
-/** Bloque l'entrée dans une section si le droit effectif est absent. */
+/** Bloque l'entrée dans une section si aucun des droits n'est présent. */
 export function PermissionRoute({ permission }: PermissionRouteProps) {
-  const allowed = useHasPermission(permission)
+  const permissions = useCurrentUser()?.permissions ?? []
+  const required = Array.isArray(permission) ? permission : [permission]
+  const allowed = required.some((code) => permissions.includes(code))
 
   if (!allowed) return <ForbiddenPage />
 

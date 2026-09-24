@@ -5,6 +5,7 @@ import type {
   PermissionUpdate,
 } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
+import { canReadRoles } from './access'
 import { appendAuditLog, mockDb } from './db'
 import {
   apiUrl,
@@ -35,7 +36,7 @@ export const permissionHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /permissions', result.reason)
-    if (!requirePermission(result.account, PERMISSIONS.ROLES_MANAGE)) return forbidden()
+    if (!canReadRoles(result.account)) return forbidden()
 
     const url = new URL(request.url)
     const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1)
@@ -106,7 +107,7 @@ export const permissionHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /permissions/:id', result.reason)
-    if (!requirePermission(result.account, PERMISSIONS.ROLES_MANAGE)) return forbidden()
+    if (!canReadRoles(result.account)) return forbidden()
 
     const permission = mockDb.permissions.find(
       (candidate) => candidate.idPermission === params.permissionId,

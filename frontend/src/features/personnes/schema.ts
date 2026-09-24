@@ -91,7 +91,7 @@ export function toPersonneUpdate(values: PersonneFormValues): PersonneUpdate {
 
 export const affectationSchema = z.object({
   idDepartement: z.string().trim().min(1, 'Le département est obligatoire.'),
-  fonction: z.enum(['Chef', 'Adjoint', 'Membre']),
+  fonction: z.enum(['Superviseur', 'Chef', 'Adjoint', 'Membre']),
 })
 
 export type AffectationFormValues = z.input<typeof affectationSchema>

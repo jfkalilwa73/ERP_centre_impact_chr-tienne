@@ -53,5 +53,13 @@ export type DepartementPage = Schemas['DepartementPage']
 export type AffectationDepartement = Schemas['AffectationDepartement']
 export type AffectationDepartementCreate = Schemas['AffectationDepartementCreate']
 
+export type FamilleImpact = Schemas['FamilleImpact']
+export type FamilleImpactCreate = Schemas['FamilleImpactCreate']
+export type FamilleImpactUpdate = Schemas['FamilleImpactUpdate']
+export type FamilleImpactPage = Schemas['FamilleImpactPage']
+
+export type AffectationFamille = Schemas['AffectationFamille']
+export type AffectationFamilleCreate = Schemas['AffectationFamilleCreate']
+
 export type AuditLog = Schemas['AuditLog']
 export type AuditLogPage = Schemas['AuditLogPage']

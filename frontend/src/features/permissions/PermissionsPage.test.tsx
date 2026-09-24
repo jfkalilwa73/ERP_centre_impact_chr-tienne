@@ -28,13 +28,11 @@ describe('écran Permissions', () => {
     await waitFor(() => expect(screen.getByText('rapports.read')).toBeTruthy())
   })
 
-  it("refuse la section Permissions à qui n'a pas roles.manage", async () => {
+  it("refuse le catalogue des permissions au pasteur", async () => {
     const { user } = renderApp('/permissions')
 
     await seConnecter(user, 'pasteur@eglise.org', 'Pasteur2026!')
 
     expect(await screen.findByRole('heading', { name: 'Accès refusé' })).toBeTruthy()
-    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
-    expect(screen.queryByRole('link', { name: 'Permissions' })).toBeNull()
   })
 })

@@ -8,6 +8,7 @@ import type {
   CompteUpdate,
 } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
+import { effectivePermissionsForCompte, refreshAccountAccess } from './access'
 import { mockAccounts } from './fixtures'
 import { mockDb } from './db'
 import {
@@ -119,6 +120,15 @@ export const compteHandlers = [
     }
 
     mockDb.comptes.unshift(created)
+    mockAccounts.push({
+      motDePasse,
+      utilisateur: {
+        compte: created,
+        personne,
+        roles: [],
+        permissions: [],
+      },
+    })
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -261,6 +271,7 @@ export const compteHandlers = [
     }
 
     mockDb.affectationsRole.unshift(created)
+    refreshAccountAccess(String(params.compteId))
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -283,6 +294,7 @@ export const compteHandlers = [
 
     affectation.actif = false
     affectation.dateFin = new Date().toISOString()
+    refreshAccountAccess(String(params.compteId))
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -298,9 +310,6 @@ export const compteHandlers = [
     const compte = mockDb.comptes.find((candidate) => candidate.idCompte === params.compteId)
     if (!compte) return errorResponse(404, 'NOT_FOUND', 'Compte introuvable.')
 
-    const account = mockAccounts.find(
-      (candidate) => candidate.utilisateur.compte.idCompte === params.compteId,
-    )
     const permissionCode = String(params.permissionCode)
     const rolesSource = mockDb.affectationsRole
       .filter((affectation) => affectation.idCompte === params.compteId && affectation.actif)
@@ -310,7 +319,7 @@ export const compteHandlers = [
       {
         compteId: compte.idCompte,
         permissionCode,
-        autorise: account?.utilisateur.permissions.includes(permissionCode) ?? false,
+        autorise: effectivePermissionsForCompte(compte.idCompte).includes(permissionCode),
         rolesSource,
       },
       { status: 200 },

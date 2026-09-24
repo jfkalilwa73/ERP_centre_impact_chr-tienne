@@ -2,6 +2,8 @@ import { api } from '@/lib/apiClient'
 import type {
   AffectationDepartement,
   AffectationDepartementCreate,
+  AffectationFamille,
+  AffectationFamilleCreate,
   Personne,
   PersonneCreate,
   PersonnePage,
@@ -66,4 +68,29 @@ export async function unassignPersonneDepartement(
   departementId: string,
 ): Promise<void> {
   await api.delete(`/personnes/${personneId}/departements/${departementId}`)
+}
+
+export async function listPersonneFamilles(
+  personneId: string,
+  actif?: boolean,
+): Promise<AffectationFamille[]> {
+  const { data } = await api.get<AffectationFamille[]>(`/personnes/${personneId}/familles-impact`, {
+    params: actif === undefined ? undefined : { actif },
+  })
+  return data
+}
+
+export async function assignPersonneFamille(
+  personneId: string,
+  payload: AffectationFamilleCreate,
+): Promise<AffectationFamille> {
+  const { data } = await api.post<AffectationFamille>(
+    `/personnes/${personneId}/familles-impact`,
+    payload,
+  )
+  return data
+}
+
+export async function unassignPersonneFamille(personneId: string, familleId: string): Promise<void> {
+  await api.delete(`/personnes/${personneId}/familles-impact/${familleId}`)
 }

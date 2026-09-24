@@ -3,6 +3,8 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { DepartementsPage } from '@/features/departements/DepartementsPage'
 import { DepartementDetailPage } from '@/features/departements/DepartementDetailPage'
+import { FamillesPage } from '@/features/familles/FamillesPage'
+import { FamilleDetailPage } from '@/features/familles/FamilleDetailPage'
 import { PersonnesPage } from '@/features/personnes/PersonnesPage'
 import { PersonneDetailPage } from '@/features/personnes/PersonneDetailPage'
 import { ComptesPage } from '@/features/comptes/ComptesPage'
@@ -12,12 +14,14 @@ import { RoleDetailPage } from '@/features/roles/RoleDetailPage'
 import { PermissionsPage } from '@/features/permissions/PermissionsPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { AuditDetailPage } from '@/features/audit/AuditDetailPage'
+import { NotificationsPage } from '@/features/notifications/NotificationsPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { PERMISSIONS } from '@/lib/permissions'
 import { GuestRoute, ProtectedRoute } from './ProtectedRoute'
 import { PermissionRoute } from './PermissionRoute'
 import { DepartementAccessRoute } from './DepartementAccessRoute'
+import { FamilleAccessRoute } from './FamilleAccessRoute'
 
 export function AppRoutes() {
   return (
@@ -29,6 +33,10 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
+
+          <Route element={<PermissionRoute permission={PERMISSIONS.DEMANDES_READ} />}>
+            <Route path="notifications" element={<NotificationsPage />} />
+          </Route>
 
           <Route element={<PermissionRoute permission={PERMISSIONS.MEMBRES_READ} />}>
             <Route path="personnes" element={<PersonnesPage />} />
@@ -47,7 +55,18 @@ export function AppRoutes() {
             <Route path="departements/:departementId" element={<DepartementDetailPage />} />
           </Route>
 
-          <Route element={<PermissionRoute permission={PERMISSIONS.ROLES_MANAGE} />}>
+          <Route element={<PermissionRoute permission={PERMISSIONS.FAMILLES_READ} />}>
+            <Route path="familles" element={<FamillesPage />} />
+          </Route>
+          <Route element={<FamilleAccessRoute />}>
+            <Route path="familles/:familleId" element={<FamilleDetailPage />} />
+          </Route>
+
+          <Route
+            element={
+              <PermissionRoute permission={[PERMISSIONS.ROLES_READ, PERMISSIONS.ROLES_MANAGE]} />
+            }
+          >
             <Route path="roles" element={<RolesPage />} />
             <Route path="roles/:roleId" element={<RoleDetailPage />} />
             <Route path="permissions" element={<PermissionsPage />} />

@@ -1,223 +1,48 @@
 import type {
   AffectationDepartement,
+  AffectationFamille,
   AffectationRole,
   AuditLog,
   Compte,
   CurrentUser,
   Departement,
-  Permission,
+  FamilleImpact,
   Personne,
-  Role,
   Site,
 } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
+import {
+  accueilRole,
+  adminFonctionnelPermissionCodes,
+  adminRole,
+  chefDepartementRole,
+  chefFamilleRole,
+  pasteurPermissionCodes,
+  pasteurRole,
+  permissionCodesForRole,
+  superviseurRole,
+  seedPermissions,
+  seedRolePermissions,
+  seedRoles,
+} from './rbac'
+
+export {
+  accueilRole,
+  adminRole,
+  chefDepartementRole,
+  chefFamilleRole,
+  pasteurRole,
+  superviseurRole,
+  seedPermissions,
+  seedRolePermissions,
+  seedRoles,
+}
+export type { RolePermissionLink } from './rbac'
 
 /**
  * Jeu de données de démonstration, calqué sur les schémas du contrat Phase 0.
- * Sert uniquement au mode mock : aucune donnée réelle ici.
+ * Rôles et permissions : `rbac.ts`.
  */
-export const seedPermissions: Permission[] = [
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000001',
-    code: PERMISSIONS.MEMBRES_READ,
-    module: 'membres',
-    action: 'read',
-    description: 'Consulter les personnes',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000002',
-    code: PERMISSIONS.MEMBRES_CREATE,
-    module: 'membres',
-    action: 'create',
-    description: 'Créer une personne',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-00000000000e',
-    code: PERMISSIONS.MEMBRES_UPDATE,
-    module: 'membres',
-    action: 'update',
-    description: 'Modifier une personne',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-00000000000f',
-    code: PERMISSIONS.MEMBRES_DELETE,
-    module: 'membres',
-    action: 'delete',
-    description: 'Supprimer une personne inactive',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000006',
-    code: PERMISSIONS.COMPTES_READ,
-    module: 'comptes',
-    action: 'read',
-    description: 'Consulter les comptes',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000010',
-    code: PERMISSIONS.COMPTES_CREATE,
-    module: 'comptes',
-    action: 'create',
-    description: 'Créer un compte',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000011',
-    code: PERMISSIONS.COMPTES_UPDATE,
-    module: 'comptes',
-    action: 'update',
-    description: 'Modifier un compte',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000012',
-    code: PERMISSIONS.COMPTES_DELETE,
-    module: 'comptes',
-    action: 'delete',
-    description: 'Supprimer un compte non actif',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000003',
-    code: PERMISSIONS.SITES_READ,
-    module: 'sites',
-    action: 'read',
-    description: 'Consulter les sites',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000007',
-    code: PERMISSIONS.SITES_CREATE,
-    module: 'sites',
-    action: 'create',
-    description: 'Créer un site',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000008',
-    code: PERMISSIONS.SITES_UPDATE,
-    module: 'sites',
-    action: 'update',
-    description: 'Modifier un site',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000009',
-    code: PERMISSIONS.SITES_DELETE,
-    module: 'sites',
-    action: 'delete',
-    description: 'Supprimer un site non utilisé',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-00000000000a',
-    code: PERMISSIONS.DEPARTEMENTS_READ,
-    module: 'departements',
-    action: 'read',
-    description: 'Consulter les départements',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-00000000000b',
-    code: PERMISSIONS.DEPARTEMENTS_CREATE,
-    module: 'departements',
-    action: 'create',
-    description: 'Créer un département',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-00000000000c',
-    code: PERMISSIONS.DEPARTEMENTS_UPDATE,
-    module: 'departements',
-    action: 'update',
-    description: 'Modifier un département',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-00000000000d',
-    code: PERMISSIONS.DEPARTEMENTS_DELETE,
-    module: 'departements',
-    action: 'delete',
-    description: 'Supprimer un département non utilisé',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000004',
-    code: PERMISSIONS.ROLES_MANAGE,
-    module: 'roles',
-    action: 'manage',
-    description: 'Administrer les rôles et les permissions',
-    actif: true,
-  },
-  {
-    idPermission: '6f1a2c10-0001-4000-8000-000000000005',
-    code: PERMISSIONS.AUDIT_READ,
-    module: 'audit',
-    action: 'read',
-    description: "Consulter les traces d'audit",
-    actif: true,
-  },
-]
-
-const adminRole: Role = {
-  idRole: '2b9d4f60-0002-4000-8000-000000000001',
-  code: 'ADMIN_FONCTIONNEL',
-  nom: 'Administrateur fonctionnel',
-  description: 'Accès complet au socle transverse de la Phase 0.',
-  niveauConfidentialite: 3,
-  actif: true,
-  dateCreation: '2026-01-05T08:00:00Z',
-}
-
-const accueilRole: Role = {
-  idRole: '2b9d4f60-0002-4000-8000-000000000002',
-  code: 'RESPONSABLE_ACCUEIL',
-  nom: 'Responsable accueil',
-  description: "Consultation des membres du site d'affectation.",
-  niveauConfidentialite: 1,
-  actif: true,
-  dateCreation: '2026-01-05T08:00:00Z',
-}
-
-const pasteurRole: Role = {
-  idRole: '2b9d4f60-0002-4000-8000-000000000003',
-  code: 'PASTEUR_SITE',
-  nom: 'Pasteur de site',
-  description: 'Consultation des personnes, sans administration de la structure.',
-  niveauConfidentialite: 1,
-  actif: true,
-  dateCreation: '2026-03-01T08:00:00Z',
-}
-
-export const seedRoles: Role[] = [adminRole, accueilRole, pasteurRole]
-
-export type RolePermissionLink = {
-  idRole: string
-  idPermission: string
-}
-
-function permissionLinks(role: Role, codes: string[]): RolePermissionLink[] {
-  return seedPermissions
-    .filter((permission) => codes.includes(permission.code))
-    .map((permission) => ({ idRole: role.idRole, idPermission: permission.idPermission }))
-}
-
-export const seedRolePermissions: RolePermissionLink[] = [
-  ...seedPermissions.map((permission) => ({
-    idRole: adminRole.idRole,
-    idPermission: permission.idPermission,
-  })),
-  ...permissionLinks(accueilRole, [
-    PERMISSIONS.MEMBRES_READ,
-    PERMISSIONS.SITES_READ,
-    PERMISSIONS.DEPARTEMENTS_READ,
-  ]),
-  ...permissionLinks(pasteurRole, [PERMISSIONS.MEMBRES_READ]),
-]
 
 export type MockAccount = {
   motDePasse: string
@@ -250,7 +75,7 @@ const seedAccounts: MockAccount[] = [
         dateModification: '2026-06-11T10:15:00Z',
       },
       roles: [adminRole],
-      permissions: seedPermissions.map((permission) => permission.code),
+      permissions: adminFonctionnelPermissionCodes,
     },
   },
   {
@@ -275,7 +100,12 @@ const seedAccounts: MockAccount[] = [
         dateModification: '2026-02-18T09:30:00Z',
       },
       roles: [accueilRole],
-      permissions: [PERMISSIONS.MEMBRES_READ, PERMISSIONS.SITES_READ, PERMISSIONS.DEPARTEMENTS_READ],
+      permissions: [
+        PERMISSIONS.MEMBRES_READ,
+        PERMISSIONS.SITES_READ,
+        PERMISSIONS.DEPARTEMENTS_READ,
+        PERMISSIONS.FAMILLES_READ,
+      ],
     },
   },
   {
@@ -300,7 +130,82 @@ const seedAccounts: MockAccount[] = [
         dateModification: '2026-03-01T08:00:00Z',
       },
       roles: [pasteurRole],
-      permissions: [PERMISSIONS.MEMBRES_READ],
+      permissions: pasteurPermissionCodes,
+    },
+  },
+  {
+    motDePasse: 'ChefDep2026!',
+    utilisateur: {
+      compte: {
+        idCompte: 'a1c3e5f7-0003-4000-8000-000000000006',
+        idPersonne: 'b2d4f6a8-0004-4000-8000-000000000007',
+        email: 'chef-louange@eglise.org',
+        statut: 'actif',
+        mfaActive: false,
+        dateCreation: '2026-04-01T08:00:00Z',
+      },
+      personne: {
+        idPersonne: 'b2d4f6a8-0004-4000-8000-000000000007',
+        nom: 'MWAMBA',
+        prenom: 'Pierre',
+        sexe: 'M',
+        telephone: '+243810000070',
+        statut: 'actif',
+        dateCreation: '2026-09-10T08:00:00Z',
+        dateModification: '2026-09-10T08:00:00Z',
+      },
+      roles: [chefDepartementRole],
+      permissions: permissionCodesForRole(chefDepartementRole.idRole),
+    },
+  },
+  {
+    motDePasse: 'ChefFamille2026!',
+    utilisateur: {
+      compte: {
+        idCompte: 'a1c3e5f7-0003-4000-8000-000000000007',
+        idPersonne: 'b2d4f6a8-0004-4000-8000-000000000006',
+        email: 'chef-famille@eglise.org',
+        statut: 'actif',
+        mfaActive: false,
+        dateCreation: '2026-04-01T08:00:00Z',
+      },
+      personne: {
+        idPersonne: 'b2d4f6a8-0004-4000-8000-000000000006',
+        nom: 'NGOY',
+        prenom: 'Ruth',
+        sexe: 'F',
+        telephone: '+243810000006',
+        statut: 'actif',
+        dateCreation: '2026-04-08T08:00:00Z',
+        dateModification: '2026-04-08T08:00:00Z',
+      },
+      roles: [chefFamilleRole],
+      permissions: permissionCodesForRole(chefFamilleRole.idRole),
+    },
+  },
+  {
+    motDePasse: 'Superviseur2026!',
+    utilisateur: {
+      compte: {
+        idCompte: 'a1c3e5f7-0003-4000-8000-000000000008',
+        idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a',
+        email: 'superviseur@eglise.org',
+        statut: 'actif',
+        mfaActive: false,
+        dateCreation: '2026-04-02T08:00:00Z',
+      },
+      personne: {
+        idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a',
+        nom: 'KASONGO',
+        prenom: 'Daniel',
+        sexe: 'M',
+        telephone: '+243810000080',
+        statut: 'actif',
+        dateCreation: '2026-04-02T08:00:00Z',
+        dateModification: '2026-04-02T08:00:00Z',
+      },
+      roles: [superviseurRole],
+      permissions: permissionCodesForRole(superviseurRole.idRole),
     },
   },
 ]
@@ -481,6 +386,16 @@ export const seedPersonnes: Personne[] = [
     dateCreation: '2026-09-15T08:00:00Z',
     dateModification: '2026-09-15T08:00:00Z',
   },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a',
+    nom: 'KASONGO',
+    prenom: 'Daniel',
+    sexe: 'M',
+    telephone: '+243810000080',
+    statut: 'actif',
+    dateCreation: '2026-04-02T08:00:00Z',
+    dateModification: '2026-04-02T08:00:00Z',
+  },
 ]
 
 export const seedComptes: Compte[] = [
@@ -526,6 +441,30 @@ export const seedComptes: Compte[] = [
     dateCreation: '2024-09-14T08:00:00Z',
     dateDesactivation: '2026-01-20T08:00:00Z',
   },
+  {
+    idCompte: 'a1c3e5f7-0003-4000-8000-000000000006',
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000007',
+    email: 'chef-louange@eglise.org',
+    statut: 'actif',
+    mfaActive: false,
+    dateCreation: '2026-04-01T08:00:00Z',
+  },
+  {
+    idCompte: 'a1c3e5f7-0003-4000-8000-000000000007',
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000006',
+    email: 'chef-famille@eglise.org',
+    statut: 'actif',
+    mfaActive: false,
+    dateCreation: '2026-04-01T08:00:00Z',
+  },
+  {
+    idCompte: 'a1c3e5f7-0003-4000-8000-000000000008',
+    idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a',
+    email: 'superviseur@eglise.org',
+    statut: 'actif',
+    mfaActive: false,
+    dateCreation: '2026-04-02T08:00:00Z',
+  },
 ]
 
 export const seedAffectationsRole: AffectationRole[] = [
@@ -545,6 +484,24 @@ export const seedAffectationsRole: AffectationRole[] = [
     idCompte: 'a1c3e5f7-0003-4000-8000-000000000003',
     idRole: pasteurRole.idRole,
     dateDebut: '2026-03-01T08:00:00Z',
+    actif: true,
+  },
+  {
+    idCompte: 'a1c3e5f7-0003-4000-8000-000000000006',
+    idRole: chefDepartementRole.idRole,
+    dateDebut: '2026-04-01T08:00:00Z',
+    actif: true,
+  },
+  {
+    idCompte: 'a1c3e5f7-0003-4000-8000-000000000007',
+    idRole: chefFamilleRole.idRole,
+    dateDebut: '2026-04-01T08:00:00Z',
+    actif: true,
+  },
+  {
+    idCompte: 'a1c3e5f7-0003-4000-8000-000000000008',
+    idRole: superviseurRole.idRole,
+    dateDebut: '2026-04-02T08:00:00Z',
     actif: true,
   },
 ]
@@ -567,9 +524,132 @@ export const seedAffectations: AffectationDepartement[] = [
   {
     idPersonne: 'b2d4f6a8-0004-4000-8000-000000000007',
     idDepartement: 'd4f6b8c0-0006-4000-8000-000000000002',
-    fonction: 'Choriste',
+    fonction: 'Chef',
     dateDebut: '2026-09-10T08:00:00Z',
     actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a',
+    idDepartement: 'd4f6b8c0-0006-4000-8000-000000000001',
+    fonction: 'Superviseur',
+    dateDebut: '2026-04-02T08:00:00Z',
+    actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a',
+    idDepartement: 'd4f6b8c0-0006-4000-8000-000000000002',
+    fonction: 'Superviseur',
+    dateDebut: '2026-04-02T08:00:00Z',
+    actif: true,
+  },
+]
+
+export const seedFamilles: FamilleImpact[] = [
+  {
+    idFamille: 'f1a2b3c4-0008-4000-8000-000000000001',
+    code: 'BATISSEURS',
+    nom: 'Bâtisseurs',
+    zone: 'Nord',
+    description: 'Bâtir des relations durables dans le quartier Nord.',
+    actif: true,
+    dateCreation: '2026-01-20T08:00:00Z',
+  },
+  {
+    idFamille: 'f1a2b3c4-0008-4000-8000-000000000002',
+    code: 'LUMIERES',
+    nom: 'Lumières',
+    zone: 'Sud',
+    description: 'Rayonner la lumière de Christ au Sud.',
+    actif: true,
+    dateCreation: '2026-02-03T08:00:00Z',
+  },
+  {
+    idFamille: 'f1a2b3c4-0008-4000-8000-000000000003',
+    code: 'GRACE',
+    nom: 'Grâce',
+    zone: 'Est',
+    description: "Vivre et partager la grâce de Dieu à l'Est.",
+    actif: true,
+    dateCreation: '2026-02-10T08:00:00Z',
+  },
+  {
+    idFamille: 'f1a2b3c4-0008-4000-8000-000000000004',
+    code: 'SEMEURS',
+    nom: 'Semeurs',
+    zone: 'Ouest',
+    actif: false,
+    dateCreation: '2026-05-15T08:00:00Z',
+  },
+]
+
+const BATISSEURS = 'f1a2b3c4-0008-4000-8000-000000000001'
+const LUMIERES = 'f1a2b3c4-0008-4000-8000-000000000002'
+const GRACE = 'f1a2b3c4-0008-4000-8000-000000000003'
+
+export const seedAffectationsFamille: AffectationFamille[] = [
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000001',
+    idFamille: BATISSEURS,
+    fonction: 'Membre',
+    dateDebut: '2026-01-20T08:00:00Z',
+    actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000002',
+    idFamille: LUMIERES,
+    fonction: 'Membre',
+    dateDebut: '2026-02-18T09:30:00Z',
+    actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000003',
+    idFamille: GRACE,
+    fonction: 'Chef',
+    dateDebut: '2026-03-01T08:00:00Z',
+    actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000004',
+    idFamille: LUMIERES,
+    fonction: 'Membre',
+    dateDebut: '2026-02-05T08:00:00Z',
+    actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000006',
+    idFamille: BATISSEURS,
+    fonction: 'Chef',
+    dateDebut: '2026-04-08T08:00:00Z',
+    actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000007',
+    idFamille: BATISSEURS,
+    fonction: 'Membre',
+    dateDebut: '2026-09-10T08:00:00Z',
+    actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000008',
+    idFamille: BATISSEURS,
+    fonction: 'Membre',
+    dateDebut: '2026-09-12T08:00:00Z',
+    actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000009',
+    idFamille: GRACE,
+    fonction: 'Membre',
+    dateDebut: '2026-09-15T08:00:00Z',
+    actif: true,
+  },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-000000000005',
+    idFamille: GRACE,
+    fonction: 'Membre',
+    dateDebut: '2025-10-01T08:00:00Z',
+    dateFin: '2026-01-20T08:00:00Z',
+    actif: false,
   },
 ]
 

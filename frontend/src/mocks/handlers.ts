@@ -1,5 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import type { LoginRequest, LoginResponse } from '@/types'
+import { refreshAccountAccess } from './access'
 import { mockAccounts, suspendedAccountEmail } from './fixtures'
 import { mockDb } from './db'
 import {
@@ -13,6 +14,7 @@ import {
 import { siteHandlers } from './siteHandlers'
 import { departementHandlers } from './departementHandlers'
 import { personneHandlers } from './personneHandlers'
+import { familleHandlers } from './familleHandlers'
 import { compteHandlers } from './compteHandlers'
 import { roleHandlers } from './roleHandlers'
 import { permissionHandlers } from './permissionHandlers'
@@ -56,6 +58,8 @@ const authHandlers = [
       return errorResponse(401, 'INVALID_CREDENTIALS', 'Adresse e-mail ou mot de passe incorrect.')
     }
 
+    refreshAccountAccess(account.utilisateur.compte.idCompte)
+
     const personne =
       mockDb.personnes.find(
         (candidate) => candidate.idPersonne === account.utilisateur.compte.idPersonne,
@@ -78,6 +82,8 @@ const authHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /auth/me', result.reason)
+
+    refreshAccountAccess(result.account.utilisateur.compte.idCompte)
 
     const personne =
       mockDb.personnes.find(
@@ -105,6 +111,7 @@ export const handlers = [
   ...siteHandlers,
   ...departementHandlers,
   ...personneHandlers,
+  ...familleHandlers,
   ...compteHandlers,
   ...roleHandlers,
   ...permissionHandlers,

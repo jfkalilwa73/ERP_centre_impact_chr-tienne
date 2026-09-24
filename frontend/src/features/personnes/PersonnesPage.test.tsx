@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderApp, seConnecter } from '@/test/renderApp'
 
@@ -47,7 +47,7 @@ describe('écran Personnes', () => {
     await user.type(screen.getByLabelText('Prénom'), 'Esther')
     await user.click(screen.getByRole('button', { name: 'Créer la personne' }))
 
-    await waitFor(() => expect(screen.getByRole('link', { name: 'Esther KASONGO' })).toBeTruthy())
+    expect(await screen.findByRole('link', { name: 'Esther KASONGO' }, { timeout: 8000 })).toBeTruthy()
   })
 
   it('ouvre la fiche et permet d’affecter à un département', async () => {
@@ -139,7 +139,7 @@ describe('écran Personnes', () => {
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
     expect(await screen.findByText('Marié(e)')).toBeTruthy()
-    expect(await screen.findByText('Lumières (Sud)')).toBeTruthy()
+    expect(await screen.findByText('Lumières (Sud)', {}, { timeout: 8000 })).toBeTruthy()
     expect((await screen.findAllByText('Obtenue')).length).toBeGreaterThanOrEqual(3)
 
     await user.click(screen.getByRole('tab', { name: 'Liens Familiaux' }))

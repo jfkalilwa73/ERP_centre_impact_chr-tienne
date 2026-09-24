@@ -9,7 +9,7 @@ import type {
 } from '@/types'
 import {
   assignRoleToCompte,
-  createCompte,
+  createCompteWithRoles,
   deleteCompte,
   getCompte,
   listComptes,
@@ -61,9 +61,13 @@ function invalidateComptes(queryClient: ReturnType<typeof useQueryClient>, compt
 export function useCreateCompte() {
   const queryClient = useQueryClient()
 
-  return useMutation<Compte, ApiError, CompteCreate>({
-    mutationFn: createCompte,
-    onSuccess: () => invalidateComptes(queryClient),
+  return useMutation<Compte, ApiError, { payload: CompteCreate; idRoles: string[] }>({
+    mutationFn: async ({ payload, idRoles }) => {
+      const created = await createCompteWithRoles(payload, idRoles)
+      return created
+    },
+    onSuccess: (created) => invalidateComptes(queryClient, created.idCompte),
+    onError: () => invalidateComptes(queryClient),
   })
 }
 

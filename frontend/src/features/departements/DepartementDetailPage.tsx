@@ -1,48 +1,49 @@
 import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, CalendarDays, Plus, Trash2, User, UserPlus, UserRound, Users } from 'lucide-react'
+import { ArrowLeft, CalendarDays, User, UserPlus, UserRound, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { PersonneAvatar } from '@/features/personnes/PersonneAvatar'
+import { useAccessScope } from '@/features/auth/accessScope'
+import { createDemandeSuperviseur, findDemandeEnAttente } from '@/features/notifications/store'
 import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Personne } from '@/types'
-import {
-  addActivite,
-  deleteActivite,
-  getActivitesVersion,
-  listActivites,
-  marquerActiviteFaite,
-  subscribeActivites,
-} from './activites'
+import { ActivitesPanel } from './ActivitesPanel'
+import { getActivitesVersion, listActivites, subscribeActivites } from './activites'
 import { DepartementBanner } from './banner'
-import {
-  ChartPanel,
-  EvolutionActivitesChart,
-  EvolutionMembresChart,
-} from './charts'
+import { BudgetCards } from './BudgetCards'
+import { BudgetPanel } from './BudgetPanel'
+import { ChartPanel, EvolutionActivitesChart, EvolutionMembresChart } from './charts'
+import { EquipePanel } from './EquipePanel'
 import { evolutionActivites, evolutionDepartement } from './evolution'
-import { useAssignPersonneDepartement, useDepartement, useUnassignPersonneDepartement } from './hooks'
-import { isLeadershipRole, roleDepartement, ROLES_DEPARTEMENT, type RoleDepartement } from './roles'
+import {
+  useAssignPersonneDepartement,
+  useDepartement,
+  useDepartements,
+  useUnassignPersonneDepartement,
+} from './hooks'
 import { DepartementLoading } from './loading'
+import { personneName } from './personneName'
+import { PilotageModules } from './PilotageModules'
+import { RapportsPanel } from './RapportsPanel'
+import { SupervisionSuivi } from './SupervisionSuivi'
+import { isLeadershipRole, isSupervisionRole, roleDepartement, ROLES_DEPARTEMENT, type RoleDepartement } from './roles'
 import { StatCard } from './StatCard'
 
 const TABS = [
   { id: 'tableau', label: 'Tableau de bord' },
   { id: 'membres', label: 'Membres' },
   { id: 'activites', label: 'Activités' },
+  { id: 'budget', label: 'Budget', permission: PERMISSIONS.BUDGET_READ },
+  { id: 'rapports', label: 'Rapports', permission: PERMISSIONS.RAPPORTS_READ },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
-
-function personneName(personne: Personne) {
-  return `${personne.prenom} ${personne.nom}`
-}
 
 export function DepartementDetailPage() {
   const { departementId } = useParams<{ departementId: string }>()
@@ -51,17 +52,26 @@ export function DepartementDetailPage() {
   const [membreSearch, setMembreSearch] = useState('')
   const [roleDraft, setRoleDraft] = useState<RoleDepartement>('Membre')
   const [selectedPersonneId, setSelectedPersonneId] = useState('')
-  const [activiteTitre, setActiviteTitre] = useState('')
-  const [activiteDate, setActiviteDate] = useState('')
-  const [activiteDescription, setActiviteDescription] = useState('')
+  const [demandeMessage, setDemandeMessage] = useState<string>()
 
   useSyncExternalStore(subscribeActivites, getActivitesVersion, getActivitesVersion)
 
   const user = useCurrentUser()
+  const permissions = user?.permissions ?? []
+  const { isScoped, ledDepartementIds } = useAccessScope()
   const canManageDepartements = useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE)
   const canUpdateMembres = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
+  const canOpenCompte =
+    useHasPermission(PERMISSIONS.COMPTES_CREATE) && useHasPermission(PERMISSIONS.ROLES_MANAGE)
 
   const departementQuery = useDepartement(departementId)
+  const destinatairesQuery = useDepartements(
+    { page: 1, limit: 100 },
+    permissions.includes(PERMISSIONS.RAPPORTS_READ) ||
+      permissions.includes(PERMISSIONS.DEPARTEMENTS_READ) ||
+      permissions.includes(PERMISSIONS.BUDGET_REQUEST) ||
+      permissions.includes(PERMISSIONS.ACTIVITES_CREATE),
+  )
   const personnesQuery = usePersonnes({ page: 1, limit: 100 })
   const personnes = personnesQuery.data?.data ?? []
   const personneIds = useMemo(() => personnes.map((personne) => personne.idPersonne), [personnes])
@@ -88,7 +98,7 @@ export function DepartementDetailPage() {
     })
     .filter((item): item is { personne: Personne; affectation: AffectationDepartement } => Boolean(item))
     .sort((left, right) => {
-      const order = { Chef: 0, Adjoint: 1, Membre: 2 }
+      const order = { Superviseur: 0, Chef: 1, Adjoint: 2, Membre: 3 }
       return order[roleDepartement(left.affectation.fonction)] - order[roleDepartement(right.affectation.fonction)]
     })
 
@@ -96,11 +106,36 @@ export function DepartementDetailPage() {
     (affectation) =>
       affectation.idPersonne === user?.personne.idPersonne && isLeadershipRole(affectation.fonction),
   )
+  const supervisesHere = actives.some(
+    (affectation) =>
+      affectation.idPersonne === user?.personne.idPersonne && isSupervisionRole(affectation.fonction),
+  )
+  const auteur = user
+    ? { idPersonne: user.personne.idPersonne, nom: `${user.personne.prenom} ${user.personne.nom}` }
+    : undefined
+  const destList = destinatairesQuery.data?.data.filter((item) => item.actif) ?? []
+  const destinataires = destList.length
+    ? destList.map((item) => ({ idDepartement: item.idDepartement, nom: item.nom }))
+    : departementId && departementQuery.data
+      ? [{ idDepartement: departementId, nom: departementQuery.data.nom }]
+      : []
   const canAssign = canUpdateMembres || leadsHere || canManageDepartements
+  const canManageEquipe = useHasPermission(PERMISSIONS.EQUIPES_MANAGE) || leadsHere
+  const canWriteActivites =
+    useHasPermission(PERMISSIONS.ACTIVITES_CREATE) ||
+    useHasPermission(PERMISSIONS.ACTIVITES_UPDATE) ||
+    leadsHere
+  const canRequestBudget = useHasPermission(PERMISSIONS.BUDGET_REQUEST)
+  const canWriteRapports =
+    useHasPermission(PERMISSIONS.RAPPORTS_CREATE) ||
+    useHasPermission(PERMISSIONS.OBJECTIFS_MANAGE) ||
+    leadsHere
+  const visibleTabs = TABS.filter((item) => !('permission' in item) || permissions.includes(item.permission))
   const activites = departementId ? listActivites(departementId) : []
   const evolution = evolutionDepartement(allAffectations)
   const evolutionActs = evolutionActivites(activites)
   const chef = membres.find((item) => roleDepartement(item.affectation.fonction) === 'Chef')
+  const superviseur = membres.find((item) => roleDepartement(item.affectation.fonction) === 'Superviseur')
   const hommes = membres.filter((item) => item.personne.sexe === 'M').length
   const femmes = membres.filter((item) => item.personne.sexe === 'F').length
   const activitesFaites = activites.filter((item) => item.statut === 'faite').length
@@ -115,6 +150,33 @@ export function DepartementDetailPage() {
 
   const applyRole = async (personneId: string, role: RoleDepartement) => {
     if (!departementId) return
+    const cible = personnes.find((personne) => personne.idPersonne === personneId)
+    if (role === 'Superviseur' && !canOpenCompte && user && cible && departementQuery.data) {
+      if (findDemandeEnAttente(personneId, departementId)) {
+        setDemandeMessage(
+          `Une demande d’ouverture de compte superviseur pour ${personneName(cible)} est déjà en cours.`,
+        )
+        setAssignOpen(false)
+        return
+      }
+      createDemandeSuperviseur({
+        idPersonneCible: personneId,
+        nomCible: personneName(cible),
+        idDepartement: departementId,
+        nomDepartement: departementQuery.data.nom,
+        idDemandeur: user.personne.idPersonne,
+        nomDemandeur: `${user.personne.prenom} ${user.personne.nom}`,
+      })
+      setDemandeMessage(
+        `Demande envoyée à l’administrateur pour ouvrir le compte superviseur de ${personneName(cible)}. Vous serez prévenu une fois le compte créé.`,
+      )
+      setAssignOpen(false)
+      setSelectedPersonneId('')
+      setMembreSearch('')
+      setRoleDraft('Membre')
+      return
+    }
+    setDemandeMessage(undefined)
     const current = actives.find((affectation) => affectation.idPersonne === personneId)
     const previousChef =
       role === 'Chef'
@@ -157,29 +219,18 @@ export function DepartementDetailPage() {
     void applyRole(selectedPersonneId, roleDraft)
   }
 
-  const onAddActivite = (event: FormEvent) => {
-    event.preventDefault()
-    if (!departementId || !activiteTitre.trim() || !activiteDate) return
-    addActivite(departementId, {
-      titre: activiteTitre,
-      date: activiteDate,
-      description: activiteDescription,
-    })
-    setActiviteTitre('')
-    setActiviteDate('')
-    setActiviteDescription('')
-  }
-
   if (departementQuery.isLoading) {
     return (
       <div className="flex flex-col gap-6">
-        <Link
-          to="/departements"
-          className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Tous les départements
-        </Link>
+        {!isScoped && (
+          <Link
+            to="/departements"
+            className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Tous les départements
+          </Link>
+        )}
         <DepartementLoading label="Chargement du département…" />
       </div>
     )
@@ -191,9 +242,11 @@ export function DepartementDetailPage() {
         <Alert variant="error" title="Département introuvable">
           {departementQuery.error?.message ?? "Ce département n'existe pas."}
         </Alert>
-        <Link to="/departements" className="text-sm font-medium text-brand-600 hover:text-brand-700">
-          Retour aux départements
-        </Link>
+        {!isScoped && (
+          <Link to="/departements" className="text-sm font-medium text-brand-600 hover:text-brand-700">
+            Retour aux départements
+          </Link>
+        )}
       </div>
     )
   }
@@ -204,22 +257,26 @@ export function DepartementDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link
-          to="/departements"
-          className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Tous les départements
-        </Link>
+        {!isScoped && (
+          <Link
+            to="/departements"
+            className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Tous les départements
+          </Link>
+        )}
         <div className="mt-3">
           <DepartementBanner
             prenom={user?.personne.prenom ?? ''}
             titre={departement.nom}
-            message={
-              chef
-                ? `${departement.mission || "Que ce ministère serve l'Église avec fidélité."} · Chef : ${personneName(chef.personne)}`
-                : departement.mission || "Que ce ministère serve l'Église avec fidélité."
-            }
+            message={[
+              departement.mission || "Que ce ministère serve l'Église avec fidélité.",
+              superviseur ? `Superviseur : ${personneName(superviseur.personne)}` : '',
+              chef ? `Chef : ${personneName(chef.personne)}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             action={
               canAssign ? (
                 <Button
@@ -238,8 +295,14 @@ export function DepartementDetailPage() {
         </div>
       </div>
 
+      {demandeMessage && (
+        <Alert variant="success" title="Demande transmise">
+          {demandeMessage}
+        </Alert>
+      )}
+
       <div role="tablist" aria-label="Sections du département" className="flex flex-wrap gap-6 border-b border-slate-200">
-        {TABS.map((item) => (
+        {visibleTabs.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -288,6 +351,21 @@ export function DepartementDetailPage() {
             />
           </div>
 
+          {departementId && permissions.includes(PERMISSIONS.BUDGET_READ) && (
+            <BudgetCards departementId={departementId} />
+          )}
+
+          {(supervisesHere ||
+            permissions.includes(PERMISSIONS.ALERTES_READ) ||
+            permissions.includes(PERMISSIONS.PERFORMANCES_READ)) && (
+            <SupervisionSuivi
+              departementId={departement.idDepartement}
+              membres={membres}
+              activites={activites}
+              permissions={permissions}
+            />
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <ChartPanel title="Évolution du département" hint="Affectations et retraits sur les 12 derniers mois.">
               <EvolutionMembresChart data={evolution} />
@@ -296,170 +374,64 @@ export function DepartementDetailPage() {
               <EvolutionActivitesChart data={evolutionActs} />
             </ChartPanel>
           </div>
+
+          <PilotageModules permissions={permissions} />
         </div>
       )}
 
-      {tab === 'membres' && (
-        <div className="overflow-hidden border border-slate-200 bg-white">
-          {membres.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-slate-500">Aucun membre affecté.</p>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Membre</th>
-                  <th className="px-4 py-3 font-medium">Rôle</th>
-                  {canAssign && <th className="px-4 py-3 text-right font-medium">Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {membres.map(({ personne, affectation }) => (
-                  <tr key={personne.idPersonne} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <PersonneAvatar
-                          personne={personne}
-                          className="size-9 text-xs"
-                          initialsClassName="bg-brand-50 text-brand-700"
-                        />
-                        <Link
-                          to={`/personnes/${personne.idPersonne}`}
-                          className="font-medium text-slate-900 hover:text-brand-700"
-                        >
-                          {personneName(personne)}
-                        </Link>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {canAssign ? (
-                        <Select
-                          aria-label={`Rôle de ${personneName(personne)}`}
-                          value={roleDepartement(affectation.fonction)}
-                          disabled={busy}
-                          onChange={(event) =>
-                            void applyRole(personne.idPersonne, event.target.value as RoleDepartement)
-                          }
-                        >
-                          {ROLES_DEPARTEMENT.map((role) => (
-                            <option key={role} value={role}>
-                              {role}
-                            </option>
-                          ))}
-                        </Select>
-                      ) : (
-                        roleDepartement(affectation.fonction)
-                      )}
-                    </td>
-                    {canAssign && (
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                          isLoading={
-                            unassignMutation.isPending &&
-                            unassignMutation.variables?.personneId === personne.idPersonne
-                          }
-                          onClick={() =>
-                            unassignMutation.mutate({
-                              personneId: personne.idPersonne,
-                              departementId: departement.idDepartement,
-                            })
-                          }
-                        >
-                          Retirer
-                        </Button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      {tab === 'membres' && departementId && (
+        <EquipePanel
+          departementId={departementId}
+          membres={membres}
+          canAssign={canAssign}
+          canManage={canManageEquipe}
+          isScoped={isScoped}
+          busy={busy}
+          unassigningId={
+            unassignMutation.isPending ? unassignMutation.variables?.personneId : undefined
+          }
+          onApplyRole={(personneId, role) => void applyRole(personneId, role)}
+          onUnassign={(personneId) =>
+            unassignMutation.mutate({
+              personneId,
+              departementId: departement.idDepartement,
+            })
+          }
+        />
       )}
 
-      {tab === 'activites' && (
-        <div className="flex flex-col gap-4">
-          {canAssign && (
-            <form onSubmit={onAddActivite} className="border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-900">Nouvelle activité</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Input
-                  value={activiteTitre}
-                  onChange={(event) => setActiviteTitre(event.target.value)}
-                  placeholder="Réunion d'équipe"
-                  aria-label="Titre de l'activité"
-                />
-                <Input
-                  type="date"
-                  value={activiteDate}
-                  onChange={(event) => setActiviteDate(event.target.value)}
-                  aria-label="Date de l'activité"
-                />
-                <Input
-                  value={activiteDescription}
-                  onChange={(event) => setActiviteDescription(event.target.value)}
-                  placeholder="Description (optionnel)"
-                  aria-label="Description de l'activité"
-                  className="sm:col-span-2"
-                />
-              </div>
-              <Button type="submit" className="mt-4">
-                <Plus className="size-4" aria-hidden="true" />
-                Ajouter l'activité
-              </Button>
-            </form>
-          )}
+      {tab === 'activites' && departementId && (
+        <ActivitesPanel
+          departementId={departementId}
+          nomDepartement={departement.nom}
+          destinataires={destinataires}
+          activites={activites}
+          membres={membres.map((item) => item.personne)}
+          canWrite={canWriteActivites}
+          auteur={auteur}
+        />
+      )}
 
-          {activites.length === 0 ? (
-            <p className="border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
-              Aucune activité pour ce département.
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {activites.map((activite) => (
-                <li
-                  key={activite.id}
-                  className="flex items-start justify-between gap-3 border border-slate-200 bg-white px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{activite.titre}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(activite.date))}
-                      {activite.statut === 'faite' ? ' · Faite' : ' · Planifiée'}
-                    </p>
-                    {activite.description && (
-                      <p className="mt-1 text-sm text-slate-600">{activite.description}</p>
-                    )}
-                  </div>
-                  {canAssign && (
-                    <div className="flex gap-1">
-                      {activite.statut !== 'faite' && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => marquerActiviteFaite(departement.idDepartement, activite.id)}
-                        >
-                          Marquer faite
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                        aria-label="Supprimer l'activité"
-                        onClick={() => deleteActivite(departement.idDepartement, activite.id)}
-                      >
-                        <Trash2 className="size-4" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      {tab === 'budget' && departementId && (
+        <BudgetPanel
+          departementId={departementId}
+          nomDepartement={departement.nom}
+          destinataires={destinataires}
+          canRequest={canRequestBudget}
+          auteur={auteur}
+        />
+      )}
+
+      {tab === 'rapports' && departementId && (
+        <RapportsPanel
+          departementId={departementId}
+          nomDepartement={departement.nom}
+          destinataires={destinataires}
+          canWrite={canWriteRapports}
+          canConsolidate={permissions.includes(PERMISSIONS.RAPPORTS_CONSOLIDATE)}
+          consolidationIds={ledDepartementIds.length ? ledDepartementIds : [departementId]}
+          auteur={auteur}
+        />
       )}
 
       {(assignMutation.isError || unassignMutation.isError) && (
@@ -471,7 +443,11 @@ export function DepartementDetailPage() {
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent
           title="Affecter un membre"
-          description="Recherchez une personne existante, puis choisissez son rôle dans ce département."
+          description={
+            roleDraft === 'Superviseur' && !canOpenCompte
+              ? 'Le statut de superviseur est envoyé à l’administrateur, qui créera le compte et vous confirmera.'
+              : 'Recherchez une personne existante, puis choisissez son rôle dans ce département.'
+          }
         >
           <form onSubmit={onAssign} className="flex flex-col gap-4">
             <Input
@@ -508,7 +484,9 @@ export function DepartementDetailPage() {
                 Annuler
               </Button>
               <Button type="submit" isLoading={busy} disabled={!selectedPersonneId}>
-                Affecter
+                {roleDraft === 'Superviseur' && !canOpenCompte
+                  ? 'Envoyer la demande'
+                  : 'Affecter'}
               </Button>
             </div>
           </form>

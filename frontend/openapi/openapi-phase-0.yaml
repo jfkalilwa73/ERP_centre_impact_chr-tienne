@@ -2,7 +2,7 @@ openapi: 3.0.3
 
 info:
   title: ERP de l'Église - API contractuelle Phase 0
-  version: 1.2.0
+  version: 1.3.0
   description: |
     Contrat officiel entre le Frontend React, le Backend Laravel (PHP)
     et PostgreSQL pour le socle transverse de la Phase 0.
@@ -12,7 +12,7 @@ info:
 
     PÉRIMÈTRE :
     Personnes, comptes, authentification minimale, rôles, permissions,
-    sites, départements, affectations et consultation de l'audit.
+    sites, départements, familles d'impact, affectations et consultation de l'audit.
 
   contact:
     name: Équipe de développement ERP de l'Église
@@ -33,6 +33,8 @@ tags:
     description: RBAC, affectations et vérification des droits
   - name: Sites & Départements
     description: Structure organisationnelle de la Phase 0
+  - name: Familles d'impact
+    description: Cellules de proximité et appartenance des personnes
   - name: Audit
     description: Consultation des traces créées automatiquement
 
@@ -99,6 +101,11 @@ components:
       schema: { type: string, format: uuid }
     DepartementId:
       name: departementId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    FamilleId:
+      name: familleId
       in: path
       required: true
       schema: { type: string, format: uuid }
@@ -340,6 +347,19 @@ components:
           type: string
           pattern: '^[A-Z][A-Z0-9_]*$'
           example: ADMIN_FONCTIONNEL
+          description: >
+            Code du rôle. Référence métier du cahier des charges :
+            ADMIN_FONCTIONNEL, ADMIN_TECHNIQUE, PASTEUR, CONSEIL_PASTORAL,
+            MEMBRE_DGE, SUPERVISEUR, CHEF_DEPARTEMENT, RESPONSABLE_PROJETS,
+            FINANCE_COMPTABLE, CAISSIER, RH, ACHATS, LOGISTIQUE, PROTOCOLE_PASTEUR,
+            AUDIT_COMPLIANCE, SECRETARIAT, ARCHIVISTE, TECHNICIEN, BENEVOLE, MEMBRE.
+            Une personne peut cumuler plusieurs rôles ; les permissions s'additionnent
+            sans lever les restrictions de confidentialité (notes pastorales, salaires).
+            SUPERVISEUR : au-dessus des chefs, uniquement les départements affectés
+            sauf permission explicite supplémentaire (consultation équipes, activités,
+            objectifs, budgets, projets, rapports, consolidation, performances, demandes, alertes).
+            CHEF_DEPARTEMENT : équipe, activités, demandes, objectifs, budget, projets et rapports
+            de son département uniquement.
         nom: { type: string, maxLength: 100, example: Administrateur fonctionnel }
         description: { type: string }
         niveauConfidentialite: { type: integer, minimum: 1, default: 1 }
@@ -554,6 +574,74 @@ components:
       properties:
         idPersonne: { type: string, format: uuid }
         idDepartement: { type: string, format: uuid }
+        fonction: { type: string, maxLength: 100 }
+        dateDebut: { type: string, format: date-time }
+        dateFin: { type: string, format: date-time }
+        actif: { type: boolean }
+
+    # --------------------------------------------------------
+    # FAMILLES D'IMPACT
+    # BDD : famille_impact, appartenir_famille
+    # RÈGLE : une personne appartient au plus à une famille active.
+    # --------------------------------------------------------
+    FamilleImpactCreate:
+      type: object
+      required: [code, nom]
+      properties:
+        code:
+          type: string
+          maxLength: 20
+          example: BATISSEURS
+        nom: { type: string, maxLength: 100, example: Bâtisseurs }
+        zone: { type: string, maxLength: 100, example: Nord }
+        description: { type: string }
+        actif: { type: boolean, default: true }
+
+    FamilleImpactUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        code: { type: string, maxLength: 20 }
+        nom: { type: string, maxLength: 100 }
+        zone: { type: string, maxLength: 100 }
+        description: { type: string }
+        actif: { type: boolean }
+
+    FamilleImpact:
+      allOf:
+        - $ref: '#/components/schemas/FamilleImpactCreate'
+        - type: object
+          required: [idFamille, dateCreation]
+          properties:
+            idFamille: { type: string, format: uuid, readOnly: true }
+            dateCreation: { type: string, format: date-time, readOnly: true }
+
+    FamilleImpactPage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FamilleImpact' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    AffectationFamilleCreate:
+      type: object
+      additionalProperties: false
+      required: [idFamille]
+      properties:
+        idFamille: { type: string, format: uuid }
+        fonction: { type: string, maxLength: 100, example: Responsable }
+        dateDebut: { type: string, format: date-time }
+        dateFin: { type: string, format: date-time }
+
+    AffectationFamille:
+      type: object
+      required: [idPersonne, idFamille, dateDebut, actif]
+      properties:
+        idPersonne: { type: string, format: uuid }
+        idFamille: { type: string, format: uuid }
         fonction: { type: string, maxLength: 100 }
         dateDebut: { type: string, format: date-time }
         dateFin: { type: string, format: date-time }
@@ -787,6 +875,65 @@ paths:
       # RÈGLE : renseigne date_fin et actif=false afin de conserver l'historique.
       responses:
         '204': { description: Affectation clôturée }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  /personnes/{personneId}/familles-impact:
+    parameters:
+      - { $ref: '#/components/parameters/PersonneId' }
+    get:
+      tags: [Familles d'impact]
+      operationId: listPersonneFamilles
+      summary: Lister les appartenances d'une personne à des familles d'impact
+      parameters:
+        - name: actif
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Appartenances trouvées
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AffectationFamille' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      tags: [Familles d'impact]
+      operationId: assignPersonneFamille
+      summary: Rattacher une personne à une famille d'impact
+      description: |
+        Refusé (409) si la personne appartient déjà à une famille active :
+        clôturer d'abord l'appartenance en cours.
+      # BDD : INSERT appartenir_famille
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AffectationFamilleCreate' }
+      responses:
+        '201':
+          description: Appartenance créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AffectationFamille' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /personnes/{personneId}/familles-impact/{familleId}:
+    parameters:
+      - { $ref: '#/components/parameters/PersonneId' }
+      - { $ref: '#/components/parameters/FamilleId' }
+    delete:
+      tags: [Familles d'impact]
+      operationId: unassignPersonneFamille
+      summary: Clôturer l'appartenance active à une famille d'impact
+      # RÈGLE : renseigne date_fin et actif=false afin de conserver l'historique.
+      responses:
+        '204': { description: Appartenance clôturée }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
 
@@ -1321,6 +1468,88 @@ paths:
       summary: Supprimer un département non utilisé
       responses:
         '204': { description: Département supprimé }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  # ----------------------------------------------------------
+  # FAMILLES D'IMPACT
+  # ----------------------------------------------------------
+  /familles-impact:
+    get:
+      tags: [Familles d'impact]
+      operationId: listFamilles
+      summary: Lister les familles d'impact
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Search' }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilleImpactPage' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Familles d'impact]
+      operationId: createFamille
+      summary: Créer une famille d'impact
+      # BDD : INSERT famille_impact ; nom unique
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FamilleImpactCreate' }
+      responses:
+        '201':
+          description: Famille créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilleImpact' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /familles-impact/{familleId}:
+    parameters:
+      - { $ref: '#/components/parameters/FamilleId' }
+    get:
+      tags: [Familles d'impact]
+      operationId: getFamille
+      summary: Consulter une famille d'impact
+      responses:
+        '200':
+          description: Famille trouvée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilleImpact' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Familles d'impact]
+      operationId: updateFamille
+      summary: Modifier une famille d'impact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FamilleImpactUpdate' }
+      responses:
+        '200':
+          description: Famille modifiée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilleImpact' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Familles d'impact]
+      operationId: deleteFamille
+      summary: Supprimer une famille d'impact sans membre actif
+      responses:
+        '204': { description: Famille supprimée }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
         '409': { $ref: '#/components/responses/ConflictError' }

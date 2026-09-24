@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { assignPersonneDepartement, unassignPersonneDepartement } from '@/features/personnes/api'
 import type { ApiError } from '@/lib/apiError'
 import type {
@@ -36,6 +36,16 @@ export function useDepartement(departementId: string | undefined, enabled = true
     queryKey: departementKeys.detail(departementId ?? ''),
     queryFn: () => getDepartement(departementId!),
     enabled: Boolean(departementId) && enabled,
+  })
+}
+
+export function useDepartementsByIds(departementIds: string[]) {
+  return useQueries({
+    queries: departementIds.map((departementId) => ({
+      queryKey: departementKeys.detail(departementId),
+      queryFn: () => getDepartement(departementId),
+      enabled: Boolean(departementId),
+    })),
   })
 }
 

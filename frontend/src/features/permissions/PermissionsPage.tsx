@@ -29,8 +29,9 @@ export function PermissionsPage() {
   const [permissionToDelete, setPermissionToDelete] = useState<Permission | null>(null)
 
   const canManage = useHasPermission(PERMISSIONS.ROLES_MANAGE)
+  const canRead = canManage || useHasPermission(PERMISSIONS.ROLES_READ)
 
-  const catalogQuery = usePermissions({ page: 1, limit: 100 }, canManage)
+  const catalogQuery = usePermissions({ page: 1, limit: 100 }, canRead)
   const modules = useMemo(() => {
     const unique = new Set((catalogQuery.data?.data ?? []).map((item) => item.module))
     return [...unique].sort()

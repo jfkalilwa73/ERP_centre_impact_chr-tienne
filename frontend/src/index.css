@@ -44,6 +44,138 @@
   }
 }
 
+@keyframes page-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes drawer-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@layer components {
+  .page-enter {
+    animation: page-enter 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .nav-overlay[data-state='open'] {
+    animation: overlay-in 0.22s ease-out both;
+  }
+
+  .nav-overlay[data-state='closed'] {
+    animation: overlay-out 0.18s ease-in both;
+  }
+
+  .nav-drawer[data-state='open'] {
+    animation: drawer-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .nav-drawer[data-state='closed'] {
+    animation: drawer-out 0.22s ease-in both;
+  }
+
+  .dialog-overlay[data-state='open'] {
+    animation: overlay-in 0.2s ease-out both;
+  }
+
+  .dialog-overlay[data-state='closed'] {
+    animation: overlay-out 0.16s ease-in both;
+  }
+
+  .dialog-panel[data-state='open'] {
+    animation: dialog-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .dialog-panel[data-state='closed'] {
+    animation: dialog-out 0.18s ease-in both;
+  }
+
+  .nav-accordion {
+    display: grid;
+    transition:
+      grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s ease;
+  }
+
+  .nav-accordion[data-open='true'] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  .nav-accordion[data-open='false'] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .nav-overlay,
+  .nav-drawer,
+  .dialog-overlay,
+  .dialog-panel {
+    animation: none !important;
+  }
+
+  .nav-accordion {
+    transition: none;
+  }
+}
+
 @media print {
   @page {
     margin: 16mm;
@@ -72,5 +204,13 @@
     inset: 0 auto auto 0 !important;
     width: 100% !important;
     background: white !important;
+  }
+
+  .page-enter,
+  .nav-overlay,
+  .nav-drawer,
+  .dialog-overlay,
+  .dialog-panel {
+    animation: none !important;
   }
 }

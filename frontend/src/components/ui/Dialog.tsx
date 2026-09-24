@@ -17,10 +17,10 @@ type DialogContentProps = {
 export function DialogContent({ title, description, children, className }: DialogContentProps) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-brand-950/50" />
+      <DialogPrimitive.Overlay className="dialog-overlay fixed inset-0 z-50 bg-brand-950/50" />
       <DialogPrimitive.Content
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2',
+          'dialog-panel fixed top-[8vh] right-4 left-4 z-50 mx-auto w-full max-w-lg max-h-[84vh] overflow-y-auto',
           'rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl shadow-brand-950/20',
           className,
         )}

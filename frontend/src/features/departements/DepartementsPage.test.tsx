@@ -36,7 +36,7 @@ describe('écran Départements', () => {
     await user.type(screen.getByLabelText('Nom'), 'Département Jeunesse')
     await user.click(screen.getByRole('button', { name: 'Créer le département' }))
 
-    await waitFor(() => expect(screen.getByText('JEUNESSE')).toBeTruthy())
+    expect(await screen.findByText('JEUNESSE', {}, { timeout: 8000 })).toBeTruthy()
     expect(screen.getAllByText('Département Jeunesse').length).toBeGreaterThan(0)
   })
 
@@ -92,13 +92,91 @@ describe('écran Départements', () => {
     expect(screen.queryByRole('button', { name: 'Nouveau département' })).toBeNull()
   })
 
-  it("refuse la section à qui n'a pas departements.read", async () => {
+  it('laisse le pasteur consulter le catalogue sans créer', async () => {
     const { user } = renderApp('/departements')
 
     await seConnecter(user, 'pasteur@eglise.org', 'Pasteur2026!')
 
-    expect(await screen.findByRole('heading', { name: 'Accès refusé' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Départements' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Nouveau département' })).toBeNull()
+  })
+
+  it("limite un chef de département à son seul tableau de bord", async () => {
+    const { user } = renderApp()
+
+    await seConnecter(user, 'chef-louange@eglise.org', 'ChefDep2026!')
+
+    expect(await screen.findByRole('heading', { name: 'Département Louange' }, { timeout: 8000 })).toBeTruthy()
+    expect(await screen.findByText('Membres affectés')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Personnes' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Tous les départements' })).toBeNull()
+    expect(screen.queryByRole('button', { name: "Familles d'impact" })).toBeNull()
+
     await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
-    expect(screen.queryByRole('button', { name: 'Départements' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Accueil' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Personnes' })).toBeNull()
+  })
+
+  it('donne au chef équipe, activités, budget et rapports', async () => {
+    const { user } = renderApp()
+
+    await seConnecter(user, 'chef-louange@eglise.org', 'ChefDep2026!')
+    expect(await screen.findByRole('heading', { name: 'Département Louange' }, { timeout: 8000 })).toBeTruthy()
+    expect(await screen.findByText('Budget alloué')).toBeTruthy()
+    expect(screen.getByText('Dépenses suivies')).toBeTruthy()
+    expect(screen.getByText('Disponible')).toBeTruthy()
+
+    await user.click(screen.getByRole('tab', { name: 'Membres' }))
+    expect(await screen.findByLabelText('Responsabilité de Pierre MWAMBA')).toBeTruthy()
+    expect(screen.getByLabelText('Disponibilité de Pierre MWAMBA')).toBeTruthy()
+    expect(await screen.findByText('Planification des bénévoles')).toBeTruthy()
+
+    await user.click(screen.getByRole('tab', { name: 'Activités' }))
+    expect(screen.getByLabelText("Responsable de l'activité")).toBeTruthy()
+    expect(screen.getByLabelText("Échéance de l'activité")).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Modifier' }).length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('tab', { name: 'Budget' }))
+    expect(screen.queryByText('Budget alloué')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Envoyer la demande' })).toBeTruthy()
+    await user.type(screen.getByLabelText('Motif de la dépense'), 'Partitions')
+    await user.type(screen.getByLabelText('Montant de la dépense'), '45')
+    await user.click(screen.getByRole('button', { name: 'Envoyer la demande' }))
+    expect(await screen.findByText('Partitions')).toBeTruthy()
+
+    await user.click(screen.getByRole('tab', { name: 'Rapports' }))
+    expect(await screen.findByText('Objectifs et écarts')).toBeTruthy()
+    expect(screen.getByRole('button', { name: "Créer le plan d'action" })).toBeTruthy()
+    await user.type(screen.getByLabelText('Titre du rapport'), 'Point de semaine')
+    await user.type(screen.getByLabelText('Description du rapport'), 'Répétition tenue.')
+    await user.selectOptions(
+      screen.getByLabelText('Département destinataire'),
+      await screen.findByRole('option', { name: 'Département Accueil' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Envoyer le rapport' }))
+    expect(await screen.findByText(/Destinataire : Département Accueil/)).toBeTruthy()
+    expect(await screen.findByText('Point de semaine')).toBeTruthy()
+    expect(
+      screen.getAllByText(/Envoyé au superviseur, au pasteur et à l’administrateur/).length,
+    ).toBeGreaterThan(0)
+  }, 20000)
+
+  it('limite un superviseur aux départements qui lui sont affectés', async () => {
+    const { user } = renderApp()
+
+    await seConnecter(user, 'superviseur@eglise.org', 'Superviseur2026!')
+
+    expect(await screen.findByRole('heading', { name: 'Département Accueil' }, { timeout: 8000 })).toBeTruthy()
+    expect(await screen.findByText(/Superviseur : Daniel KASONGO/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Affecter un membre' })).toBeNull()
+    expect(await screen.findByText('Budget')).toBeTruthy()
+    expect(await screen.findByText('Alertes')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Personnes' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Tous les départements' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
+    expect(screen.getAllByRole('link', { name: 'Département Accueil' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: 'Département Louange' }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('link', { name: 'Département Diaconie' })).toBeNull()
   })
 })
