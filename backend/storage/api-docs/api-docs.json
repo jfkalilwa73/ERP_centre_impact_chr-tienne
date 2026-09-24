@@ -657,6 +657,46 @@
                 ]
             }
         },
+        "/api/v1/identite/personnes/{personne}": {
+            "delete": {
+                "tags": [
+                    "Identité"
+                ],
+                "summary": "Supprimer une personne inactive ou archivée",
+                "description": "Le trigger PostgreSQL interdit la suppression si le statut est actif.",
+                "operationId": "429f23ce0860c6977ec11fc8b26b1461",
+                "parameters": [
+                    {
+                        "name": "personne",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Personne supprimée"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "404": {
+                        "description": "Personne introuvable"
+                    },
+                    "409": {
+                        "description": "Personne encore active"
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/organisation/personnes/{personne}/departements": {
             "post": {
                 "tags": [
