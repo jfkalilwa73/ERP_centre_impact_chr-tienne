@@ -9,7 +9,7 @@ use App\Services\Identite\PersonneService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use OpenApi\Attributes as OA;
-
+use App\Models\Personne;
 class PersonneController extends Controller
 {
     public function __construct(
@@ -50,5 +50,32 @@ class PersonneController extends Controller
         return (new PersonneResource($personne))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+    #[OA\Delete(
+        path: '/api/v1/identite/personnes/{personne}',
+        summary: 'Supprimer une personne inactive ou archivée',
+        description: 'Le trigger PostgreSQL interdit la suppression si le statut est actif.',
+        tags: ['Identité'],
+        security: [['cookieAuth' => []]],
+        parameters: [
+            new OA\Parameter(
+                name: 'personne',
+                in: 'path',
+                required: true,
+                schema: new OA\Schema(type: 'string', format: 'uuid')
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 204, description: 'Personne supprimée'),
+            new OA\Response(response: 401, description: 'Non authentifié'),
+            new OA\Response(response: 404, description: 'Personne introuvable'),
+            new OA\Response(response: 409, description: 'Personne encore active'),
+        ]
+    )]
+    public function destroy(Personne $personne): Response
+    {
+        $this->personnes->supprimer($personne);
+
+        return response()->noContent();
     }
 }
