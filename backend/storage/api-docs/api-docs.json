@@ -285,6 +285,52 @@
                 ]
             }
         },
+        "/api/v1/acces/comptes/{user}/permissions/{permissionCode}": {
+            "get": {
+                "tags": [
+                    "Accès"
+                ],
+                "summary": "Vérifier le droit d'un compte",
+                "description": "Vérifie si le compte a la permission via un rôle actif. {user} est l'id numérique. {permissionCode} est du type membres.read.",
+                "operationId": "57eb19ebe25894913ec6206f79ccf070",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "permissionCode",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "membres.read"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Résultat de la vérification"
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    },
+                    "404": {
+                        "description": "Compte introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/audit/logs": {
             "get": {
                 "tags": [
