@@ -47,15 +47,21 @@ export function useAccessScope() {
     [famillesQuery.data],
   )
 
+  const isSuperviseur = superviseurDepartementIds.length > 0
   const isScoped = Boolean(user) && !wide
-  const homePath = ledDepartementIds[0]
-    ? `/departements/${ledDepartementIds[0]}`
-    : ledFamilleIds[0]
-      ? `/familles/${ledFamilleIds[0]}`
-      : '/'
+  const homePath = isSuperviseur
+    ? '/departements'
+    : chefDepartementIds[0]
+      ? `/departements/${chefDepartementIds[0]}`
+      : ledDepartementIds[0]
+        ? `/departements/${ledDepartementIds[0]}`
+        : ledFamilleIds[0]
+          ? `/familles/${ledFamilleIds[0]}`
+          : '/'
 
   return {
     isScoped,
+    isSuperviseur,
     isLoading: Boolean(user) && (departementsQuery.isLoading || famillesQuery.isLoading),
     homePath,
     ledDepartementIds,

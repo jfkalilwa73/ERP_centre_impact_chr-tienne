@@ -10,7 +10,7 @@ import type {
   PersonneUpdate,
 } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
-import { isLeadershipRole } from '@/features/departements/roles'
+import { canAccessDepartementUnit } from '@/features/departements/roles'
 import { isLeadershipRole as isFamilleLeadership } from '@/features/familles/roles'
 import { canReadPersonnes } from './access'
 import { mockAccounts, type MockAccount } from './fixtures'
@@ -51,7 +51,7 @@ function canManageDepartementMembers(account: MockAccount, departementId: string
       affectation.idPersonne === idPersonne &&
       affectation.idDepartement === departementId &&
       affectation.actif &&
-      isLeadershipRole(affectation.fonction),
+      canAccessDepartementUnit(affectation.fonction),
   )
 }
 

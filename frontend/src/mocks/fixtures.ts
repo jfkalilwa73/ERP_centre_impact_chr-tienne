@@ -17,6 +17,7 @@ import {
   adminRole,
   chefDepartementRole,
   chefFamilleRole,
+  membreDgeRole,
   pasteurPermissionCodes,
   pasteurRole,
   permissionCodesForRole,
@@ -208,6 +209,31 @@ const seedAccounts: MockAccount[] = [
       permissions: permissionCodesForRole(superviseurRole.idRole),
     },
   },
+  {
+    motDePasse: 'Dge2026!',
+    utilisateur: {
+      compte: {
+        idCompte: 'a1c3e5f7-0003-4000-8000-000000000009',
+        idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000b',
+        email: 'dge@eglise.org',
+        statut: 'actif',
+        mfaActive: false,
+        dateCreation: '2026-04-03T08:00:00Z',
+      },
+      personne: {
+        idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000b',
+        nom: 'LUMBU',
+        prenom: 'Esther',
+        sexe: 'F',
+        telephone: '+243810000090',
+        statut: 'actif',
+        dateCreation: '2026-04-03T08:00:00Z',
+        dateModification: '2026-04-03T08:00:00Z',
+      },
+      roles: [membreDgeRole],
+      permissions: permissionCodesForRole(membreDgeRole.idRole),
+    },
+  },
 ]
 
 /**
@@ -396,6 +422,16 @@ export const seedPersonnes: Personne[] = [
     dateCreation: '2026-04-02T08:00:00Z',
     dateModification: '2026-04-02T08:00:00Z',
   },
+  {
+    idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000b',
+    nom: 'LUMBU',
+    prenom: 'Esther',
+    sexe: 'F',
+    telephone: '+243810000090',
+    statut: 'actif',
+    dateCreation: '2026-04-03T08:00:00Z',
+    dateModification: '2026-04-03T08:00:00Z',
+  },
 ]
 
 export const seedComptes: Compte[] = [
@@ -465,6 +501,14 @@ export const seedComptes: Compte[] = [
     mfaActive: false,
     dateCreation: '2026-04-02T08:00:00Z',
   },
+  {
+    idCompte: 'a1c3e5f7-0003-4000-8000-000000000009',
+    idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000b',
+    email: 'dge@eglise.org',
+    statut: 'actif',
+    mfaActive: false,
+    dateCreation: '2026-04-03T08:00:00Z',
+  },
 ]
 
 export const seedAffectationsRole: AffectationRole[] = [
@@ -502,6 +546,12 @@ export const seedAffectationsRole: AffectationRole[] = [
     idCompte: 'a1c3e5f7-0003-4000-8000-000000000008',
     idRole: superviseurRole.idRole,
     dateDebut: '2026-04-02T08:00:00Z',
+    actif: true,
+  },
+  {
+    idCompte: 'a1c3e5f7-0003-4000-8000-000000000009',
+    idRole: membreDgeRole.idRole,
+    dateDebut: '2026-04-03T08:00:00Z',
     actif: true,
   },
 ]

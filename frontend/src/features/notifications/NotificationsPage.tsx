@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
@@ -21,6 +22,8 @@ import { ROLE_CODES } from '@/lib/roleCodes'
 import { suggestedEgliseEmail } from './email'
 import {
   canReplyCirculation,
+  deleteCirculation,
+  deleteCirculations,
   getCirculationsVersion,
   kindLabel,
   markCirculationsLues,
@@ -30,6 +33,7 @@ import {
 } from './circulation'
 import { useInboxScope } from './inbox'
 import {
+  deleteDemande,
   getDemandesVersion,
   listDemandes,
   markDemandesLues,
@@ -114,8 +118,16 @@ export function NotificationsPage() {
     setErrorMessage(undefined)
     try {
       const rolesPage = await listRoles({ page: 1, limit: 100 })
-      const superviseur = rolesPage.data.find((role) => role.code === ROLE_CODES.SUPERVISEUR)
-      if (!superviseur) throw new Error('Le rôle Superviseur est introuvable dans le catalogue.')
+      const roleCode =
+        selected.roleCible === 'Chef' ? ROLE_CODES.CHEF_DEPARTEMENT : ROLE_CODES.SUPERVISEUR
+      const roleCible = rolesPage.data.find((role) => role.code === roleCode)
+      if (!roleCible) {
+        throw new Error(
+          selected.roleCible === 'Chef'
+            ? 'Le rôle Chef de département est introuvable dans le catalogue.'
+            : 'Le rôle Superviseur est introuvable dans le catalogue.',
+        )
+      }
 
       const comptes = await listComptes({ page: 1, limit: 100 })
       const existing = comptes.data.find((compte) => compte.idPersonne === selected.idPersonneCible)
@@ -129,14 +141,14 @@ export function NotificationsPage() {
             motDePasse: values.motDePasse,
             statut: 'actif',
           },
-          [superviseur.idRole],
+          [roleCible.idRole],
         )
       } else {
         email = existing.email
         const roles = await listCompteRoles(existing.idCompte)
-        const deja = roles.some((role) => role.idRole === superviseur.idRole && role.actif)
+        const deja = roles.some((role) => role.idRole === roleCible.idRole && role.actif)
         if (!deja) {
-          await assignRoleToCompte(existing.idCompte, { idRole: superviseur.idRole })
+          await assignRoleToCompte(existing.idCompte, { idRole: roleCible.idRole })
         }
       }
 
@@ -147,7 +159,7 @@ export function NotificationsPage() {
       }
       await assignPersonneDepartement(selected.idPersonneCible, {
         idDepartement: selected.idDepartement,
-        fonction: 'Superviseur',
+        fonction: selected.roleCible,
       })
 
       traiterDemandeSuperviseur(selected.id, email)
@@ -181,26 +193,48 @@ export function NotificationsPage() {
     setReponses((current) => ({ ...current, [id]: '' }))
   }
 
+  const onClearAll = () => {
+    deleteCirculations(circulations.map((item) => item.id))
+    demandes.forEach((demande) => {
+      if (demande.statut !== 'en_attente') deleteDemande(demande.id)
+    })
+  }
+
   return (
     <div className="flex flex-col gap-6" onFocus={onOpenInbox}>
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-slate-900">Notifications</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Les rapports, demandes de budget et activités sont envoyés par défaut au superviseur, au
-          pasteur et à l’administrateur. Seul le département destinataire peut répondre.
-        </p>
+        {!inboxEmpty && (
+          <Button type="button" variant="secondary" size="sm" onClick={onClearAll}>
+            Tout effacer
+          </Button>
+        )}
       </div>
 
       {circulations.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-slate-900">Messages des départements</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Messages et alertes</h2>
           <ul className="flex flex-col gap-3">
             {circulations.map((item) => {
               const peutRepondre = canReplyCirculation(item, chefDepartementIds)
               return (
                 <li key={item.id} className="border border-slate-200 bg-white px-4 py-4">
-                  <p className="text-xs tracking-wide text-slate-500 uppercase">{kindLabel(item.kind)}</p>
-                  <p className="mt-1 text-sm font-medium text-slate-900">{item.titre}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs tracking-wide text-slate-500 uppercase">{kindLabel(item.kind)}</p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">{item.titre}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-slate-500 hover:bg-red-50 hover:text-red-700"
+                      aria-label={`Supprimer ${item.titre}`}
+                      onClick={() => deleteCirculation(item.id)}
+                    >
+                      <Trash2 className="size-4" aria-hidden="true" />
+                    </Button>
+                  </div>
                   <p className="mt-1 text-xs text-slate-500">
                     {item.nomAuteur} · {item.nomDepartementSource} → {item.nomDepartementCible} ·{' '}
                     {formatDate(item.dateCreation)}
@@ -241,7 +275,9 @@ export function NotificationsPage() {
                     </div>
                   ) : (
                     <p className="mt-3 text-xs text-slate-500">
-                      Consultation uniquement. Seul le département destinataire peut répondre.
+                      {item.kind === 'rappel'
+                        ? 'Envoyé à chaque membre du département.'
+                        : 'Consultation uniquement. Seul le département destinataire peut répondre.'}
                     </p>
                   )}
                 </li>
@@ -257,22 +293,26 @@ export function NotificationsPage() {
         </p>
       ) : demandes.length === 0 ? null : (
         <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-slate-900">Comptes superviseur</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Ouverture de comptes</h2>
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
               <tr>
                 <th className="px-4 py-3 font-medium">Personne</th>
+                <th className="px-4 py-3 font-medium">Rôle</th>
                 <th className="px-4 py-3 font-medium">Département</th>
                 <th className="hidden px-4 py-3 font-medium sm:table-cell">Demandeur</th>
                 <th className="px-4 py-3 font-medium">Statut</th>
-                {canTreat && <th className="px-4 py-3 text-right font-medium">Actions</th>}
+                <th className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {demandes.map((demande) => (
                 <tr key={demande.id} className="border-b border-slate-100 last:border-0">
                   <td className="px-4 py-3 font-medium text-slate-900">{demande.nomCible}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {demande.roleCible === 'Chef' ? 'Chef de département' : 'Superviseur'}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{demande.nomDepartement}</td>
                   <td className="hidden px-4 py-3 text-slate-600 sm:table-cell">
                     {demande.nomDemandeur}
@@ -284,27 +324,34 @@ export function NotificationsPage() {
                     )}
                     <p className="mt-0.5 text-xs text-slate-400">{formatDate(demande.dateCreation)}</p>
                   </td>
-                  {canTreat && (
-                    <td className="px-4 py-3 text-right">
-                      {demande.statut === 'en_attente' ? (
-                        <div className="flex justify-end gap-1">
-                          <Button size="sm" onClick={() => openTreat(demande)}>
-                            Ouvrir le compte
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => refuserDemandeSuperviseur(demande.id)}
-                          >
-                            Refuser
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">Traité</span>
-                      )}
-                    </td>
-                  )}
+                  <td className="px-4 py-3 text-right">
+                    {canTreat && demande.statut === 'en_attente' ? (
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" onClick={() => openTreat(demande)}>
+                          Ouvrir le compte
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                          onClick={() => refuserDemandeSuperviseur(demande.id)}
+                        >
+                          Refuser
+                        </Button>
+                      </div>
+                    ) : demande.statut !== 'en_attente' ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-slate-500 hover:bg-red-50 hover:text-red-700"
+                        aria-label={`Supprimer la demande ${demande.nomCible}`}
+                        onClick={() => deleteDemande(demande.id)}
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                      </Button>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -315,8 +362,12 @@ export function NotificationsPage() {
 
       <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}>
         <DialogContent
-          title="Ouvrir le compte superviseur"
-          description="L’e-mail et le mot de passe seront ceux de la première connexion. Le chef recevra la confirmation."
+          title={
+            selected?.roleCible === 'Chef'
+              ? 'Ouvrir le compte chef de département'
+              : 'Ouvrir le compte superviseur'
+          }
+          description="L’e-mail et le mot de passe seront ceux de la première connexion. Le DGE recevra la confirmation."
         >
           <form onSubmit={onTreat} noValidate className="flex flex-col gap-4">
             {errorMessage && (
@@ -351,7 +402,7 @@ export function NotificationsPage() {
                 Annuler
               </Button>
               <Button type="submit" isLoading={isSubmitting}>
-                Créer le compte et prévenir le chef
+                Créer le compte et prévenir le demandeur
               </Button>
             </div>
           </form>

@@ -63,4 +63,39 @@ describe('circulation des messages de département', () => {
     expect(unreadCirculationsCount('admin', visibleAdmin)).toBe(1)
     expect(unreadCirculationsCount('chef-louange', [created])).toBe(0)
   })
+
+  it('montre le rappel d’activité à chaque membre notifié, sans réponse', () => {
+    resetCirculations()
+    const rappel = createCirculation({
+      kind: 'rappel',
+      titre: 'Répétition',
+      description: 'Répétition commence chaque mardi et samedi · à 18 h · présentiel.',
+      idDepartementSource: 'louange',
+      nomDepartementSource: 'Louange',
+      idDepartementCible: 'louange',
+      nomDepartementCible: 'Louange',
+      idAuteur: 'chef-louange',
+      nomAuteur: 'Pierre MWAMBA',
+      idPersonnesNotifiees: ['membre-1'],
+    })
+
+    const visibleMembre = visibleCirculations({
+      idPersonne: 'membre-1',
+      isAdmin: false,
+      isPasteur: false,
+      superviseurDepartementIds: [],
+      chefDepartementIds: [],
+    })
+    const invisibleAutre = visibleCirculations({
+      idPersonne: 'membre-2',
+      isAdmin: false,
+      isPasteur: false,
+      superviseurDepartementIds: [],
+      chefDepartementIds: [],
+    })
+
+    expect(visibleMembre.map((item) => item.id)).toContain(rappel.id)
+    expect(invisibleAutre.map((item) => item.id)).not.toContain(rappel.id)
+    expect(canReplyCirculation(rappel, ['louange'])).toBe(false)
+  })
 })

@@ -7,7 +7,6 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useAccessScope } from '@/features/auth/accessScope'
-import { createDemandeSuperviseur, findDemandeEnAttente } from '@/features/notifications/store'
 import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -31,8 +30,7 @@ import { DepartementLoading } from './loading'
 import { personneName } from './personneName'
 import { PilotageModules } from './PilotageModules'
 import { RapportsPanel } from './RapportsPanel'
-import { SupervisionSuivi } from './SupervisionSuivi'
-import { isLeadershipRole, isSupervisionRole, roleDepartement, ROLES_DEPARTEMENT, type RoleDepartement } from './roles'
+import { isLeadershipRole, roleDepartement, ROLES_EQUIPE, type RoleDepartement } from './roles'
 import { StatCard } from './StatCard'
 
 const TABS = [
@@ -50,9 +48,8 @@ export function DepartementDetailPage() {
   const [tab, setTab] = useState<TabId>('tableau')
   const [assignOpen, setAssignOpen] = useState(false)
   const [membreSearch, setMembreSearch] = useState('')
-  const [roleDraft, setRoleDraft] = useState<RoleDepartement>('Membre')
+  const [roleDraft, setRoleDraft] = useState<RoleDepartement>('Responsable')
   const [selectedPersonneId, setSelectedPersonneId] = useState('')
-  const [demandeMessage, setDemandeMessage] = useState<string>()
 
   useSyncExternalStore(subscribeActivites, getActivitesVersion, getActivitesVersion)
 
@@ -60,9 +57,6 @@ export function DepartementDetailPage() {
   const permissions = user?.permissions ?? []
   const { isScoped, ledDepartementIds } = useAccessScope()
   const canManageDepartements = useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE)
-  const canUpdateMembres = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
-  const canOpenCompte =
-    useHasPermission(PERMISSIONS.COMPTES_CREATE) && useHasPermission(PERMISSIONS.ROLES_MANAGE)
 
   const departementQuery = useDepartement(departementId)
   const destinatairesQuery = useDepartements(
@@ -98,17 +92,13 @@ export function DepartementDetailPage() {
     })
     .filter((item): item is { personne: Personne; affectation: AffectationDepartement } => Boolean(item))
     .sort((left, right) => {
-      const order = { Superviseur: 0, Chef: 1, Adjoint: 2, Membre: 3 }
+      const order = { Superviseur: 0, Chef: 1, Adjoint: 2, Responsable: 3, Membre: 4 }
       return order[roleDepartement(left.affectation.fonction)] - order[roleDepartement(right.affectation.fonction)]
     })
 
   const leadsHere = actives.some(
     (affectation) =>
       affectation.idPersonne === user?.personne.idPersonne && isLeadershipRole(affectation.fonction),
-  )
-  const supervisesHere = actives.some(
-    (affectation) =>
-      affectation.idPersonne === user?.personne.idPersonne && isSupervisionRole(affectation.fonction),
   )
   const auteur = user
     ? { idPersonne: user.personne.idPersonne, nom: `${user.personne.prenom} ${user.personne.nom}` }
@@ -119,7 +109,7 @@ export function DepartementDetailPage() {
     : departementId && departementQuery.data
       ? [{ idDepartement: departementId, nom: departementQuery.data.nom }]
       : []
-  const canAssign = canUpdateMembres || leadsHere || canManageDepartements
+  const canAssign = leadsHere || (canManageDepartements && !isScoped)
   const canManageEquipe = useHasPermission(PERMISSIONS.EQUIPES_MANAGE) || leadsHere
   const canWriteActivites =
     useHasPermission(PERMISSIONS.ACTIVITES_CREATE) ||
@@ -150,53 +140,9 @@ export function DepartementDetailPage() {
 
   const applyRole = async (personneId: string, role: RoleDepartement) => {
     if (!departementId) return
-    const cible = personnes.find((personne) => personne.idPersonne === personneId)
-    if (role === 'Superviseur' && !canOpenCompte && user && cible && departementQuery.data) {
-      if (findDemandeEnAttente(personneId, departementId)) {
-        setDemandeMessage(
-          `Une demande d’ouverture de compte superviseur pour ${personneName(cible)} est déjà en cours.`,
-        )
-        setAssignOpen(false)
-        return
-      }
-      createDemandeSuperviseur({
-        idPersonneCible: personneId,
-        nomCible: personneName(cible),
-        idDepartement: departementId,
-        nomDepartement: departementQuery.data.nom,
-        idDemandeur: user.personne.idPersonne,
-        nomDemandeur: `${user.personne.prenom} ${user.personne.nom}`,
-      })
-      setDemandeMessage(
-        `Demande envoyée à l’administrateur pour ouvrir le compte superviseur de ${personneName(cible)}. Vous serez prévenu une fois le compte créé.`,
-      )
-      setAssignOpen(false)
-      setSelectedPersonneId('')
-      setMembreSearch('')
-      setRoleDraft('Membre')
-      return
-    }
-    setDemandeMessage(undefined)
     const current = actives.find((affectation) => affectation.idPersonne === personneId)
-    const previousChef =
-      role === 'Chef'
-        ? actives.find(
-            (affectation) =>
-              roleDepartement(affectation.fonction) === 'Chef' && affectation.idPersonne !== personneId,
-          )
-        : undefined
 
     try {
-      if (previousChef) {
-        await unassignMutation.mutateAsync({
-          personneId: previousChef.idPersonne,
-          departementId,
-        })
-        await assignMutation.mutateAsync({
-          personneId: previousChef.idPersonne,
-          payload: { idDepartement: departementId, fonction: 'Membre' },
-        })
-      }
       if (current) {
         await unassignMutation.mutateAsync({ personneId, departementId })
       }
@@ -207,7 +153,7 @@ export function DepartementDetailPage() {
       setAssignOpen(false)
       setSelectedPersonneId('')
       setMembreSearch('')
-      setRoleDraft('Membre')
+      setRoleDraft('Responsable')
     } catch {
       /* mutation error already displayed */
     }
@@ -295,12 +241,6 @@ export function DepartementDetailPage() {
         </div>
       </div>
 
-      {demandeMessage && (
-        <Alert variant="success" title="Demande transmise">
-          {demandeMessage}
-        </Alert>
-      )}
-
       <div role="tablist" aria-label="Sections du département" className="flex flex-wrap gap-6 border-b border-slate-200">
         {visibleTabs.map((item) => (
           <button
@@ -353,17 +293,6 @@ export function DepartementDetailPage() {
 
           {departementId && permissions.includes(PERMISSIONS.BUDGET_READ) && (
             <BudgetCards departementId={departementId} />
-          )}
-
-          {(supervisesHere ||
-            permissions.includes(PERMISSIONS.ALERTES_READ) ||
-            permissions.includes(PERMISSIONS.PERFORMANCES_READ)) && (
-            <SupervisionSuivi
-              departementId={departement.idDepartement}
-              membres={membres}
-              activites={activites}
-              permissions={permissions}
-            />
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -443,11 +372,7 @@ export function DepartementDetailPage() {
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent
           title="Affecter un membre"
-          description={
-            roleDraft === 'Superviseur' && !canOpenCompte
-              ? 'Le statut de superviseur est envoyé à l’administrateur, qui créera le compte et vous confirmera.'
-              : 'Recherchez une personne existante, puis choisissez son rôle dans ce département.'
-          }
+          description="Recherchez une personne existante, puis choisissez adjoint ou responsable."
         >
           <form onSubmit={onAssign} className="flex flex-col gap-4">
             <Input
@@ -473,7 +398,7 @@ export function DepartementDetailPage() {
               value={roleDraft}
               onChange={(event) => setRoleDraft(event.target.value as RoleDepartement)}
             >
-              {ROLES_DEPARTEMENT.map((role) => (
+              {ROLES_EQUIPE.map((role) => (
                 <option key={role} value={role}>
                   {role}
                 </option>
@@ -484,9 +409,7 @@ export function DepartementDetailPage() {
                 Annuler
               </Button>
               <Button type="submit" isLoading={busy} disabled={!selectedPersonneId}>
-                {roleDraft === 'Superviseur' && !canOpenCompte
-                  ? 'Envoyer la demande'
-                  : 'Affecter'}
+                Affecter
               </Button>
             </div>
           </form>

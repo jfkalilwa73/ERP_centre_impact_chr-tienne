@@ -1,11 +1,19 @@
 import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, Layers, Pencil, Plus, Search, Trash2, Crown, Users } from 'lucide-react'
+import { CalendarDays, Layers, Pencil, Plus, Search, Shield, Trash2, Crown, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
+import { useAccessScope } from '@/features/auth/accessScope'
+import { useComptes } from '@/features/comptes/hooks'
+import {
+  createDemandeCompte,
+  findDemandeEnAttente,
+  type RoleDemandeCompte,
+} from '@/features/notifications/store'
 import { PERMISSIONS } from '@/lib/permissions'
+import { ROLE_CODES } from '@/lib/roleCodes'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Departement, Personne } from '@/types'
 import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
@@ -46,7 +54,9 @@ export function DepartementsPage() {
   const [editingDepartement, setEditingDepartement] = useState<Departement | null>(null)
   const [departementToDelete, setDepartementToDelete] = useState<Departement | null>(null)
   const [chefDepartement, setChefDepartement] = useState<Departement | null>(null)
+  const [superviseurDepartement, setSuperviseurDepartement] = useState<Departement | null>(null)
   const [chefSearch, setChefSearch] = useState('')
+  const [demandeMessage, setDemandeMessage] = useState<string>()
   const [formSiteError, setFormSiteError] = useState<string>()
 
   useSyncExternalStore(subscribeActivites, getActivitesVersion, getActivitesVersion)
@@ -54,8 +64,14 @@ export function DepartementsPage() {
   const canCreate = useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE)
   const canUpdate = useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE)
   const canDelete = useHasPermission(PERMISSIONS.DEPARTEMENTS_DELETE)
-  const canAssign = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
   const user = useCurrentUser()
+  const { isScoped, isLoading: scopeLoading, ledDepartementIds } = useAccessScope()
+  const isDge = user?.roles.some((role) => role.code === ROLE_CODES.MEMBRE_DGE) ?? false
+  const canAssignSuperviseur = isDge || canUpdate
+  const canAssignChef = isDge || canUpdate
+  const canReadComptes = useHasPermission(PERMISSIONS.COMPTES_READ)
+  const canOpenCompte =
+    useHasPermission(PERMISSIONS.COMPTES_CREATE) && useHasPermission(PERMISSIONS.ROLES_MANAGE)
 
   const listParams = useMemo(
     () => ({
@@ -68,6 +84,10 @@ export function DepartementsPage() {
   const catalogQuery = useDepartements({ page: 1, limit: 100 })
   const departementsQuery = useDepartements(listParams)
   const personnesQuery = usePersonnes({ page: 1, limit: 100 })
+  const comptesQuery = useComptes(
+    { page: 1, limit: 100 },
+    (canAssignSuperviseur || canAssignChef) && canReadComptes,
+  )
   const personnes = personnesQuery.data?.data ?? []
   const personneIds = useMemo(() => personnes.map((personne) => personne.idPersonne), [personnes])
   const affectationQueries = usePersonnesAffectations(personneIds, false)
@@ -97,16 +117,35 @@ export function DepartementsPage() {
     return map
   }, [affectationsActives, personnes])
 
-  const departements = departementsQuery.data?.data ?? []
-  const catalog = catalogQuery.data?.data ?? []
+  const superviseurByDepartement = useMemo(() => {
+    const map = new Map<string, Personne>()
+    affectationsActives.forEach((affectation) => {
+      if (roleDepartement(affectation.fonction) !== 'Superviseur') return
+      const personne = personnes.find((item) => item.idPersonne === affectation.idPersonne)
+      if (personne) map.set(affectation.idDepartement, personne)
+    })
+    return map
+  }, [affectationsActives, personnes])
+
+  const scopedIds = useMemo(() => new Set(ledDepartementIds), [ledDepartementIds])
+  const departements = (departementsQuery.data?.data ?? []).filter(
+    (departement) => !isScoped || scopedIds.has(departement.idDepartement),
+  )
+  const catalog = (catalogQuery.data?.data ?? []).filter(
+    (departement) => !isScoped || scopedIds.has(departement.idDepartement),
+  )
   const pagination = departementsQuery.data?.pagination
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.limit)) : 1
   const activites = listAllActivites()
   const stats = {
     total: catalog.length,
     actifs: catalog.filter((departement) => departement.actif).length,
-    membres: affectationsActives.length,
-    activites: activites.length,
+    membres: affectationsActives.filter(
+      (affectation) => !isScoped || scopedIds.has(affectation.idDepartement),
+    ).length,
+    activites: isScoped
+      ? activites.filter((activite) => scopedIds.has(activite.idDepartement)).length
+      : activites.length,
   }
   const evolutionGlobale = evolutionDepartement(affectations)
   const effectifs = effectifsParDepartement(catalog, affectations)
@@ -160,6 +199,40 @@ export function DepartementsPage() {
     })
   }
 
+  const notifierOuvertureCompte = (
+    personne: Personne,
+    departement: Departement,
+    roleCible: RoleDemandeCompte,
+  ) => {
+    if (!user || canOpenCompte) return
+    const label = roleCible === 'Chef' ? 'chef de département' : 'superviseur'
+    const hasCompte = comptesQuery.data?.data.some(
+      (compte) => compte.idPersonne === personne.idPersonne,
+    )
+    if (hasCompte) {
+      setDemandeMessage(undefined)
+      return
+    }
+    if (findDemandeEnAttente(personne.idPersonne, departement.idDepartement, roleCible)) {
+      setDemandeMessage(
+        `Une demande d’ouverture de compte ${label} pour ${personneName(personne)} est déjà en cours.`,
+      )
+      return
+    }
+    createDemandeCompte({
+      idPersonneCible: personne.idPersonne,
+      nomCible: personneName(personne),
+      idDepartement: departement.idDepartement,
+      nomDepartement: departement.nom,
+      idDemandeur: user.personne.idPersonne,
+      nomDemandeur: `${user.personne.prenom} ${user.personne.nom}`,
+      roleCible,
+    })
+    setDemandeMessage(
+      `Demande envoyée à l’administrateur pour ouvrir le compte ${label} de ${personneName(personne)}. Vous serez prévenu une fois le compte créé.`,
+    )
+  }
+
   const applyChef = async (personne: Personne) => {
     if (!chefDepartement) return
     const departementId = chefDepartement.idDepartement
@@ -184,7 +257,43 @@ export function DepartementsPage() {
         personneId: personne.idPersonne,
         payload: { idDepartement: departementId, fonction: 'Chef' },
       })
+      notifierOuvertureCompte(personne, chefDepartement, 'Chef')
       setChefDepartement(null)
+      setChefSearch('')
+    } catch {
+      /* l'erreur est déjà portée par la mutation */
+    }
+  }
+
+  const applySuperviseur = async (personne: Personne) => {
+    if (!superviseurDepartement || !user) return
+    const departementId = superviseurDepartement.idDepartement
+    const currentSuperviseur = superviseurByDepartement.get(departementId)
+    const currentRole = affectationsActives.find(
+      (affectation) =>
+        affectation.idPersonne === personne.idPersonne && affectation.idDepartement === departementId,
+    )
+
+    try {
+      if (currentSuperviseur && currentSuperviseur.idPersonne !== personne.idPersonne) {
+        await unassignMutation.mutateAsync({
+          personneId: currentSuperviseur.idPersonne,
+          departementId,
+        })
+        await assignMutation.mutateAsync({
+          personneId: currentSuperviseur.idPersonne,
+          payload: { idDepartement: departementId, fonction: 'Membre' },
+        })
+      }
+      if (currentRole) {
+        await unassignMutation.mutateAsync({ personneId: personne.idPersonne, departementId })
+      }
+      await assignMutation.mutateAsync({
+        personneId: personne.idPersonne,
+        payload: { idDepartement: departementId, fonction: 'Superviseur' },
+      })
+      notifierOuvertureCompte(personne, superviseurDepartement, 'Superviseur')
+      setSuperviseurDepartement(null)
       setChefSearch('')
     } catch {
       /* l'erreur est déjà portée par la mutation */
@@ -255,6 +364,12 @@ export function DepartementsPage() {
         </>
       )}
 
+      {demandeMessage && (
+        <Alert variant="success" title="Demande transmise">
+          {demandeMessage}
+        </Alert>
+      )}
+
       <h2 className="text-lg font-semibold text-slate-900">Départements</h2>
 
       <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row" role="search">
@@ -282,9 +397,11 @@ export function DepartementsPage() {
         </Alert>
       )}
 
-      {departementsQuery.isLoading && <TableLoading label="Chargement des départements…" />}
+      {(departementsQuery.isLoading || (isScoped && scopeLoading)) && (
+        <TableLoading label="Chargement des départements…" />
+      )}
 
-      {departementsQuery.isSuccess && departements.length === 0 && (
+      {departementsQuery.isSuccess && !(isScoped && scopeLoading) && departements.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
           <p className="font-medium text-slate-900">Aucun département</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -301,10 +418,11 @@ export function DepartementsPage() {
                 <tr>
                   <th className="px-4 py-3 font-medium">Code</th>
                   <th className="px-4 py-3 font-medium">Nom</th>
+                  <th className="px-4 py-3 font-medium">Superviseur</th>
                   <th className="px-4 py-3 font-medium">Chef</th>
                   <th className="hidden px-4 py-3 font-medium lg:table-cell">Créé le</th>
                   <th className="px-4 py-3 font-medium">Statut</th>
-                  {(canUpdate || canDelete || canAssign) && (
+                  {(canUpdate || canDelete || canAssignSuperviseur || canAssignChef) && (
                     <th className="px-4 py-3 text-right font-medium">Actions</th>
                   )}
                 </tr>
@@ -312,6 +430,7 @@ export function DepartementsPage() {
               <tbody>
                 {departements.map((departement) => {
                   const chef = chefByDepartement.get(departement.idDepartement)
+                  const superviseur = superviseurByDepartement.get(departement.idDepartement)
                   return (
                     <tr key={departement.idDepartement} className="border-b border-slate-100 last:border-0">
                       <td className="px-4 py-3 font-mono text-xs text-slate-600">{departement.code}</td>
@@ -322,6 +441,9 @@ export function DepartementsPage() {
                         >
                           {departement.nom}
                         </Link>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {superviseur ? personneName(superviseur) : '—'}
                       </td>
                       <td className="px-4 py-3 text-slate-600">{chef ? personneName(chef) : '—'}</td>
                       <td className="hidden px-4 py-3 text-slate-500 lg:table-cell">
@@ -338,10 +460,10 @@ export function DepartementsPage() {
                           {departement.actif ? 'Actif' : 'Inactif'}
                         </span>
                       </td>
-                      {(canUpdate || canDelete || canAssign) && (
+                      {(canUpdate || canDelete || canAssignSuperviseur || canAssignChef) && (
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-1">
-                            {canAssign && (
+                            {canAssignSuperviseur && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -349,6 +471,24 @@ export function DepartementsPage() {
                                   assignMutation.reset()
                                   unassignMutation.reset()
                                   setChefSearch('')
+                                  setDemandeMessage(undefined)
+                                  setChefDepartement(null)
+                                  setSuperviseurDepartement(departement)
+                                }}
+                                aria-label={`Désigner le superviseur de ${departement.nom}`}
+                              >
+                                <Shield className="size-4" aria-hidden="true" />
+                              </Button>
+                            )}
+                            {canAssignChef && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  assignMutation.reset()
+                                  unassignMutation.reset()
+                                  setChefSearch('')
+                                  setSuperviseurDepartement(null)
                                   setChefDepartement(departement)
                                 }}
                                 aria-label={`Désigner le chef de ${departement.nom}`}
@@ -436,7 +576,7 @@ export function DepartementsPage() {
       >
         <DialogContent
           title={chefDepartement ? `Chef de ${chefDepartement.nom}` : 'Chef du département'}
-          description="Recherchez une personne déjà enregistrée pour la désigner comme chef."
+          description="Le DGE désigne le chef. S’il n’a pas encore de compte, une demande part à l’administrateur."
         >
           {(assignMutation.isError || unassignMutation.isError) && (
             <Alert variant="error" title="Désignation impossible">
@@ -456,8 +596,53 @@ export function DepartementsPage() {
                 <button
                   type="button"
                   disabled={chefBusy}
-                  aria-label={`Désigner ${personneName(personne)}`}
+                  aria-label={`Désigner ${personneName(personne)} comme chef`}
                   onClick={() => void applyChef(personne)}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-50"
+                >
+                  <span className="font-medium text-slate-900">{personneName(personne)}</span>
+                  <span className="text-xs text-slate-500">{personne.telephone ?? ''}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(superviseurDepartement)}
+        onOpenChange={(open) => {
+          if (!open) setSuperviseurDepartement(null)
+        }}
+      >
+        <DialogContent
+          title={
+            superviseurDepartement
+              ? `Superviseur de ${superviseurDepartement.nom}`
+              : 'Superviseur du département'
+          }
+          description="Le DGE désigne le superviseur. S’il n’a pas encore de compte, une demande part à l’administrateur."
+        >
+          {(assignMutation.isError || unassignMutation.isError) && (
+            <Alert variant="error" title="Désignation impossible">
+              {assignMutation.error?.message ?? unassignMutation.error?.message}
+            </Alert>
+          )}
+          <Input
+            value={chefSearch}
+            onChange={(event) => setChefSearch(event.target.value)}
+            placeholder="Rechercher une personne…"
+            aria-label="Rechercher un superviseur"
+            className="mb-3"
+          />
+          <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto">
+            {prochesChef.map((personne) => (
+              <li key={personne.idPersonne}>
+                <button
+                  type="button"
+                  disabled={chefBusy}
+                  aria-label={`Désigner ${personneName(personne)} comme superviseur`}
+                  onClick={() => void applySuperviseur(personne)}
                   className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-50"
                 >
                   <span className="font-medium text-slate-900">{personneName(personne)}</span>

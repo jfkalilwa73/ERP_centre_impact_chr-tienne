@@ -1,21 +1,23 @@
 import { Outlet, useParams } from 'react-router-dom'
 import { canAccessDepartementUnit } from '@/features/departements/roles'
 import { usePersonneAffectations } from '@/features/personnes/hooks'
-import { PERMISSIONS } from '@/lib/permissions'
+import { hasWideAccess, PERMISSIONS } from '@/lib/permissions'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 
 /** Interface d'un département : lecture large, ou périmètre chef / adjoint / superviseur. */
 export function DepartementAccessRoute() {
   const { departementId } = useParams<{ departementId: string }>()
-  const canView =
-    useHasPermission(PERMISSIONS.DEPARTEMENTS_READ) ||
-    useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE) ||
-    useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE)
   const user = useCurrentUser()
+  const wide = hasWideAccess(user?.permissions ?? [])
+  const canViewWide =
+    wide &&
+    (useHasPermission(PERMISSIONS.DEPARTEMENTS_READ) ||
+      useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE) ||
+      useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE))
   const affectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
 
-  if (!canView && affectationsQuery.isLoading) {
+  if (!canViewWide && affectationsQuery.isLoading) {
     return <p className="text-sm text-slate-500">Vérification de l'accès…</p>
   }
 
@@ -26,7 +28,7 @@ export function DepartementAccessRoute() {
       canAccessDepartementUnit(affectation.fonction),
   )
 
-  if (!canView && !leadsThisDepartment) return <ForbiddenPage />
+  if (!canViewWide && !leadsThisDepartment) return <ForbiddenPage />
 
   return <Outlet />
 }

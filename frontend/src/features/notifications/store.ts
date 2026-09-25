@@ -1,5 +1,7 @@
 export type DemandeSuperviseurStatut = 'en_attente' | 'traitee' | 'refusee'
 
+export type RoleDemandeCompte = 'Superviseur' | 'Chef'
+
 export type DemandeSuperviseur = {
   id: string
   idPersonneCible: string
@@ -8,6 +10,7 @@ export type DemandeSuperviseur = {
   nomDepartement: string
   idDemandeur: string
   nomDemandeur: string
+  roleCible: RoleDemandeCompte
   statut: DemandeSuperviseurStatut
   emailCree?: string
   dateCreation: string
@@ -40,24 +43,30 @@ export function listDemandes() {
   return [...demandes].sort((left, right) => right.dateCreation.localeCompare(left.dateCreation))
 }
 
-export function findDemandeEnAttente(idPersonneCible: string, idDepartement: string) {
+export function findDemandeEnAttente(
+  idPersonneCible: string,
+  idDepartement: string,
+  roleCible?: RoleDemandeCompte,
+) {
   return demandes.find(
     (demande) =>
       demande.statut === 'en_attente' &&
       demande.idPersonneCible === idPersonneCible &&
-      demande.idDepartement === idDepartement,
+      demande.idDepartement === idDepartement &&
+      (!roleCible || demande.roleCible === roleCible),
   )
 }
 
-export function createDemandeSuperviseur(input: {
+export function createDemandeCompte(input: {
   idPersonneCible: string
   nomCible: string
   idDepartement: string
   nomDepartement: string
   idDemandeur: string
   nomDemandeur: string
+  roleCible: RoleDemandeCompte
 }) {
-  const existing = findDemandeEnAttente(input.idPersonneCible, input.idDepartement)
+  const existing = findDemandeEnAttente(input.idPersonneCible, input.idDepartement, input.roleCible)
   if (existing) return existing
 
   const created: DemandeSuperviseur = {
@@ -71,6 +80,14 @@ export function createDemandeSuperviseur(input: {
   demandes = [created, ...demandes]
   emit()
   return created
+}
+
+export function createDemandeSuperviseur(
+  input: Omit<Parameters<typeof createDemandeCompte>[0], 'roleCible'> & {
+    roleCible?: RoleDemandeCompte
+  },
+) {
+  return createDemandeCompte({ ...input, roleCible: input.roleCible ?? 'Superviseur' })
 }
 
 export function traiterDemandeSuperviseur(id: string, emailCree: string) {
@@ -112,6 +129,13 @@ export function unreadDemandesCount(input: { isAdmin: boolean; idPersonne?: stri
       !demande.luDemandeur
     )
   }).length
+}
+
+export function deleteDemande(id: string) {
+  const found = demandes.find((demande) => demande.id === id)
+  if (!found || found.statut === 'en_attente') return
+  demandes = demandes.filter((demande) => demande.id !== id)
+  emit()
 }
 
 export function resetDemandes() {

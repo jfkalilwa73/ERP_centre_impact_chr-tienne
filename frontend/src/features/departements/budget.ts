@@ -74,6 +74,10 @@ export function getEnveloppe(departementId: string) {
   return enveloppes[departementId] ?? { alloue: 0 }
 }
 
+export function listBudgetDepartementIds() {
+  return [...new Set([...Object.keys(enveloppes), ...Object.keys(depenses)])]
+}
+
 export function listDepenses(departementId: string) {
   return [...(depenses[departementId] ?? [])].sort((left, right) => right.date.localeCompare(left.date))
 }

@@ -17,7 +17,8 @@ describe('rôles d’un département', () => {
 
   it('garde le chef et l’adjoint comme pilotes d’équipe', () => {
     expect(roleDepartement('Chef')).toBe('Chef')
-    expect(roleDepartement('Responsable accueil')).toBe('Chef')
+    expect(roleDepartement('Responsable accueil')).toBe('Responsable')
+    expect(isLeadershipRole('Responsable accueil')).toBe(false)
     expect(isLeadershipRole('Chef')).toBe(true)
     expect(isLeadershipRole('Adjoint')).toBe(true)
     expect(canAccessDepartementUnit('Adjoint')).toBe(true)
