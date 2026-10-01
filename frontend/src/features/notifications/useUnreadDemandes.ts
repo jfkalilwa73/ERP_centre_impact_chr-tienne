@@ -20,7 +20,7 @@ export function useSyncAlertes() {
 }
 
 export function useUnreadDemandes() {
-  const { user, isAdmin, isPasteur, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
+  const { user, isAdmin, isPasteur, isDge, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
   useSyncAlertes()
   useSyncExternalStore(subscribeDemandes, getDemandesVersion, getDemandesVersion)
   useSyncExternalStore(subscribeCirculations, getCirculationsVersion, getCirculationsVersion)
@@ -32,6 +32,7 @@ export function useUnreadDemandes() {
     idPersonne: user.personne.idPersonne,
     isAdmin,
     isPasteur,
+    isDge,
     superviseurDepartementIds,
     chefDepartementIds,
   })

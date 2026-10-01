@@ -5,7 +5,8 @@ import type {
   PermissionUpdate,
 } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
-import { canReadRoles } from './access'
+import { permissionSearchHaystack } from '@/features/permissions/labels'
+import { canReadRoles, refreshAccountsHoldingPermission } from './access'
 import { appendAuditLog, mockDb } from './db'
 import {
   apiUrl,
@@ -47,9 +48,7 @@ export const permissionHandlers = [
     const filtered = mockDb.permissions.filter((permission) => {
       if (moduleFilter && permission.module.toLowerCase() !== moduleFilter) return false
       if (!q) return true
-      return [permission.code, permission.module, permission.action, permission.description]
-        .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(q))
+      return permissionSearchHaystack(permission).includes(q)
     })
 
     return HttpResponse.json(paginate(filtered, page, limit), { status: 200 })
@@ -163,6 +162,7 @@ export const permissionHandlers = [
       idEntite: permission.idPermission,
     })
 
+    refreshAccountsHoldingPermission(permission.idPermission)
     return HttpResponse.json(permission, { status: 200 })
   }),
 
@@ -198,5 +198,80 @@ export const permissionHandlers = [
       idEntite: String(params.permissionId),
     })
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get(apiUrl('permissions/:permissionId/roles'), async ({ params, request }) => {
+    await delay(150)
+
+    const result = authenticate(request.headers.get('Authorization'))
+    if (!result.authenticated) return unauthenticated('GET /permissions/:id/roles', result.reason)
+    if (!requirePermission(result.account, PERMISSIONS.ROLES_MANAGE)) return forbidden()
+
+    const permission = mockDb.permissions.find(
+      (candidate) => candidate.idPermission === params.permissionId,
+    )
+    if (!permission) return errorResponse(404, 'NOT_FOUND', 'Permission introuvable.')
+
+    const roleIds = new Set(
+      mockDb.rolePermissions
+        .filter((link) => link.idPermission === permission.idPermission)
+        .map((link) => link.idRole),
+    )
+    const roles = mockDb.roles
+      .filter((role) => roleIds.has(role.idRole))
+      .sort((left, right) => left.nom.localeCompare(right.nom, 'fr'))
+
+    return HttpResponse.json(roles, { status: 200 })
+  }),
+
+  http.get(apiUrl('permissions/:permissionId/comptes'), async ({ params, request }) => {
+    await delay(150)
+
+    const result = authenticate(request.headers.get('Authorization'))
+    if (!result.authenticated) return unauthenticated('GET /permissions/:id/comptes', result.reason)
+    if (!requirePermission(result.account, PERMISSIONS.ROLES_MANAGE)) return forbidden()
+
+    const permission = mockDb.permissions.find(
+      (candidate) => candidate.idPermission === params.permissionId,
+    )
+    if (!permission) return errorResponse(404, 'NOT_FOUND', 'Permission introuvable.')
+
+    const grantingRoleIds = new Set(
+      mockDb.rolePermissions
+        .filter((link) => link.idPermission === permission.idPermission)
+        .map((link) => link.idRole),
+    )
+    const compteIds = new Set(
+      mockDb.affectationsRole
+        .filter((affectation) => affectation.actif && grantingRoleIds.has(affectation.idRole))
+        .map((affectation) => affectation.idCompte),
+    )
+
+    const titulaires = [...compteIds]
+      .map((idCompte) => {
+        const compte = mockDb.comptes.find((candidate) => candidate.idCompte === idCompte)
+        const personne = mockDb.personnes.find(
+          (candidate) => candidate.idPersonne === compte?.idPersonne,
+        )
+        if (!compte || !personne) return null
+        const idRoles = mockDb.affectationsRole
+          .filter((affectation) => affectation.idCompte === idCompte && affectation.actif)
+          .map((affectation) => affectation.idRole)
+        return {
+          idCompte: compte.idCompte,
+          email: compte.email,
+          statut: compte.statut,
+          idPersonne: personne.idPersonne,
+          nom: personne.nom,
+          prenom: personne.prenom,
+          idRoles,
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((left, right) =>
+        `${left.prenom} ${left.nom}`.localeCompare(`${right.prenom} ${right.nom}`, 'fr'),
+      )
+
+    return HttpResponse.json(titulaires, { status: 200 })
   }),
 ]

@@ -20,6 +20,7 @@ import {
   http,
   HttpResponse,
   requirePermission,
+  revokeAccessTokensForCompte,
   unauthenticated,
 } from './http'
 
@@ -174,6 +175,19 @@ export const compteHandlers = [
       if (taken) return errorResponse(409, 'CONFLICT', 'Cette adresse e-mail est déjà utilisée.')
     }
 
+    const nextPassword = payload.motDePasse?.trim()
+    if (nextPassword) {
+      if (nextPassword.length < 8) {
+        return errorResponse(422, 'VALIDATION_ERROR', 'Données non conformes.', [
+          { field: 'motDePasse', rule: 'minLength' },
+        ])
+      }
+      const account = mockAccounts.find(
+        (candidate) => candidate.utilisateur.compte.idCompte === compte.idCompte,
+      )
+      if (account) account.motDePasse = nextPassword
+    }
+
     const statut = payload.statut ?? compte.statut
     Object.assign(compte, {
       ...(payload.email !== undefined ? { email: payload.email.trim().toLowerCase() } : {}),
@@ -186,6 +200,10 @@ export const compteHandlers = [
     })
 
     syncAccountCompte(compte)
+    refreshAccountAccess(compte.idCompte)
+    if (compte.statut !== 'actif') {
+      revokeAccessTokensForCompte(compte.idCompte)
+    }
     return HttpResponse.json(compte, { status: 200 })
   }),
 

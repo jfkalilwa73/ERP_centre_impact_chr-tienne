@@ -1,7 +1,8 @@
 import { useId, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { ChevronDown, Heart, Layers } from 'lucide-react'
+import { ChevronDown, FileText, Heart, LayoutDashboard, Layers, List } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { canSeePilotageDge } from '@/features/auth/orgRoles'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser } from '@/stores/authStore'
 import { useAccessScope } from '@/features/auth/accessScope'
@@ -9,7 +10,7 @@ import { useUnreadDemandes } from '@/features/notifications/useUnreadDemandes'
 import { useDepartements, useDepartementsByIds } from '@/features/departements/hooks'
 import { canAccessDepartementUnit } from '@/features/departements/roles'
 import { useFamilles, useFamillesByIds } from '@/features/familles/hooks'
-import { isLeadershipRole as isFamilleLeadership } from '@/features/familles/roles'
+import { canAccessFamilleUnit } from '@/features/familles/roles'
 import { usePersonneAffectations, usePersonneFamilles } from '@/features/personnes/hooks'
 import { isNavGroup, navigation, type NavItem } from '@/routes/navigation'
 
@@ -179,6 +180,29 @@ function DepartementsNav({
   const catalog = canSeeCatalog
     ? (departementsQuery.data?.data ?? [])
     : ledDepartementQueries.flatMap((query) => (query.data ? [query.data] : []))
+  const catalogLinks: NavItem[] = canSeePilotageDge(user)
+    ? [
+        {
+          to: '/departements',
+          label: 'Tableau de bord',
+          icon: LayoutDashboard,
+          permission: PERMISSIONS.DEPARTEMENTS_READ,
+          end: true,
+        },
+        {
+          to: '/departements/suivi',
+          label: 'Suivi DGE',
+          icon: List,
+          permission: PERMISSIONS.DEPARTEMENTS_READ,
+        },
+        {
+          to: '/departements/rapports',
+          label: 'Rapports reçus',
+          icon: FileText,
+          permission: PERMISSIONS.DEPARTEMENTS_READ,
+        },
+      ]
+    : catalogItems
   const departmentLinks: NavItem[] = catalog
     .filter((departement) => departement.actif)
     .filter((departement) => canManageAll || ledIds.has(departement.idDepartement))
@@ -187,7 +211,7 @@ function DepartementsNav({
       label: departement.nom,
       icon: Layers,
     }))
-  const children = [...catalogItems, ...departmentLinks]
+  const children = [...catalogLinks, ...departmentLinks]
   const loadingLeadership =
     !canSeeCatalog &&
     (affectationsQuery.isLoading || ledDepartementQueries.some((query) => query.isLoading))
@@ -237,7 +261,7 @@ function FamillesNav({
     () =>
       new Set(
         (affectationsQuery.data ?? [])
-          .filter((affectation) => affectation.actif && isFamilleLeadership(affectation.fonction))
+          .filter((affectation) => affectation.actif && canAccessFamilleUnit(affectation.fonction))
           .map((affectation) => affectation.idFamille),
       ),
     [affectationsQuery.data],
@@ -247,6 +271,29 @@ function FamillesNav({
   const catalog = canSeeCatalog
     ? (famillesQuery.data?.data ?? [])
     : ledFamilleQueries.flatMap((query) => (query.data ? [query.data] : []))
+  const catalogLinks: NavItem[] = canSeePilotageDge(user)
+    ? [
+        {
+          to: '/familles',
+          label: 'Tableau de bord',
+          icon: LayoutDashboard,
+          permission: PERMISSIONS.FAMILLES_READ,
+          end: true,
+        },
+        {
+          to: '/familles/suivi',
+          label: 'Suivi DGE',
+          icon: List,
+          permission: PERMISSIONS.FAMILLES_READ,
+        },
+        {
+          to: '/familles/rapports',
+          label: 'Rapports reçus',
+          icon: FileText,
+          permission: PERMISSIONS.FAMILLES_READ,
+        },
+      ]
+    : catalogItems
   const familleLinks: NavItem[] = catalog
     .filter((famille) => famille.actif)
     .filter((famille) => canManageAll || ledIds.has(famille.idFamille))
@@ -255,7 +302,7 @@ function FamillesNav({
       label: famille.nom,
       icon: Heart,
     }))
-  const children = [...catalogItems, ...familleLinks]
+  const children = [...catalogLinks, ...familleLinks]
   const loadingLeadership =
     !canSeeCatalog &&
     (affectationsQuery.isLoading || ledFamilleQueries.some((query) => query.isLoading))

@@ -18,6 +18,15 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // Proxy vers le backend Laravel pour éviter les erreurs CORS en développement.
+    // Le navigateur envoie les requêtes au serveur Vite qui les retransmet à Laravel.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   test: {
     environment: 'jsdom',

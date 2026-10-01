@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import type { CurrentUser, LoginResponse } from '@/types'
 
 type AuthState = {
@@ -39,6 +39,8 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'erp-eglise-auth',
+      storage: createJSONStorage(() => sessionStorage),
+      skipHydration: import.meta.env.MODE === 'test',
       partialize: (state) => ({
         accessToken: state.accessToken,
         accessTokenExpiresAt: state.accessTokenExpiresAt,

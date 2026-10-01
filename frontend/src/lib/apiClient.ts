@@ -33,7 +33,11 @@ api.interceptors.response.use(
     const isLoginAttempt = axios.isAxiosError(error) && error.config?.url === LOGIN_PATH
 
     if (apiError.status === 401 && !isLoginAttempt) {
-      useAuthStore.getState().closeSession()
+      const used = axios.isAxiosError(error) ? String(error.config?.headers?.Authorization ?? '') : ''
+      const current = useAuthStore.getState().accessToken
+      if (!current || used === `Bearer ${current}`) {
+        useAuthStore.getState().closeSession()
+      }
     }
 
     return Promise.reject(apiError)

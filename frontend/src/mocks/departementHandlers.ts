@@ -1,6 +1,6 @@
 import type { Departement, DepartementCreate, DepartementPage, DepartementUpdate } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
-import { leadsDepartement } from './access'
+import { canSeeAllUnits, leadsDepartement } from './access'
 import { mockDb } from './db'
 import {
   apiUrl,
@@ -113,7 +113,7 @@ export const departementHandlers = [
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /departements/:id', result.reason)
     const canRead =
-      requirePermission(result.account, PERMISSIONS.DEPARTEMENTS_READ) ||
+      canSeeAllUnits(result.account) ||
       leadsDepartement(result.account, String(params.departementId))
     if (!canRead) return forbidden()
 

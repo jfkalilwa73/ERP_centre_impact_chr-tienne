@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { invalidateCurrentUser } from '@/features/auth/hooks'
 import type { ApiError } from '@/lib/apiError'
 import type {
   AffectationRole,
@@ -14,6 +15,7 @@ import {
   getCompte,
   listComptes,
   listCompteRoles,
+  syncCompteRoles,
   unassignRoleFromCompte,
   updateCompte,
   type ListComptesParams,
@@ -56,6 +58,7 @@ function invalidateComptes(queryClient: ReturnType<typeof useQueryClient>, compt
     void queryClient.invalidateQueries({ queryKey: compteKeys.detail(compteId) })
     void queryClient.invalidateQueries({ queryKey: compteKeys.roles(compteId) })
   }
+  invalidateCurrentUser(queryClient)
 }
 
 export function useCreateCompte() {
@@ -74,8 +77,16 @@ export function useCreateCompte() {
 export function useUpdateCompte() {
   const queryClient = useQueryClient()
 
-  return useMutation<Compte, ApiError, { compteId: string; payload: CompteUpdate }>({
-    mutationFn: ({ compteId, payload }) => updateCompte(compteId, payload),
+  return useMutation<
+    Compte,
+    ApiError,
+    { compteId: string; payload: CompteUpdate; idRoles?: string[] }
+  >({
+    mutationFn: async ({ compteId, payload, idRoles }) => {
+      const updated = await updateCompte(compteId, payload)
+      if (idRoles) await syncCompteRoles(compteId, idRoles)
+      return updated
+    },
     onSuccess: (_data, variables) => invalidateComptes(queryClient, variables.compteId),
   })
 }

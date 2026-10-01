@@ -33,6 +33,7 @@ afterEach(() => {
   resetCirculations()
   useAuthStore.getState().closeSession()
   localStorage.clear()
+  sessionStorage.clear()
 })
 
 afterAll(() => server.close())

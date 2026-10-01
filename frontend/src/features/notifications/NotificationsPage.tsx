@@ -1,14 +1,15 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Trash2 } from 'lucide-react'
+import { Search, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { createCompteWithRoles, listComptes, listCompteRoles, assignRoleToCompte } from '@/features/comptes/api'
 import { listRoles } from '@/features/roles/api'
 import {
@@ -32,6 +33,13 @@ import {
   visibleCirculations,
 } from './circulation'
 import { useInboxScope } from './inbox'
+import {
+  filterCirculations,
+  filterDemandes,
+  inboxDepartements,
+  INBOX_FILTERS,
+} from './inboxFilter'
+import { useSyncAlertes } from './useUnreadDemandes'
 import {
   deleteDemande,
   getDemandesVersion,
@@ -68,8 +76,9 @@ function statutLabel(statut: DemandeSuperviseur['statut']) {
 
 export function NotificationsPage() {
   const queryClient = useQueryClient()
-  const { user, isAdmin, isPasteur, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
+  const { user, isAdmin, isPasteur, isDge, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
   const canTreat = isAdmin
+  useSyncAlertes()
   useSyncExternalStore(subscribeDemandes, getDemandesVersion, getDemandesVersion)
   useSyncExternalStore(subscribeCirculations, getCirculationsVersion, getCirculationsVersion)
 
@@ -77,20 +86,32 @@ export function NotificationsPage() {
   const [errorMessage, setErrorMessage] = useState<string>()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [reponses, setReponses] = useState<Record<string, string>>({})
+  const [recherche, setRecherche] = useState('')
+  const [typeFiltre, setTypeFiltre] = useState('')
+  const [departementFiltre, setDepartementFiltre] = useState('')
 
-  const demandes = listDemandes().filter((demande) =>
+  const inboxFilter = { q: recherche, kind: typeFiltre, departement: departementFiltre }
+  const demandesBrutes = listDemandes().filter((demande) =>
     canTreat ? true : demande.idDemandeur === user?.personne.idPersonne,
   )
-  const circulations = user
+  const circulationsBrutes = user
     ? visibleCirculations({
         idPersonne: user.personne.idPersonne,
         isAdmin,
         isPasteur,
+        isDge,
         superviseurDepartementIds,
         chefDepartementIds,
       })
     : []
-  const inboxEmpty = demandes.length === 0 && circulations.length === 0
+  const circulations = filterCirculations(circulationsBrutes, inboxFilter)
+  const demandes = filterDemandes(demandesBrutes, inboxFilter)
+  const departementOptions = useMemo(
+    () => inboxDepartements(circulationsBrutes, demandesBrutes),
+    [circulationsBrutes, demandesBrutes],
+  )
+  const inboxEmpty = demandesBrutes.length === 0 && circulationsBrutes.length === 0
+  const aucunResultat = !inboxEmpty && demandes.length === 0 && circulations.length === 0
 
   const {
     register,
@@ -176,7 +197,7 @@ export function NotificationsPage() {
   const onOpenInbox = () => {
     if (canTreat) markDemandesLues({ admin: true })
     else if (user) markDemandesLues({ idDemandeur: user.personne.idPersonne })
-    if (user) markCirculationsLues(user.personne.idPersonne, circulations)
+    if (user) markCirculationsLues(user.personne.idPersonne, circulationsBrutes)
   }
 
   const onReply = (id: string) => {
@@ -194,7 +215,7 @@ export function NotificationsPage() {
   }
 
   const onClearAll = () => {
-    deleteCirculations(circulations.map((item) => item.id))
+    deleteCirculations(circulationsBrutes.map((item) => item.id))
     demandes.forEach((demande) => {
       if (demande.statut !== 'en_attente') deleteDemande(demande.id)
     })
@@ -210,6 +231,53 @@ export function NotificationsPage() {
           </Button>
         )}
       </div>
+
+      {!inboxEmpty && (
+        <form className="grid gap-2 sm:grid-cols-[1fr_12rem_14rem]" role="search">
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-slate-400"
+              aria-hidden="true"
+            />
+            <Input
+              value={recherche}
+              onChange={(event) => setRecherche(event.target.value)}
+              placeholder="Rechercher un titre, un département, un auteur…"
+              aria-label="Rechercher dans les notifications"
+              className="pl-9"
+            />
+          </div>
+          <Select
+            aria-label="Filtrer par type"
+            value={typeFiltre}
+            onChange={(event) => setTypeFiltre(event.target.value)}
+          >
+            {INBOX_FILTERS.map((item) => (
+              <option key={item.value || 'tous'} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
+          <Select
+            aria-label="Filtrer par département"
+            value={departementFiltre}
+            onChange={(event) => setDepartementFiltre(event.target.value)}
+          >
+            <option value="">Tous les départements</option>
+            {departementOptions.map((nom) => (
+              <option key={nom} value={nom}>
+                {nom}
+              </option>
+            ))}
+          </Select>
+        </form>
+      )}
+
+      {aucunResultat && (
+        <p className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">
+          Aucune notification ne correspond à cette recherche.
+        </p>
+      )}
 
       {circulations.length > 0 && (
         <section className="flex flex-col gap-3">
@@ -277,7 +345,9 @@ export function NotificationsPage() {
                     <p className="mt-3 text-xs text-slate-500">
                       {item.kind === 'rappel'
                         ? 'Envoyé à chaque membre du département.'
-                        : 'Consultation uniquement. Seul le département destinataire peut répondre.'}
+                        : item.kind === 'compte_rendu'
+                          ? 'Le responsable assigné renseigne les présences et le déroulement dans Activités.'
+                          : 'Consultation uniquement. Seul le département destinataire peut répondre.'}
                     </p>
                   )}
                 </li>

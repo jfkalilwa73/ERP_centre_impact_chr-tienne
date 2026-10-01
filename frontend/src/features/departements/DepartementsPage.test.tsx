@@ -5,7 +5,9 @@ import { renderApp, seConnecter } from '@/test/renderApp'
 async function ouvrirDepartements(user: Awaited<ReturnType<typeof renderApp>>['user']) {
   await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
   await user.click(screen.getAllByRole('button', { name: 'Départements' })[0]!)
-  await user.click(screen.getAllByRole('link', { name: 'Tous les départements' })[0]!)
+  const tableau = screen.queryAllByRole('link', { name: 'Tableau de bord' })
+  const catalog = screen.queryAllByRole('link', { name: 'Tous les départements' })
+  await user.click((tableau[0] ?? catalog[0])!)
 }
 
 describe('écran Départements', () => {
@@ -23,6 +25,10 @@ describe('écran Départements', () => {
     ).toBeTruthy()
     expect(await screen.findByText(/Il y a diversité de dons/)).toBeTruthy()
     expect(await screen.findByRole('heading', { name: 'Départements' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Tableau de bord' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Suivi DGE' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Rapports reçus' })).toBeTruthy()
+    expect(await screen.findByText(/La DGE pilote les superviseurs/)).toBeTruthy()
     expect(await screen.findByText('Évolution globale')).toBeTruthy()
     expect(await screen.findByText('Effectifs par département')).toBeTruthy()
     expect(screen.queryByText('Création des départements')).toBeNull()
@@ -69,6 +75,7 @@ describe('écran Départements', () => {
     expect(screen.queryByText('Personnes retirées')).toBeNull()
     expect(await screen.findByText('Évolution du département')).toBeTruthy()
     expect(await screen.findByText('Évolution des activités')).toBeTruthy()
+    expect(await screen.findByText('Taux de présence des membres')).toBeTruthy()
 
     await user.click(screen.getByRole('tab', { name: 'Membres' }))
     expect(await screen.findByRole('button', { name: 'Affecter un membre' })).toBeTruthy()
@@ -122,6 +129,7 @@ describe('écran Départements', () => {
 
     await seConnecter(user, 'chef-louange@eglise.org', 'ChefDep2026!')
     expect(await screen.findByRole('heading', { name: 'Département Louange' }, { timeout: 8000 })).toBeTruthy()
+    expect(await screen.findByText('Taux de présence des membres')).toBeTruthy()
     expect(await screen.findByText('Budget alloué')).toBeTruthy()
     expect(screen.getByText('Dépenses suivies')).toBeTruthy()
     expect(screen.getByText('Disponible')).toBeTruthy()
@@ -161,23 +169,38 @@ describe('écran Départements', () => {
       screen.getByLabelText("Description de l'activité"),
       'Besoin de choristes supplémentaires.',
     )
-    await user.selectOptions(
-      screen.getByLabelText('Département destinataire'),
-      await screen.findByRole('option', { name: 'Département Accueil' }),
-    )
+    expect(screen.queryByLabelText('Département destinataire')).toBeNull()
+    expect(screen.getByLabelText('Cette activité nécessite un budget')).toBeTruthy()
     await user.click(screen.getByRole('button', { name: "Ajouter l'activité" }))
     expect(await screen.findByText('Répétition des bénévoles')).toBeTruthy()
     expect(screen.getByText(/chaque mardi · à 17 h 30 · présentiel/)).toBeTruthy()
 
+    await user.click(screen.getByRole('button', { name: 'Compte rendu' }))
+    expect(await screen.findByLabelText('Présence de Pierre MWAMBA')).toBeTruthy()
+    await user.type(
+      screen.getByLabelText("Déroulement de l'activité"),
+      'Préparation tenue, choeur complet.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Enregistrer le compte rendu' }))
+    expect(await screen.findByText('Préparation tenue, choeur complet.')).toBeTruthy()
+
     await user.click(screen.getByRole('tab', { name: 'Budget' }))
     expect(screen.queryByText('Budget alloué')).toBeNull()
     expect(screen.getByRole('button', { name: 'Envoyer la demande' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Enregistrer la rentrée' })).toBeTruthy()
+    expect(screen.getByText('Offrande du culte')).toBeTruthy()
+    await user.type(screen.getByLabelText('Motif de la rentrée'), 'Concert de soutien')
+    await user.type(screen.getByLabelText('Montant de la rentrée'), '75')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer la rentrée' }))
+    expect(await screen.findByText('Concert de soutien')).toBeTruthy()
     await user.type(screen.getByLabelText('Motif de la dépense'), 'Partitions')
     await user.type(screen.getByLabelText('Montant de la dépense'), '45')
     await user.click(screen.getByRole('button', { name: 'Envoyer la demande' }))
     expect(await screen.findByText('Partitions')).toBeTruthy()
 
     await user.click(screen.getByRole('tab', { name: 'Rapports' }))
+    expect(await screen.findByText("Rentrée d'argent : Concert de soutien")).toBeTruthy()
+    expect(await screen.findByText(/75,00 \$US enregistrés dans la caisse du département \(Département Louange\)/)).toBeTruthy()
     expect(screen.queryByText('Objectifs et écarts')).toBeNull()
     expect(screen.queryByRole('button', { name: "Créer le plan d'action" })).toBeNull()
     await user.type(screen.getByLabelText('Titre du rapport'), 'Point de semaine')
@@ -223,6 +246,15 @@ describe('écran Départements', () => {
     await ouvrirDepartements(user)
 
     expect(await screen.findByRole('heading', { name: 'Départements' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Tableau de bord' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Suivi DGE' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Rapports reçus' })).toBeTruthy()
+    expect(screen.queryByText('Compte rendu août')).toBeNull()
+    expect(await screen.findByText('DIAKONIE')).toBeTruthy()
+
+    await user.click(screen.getAllByRole('tab', { name: 'Rapports reçus' })[0]!)
+    expect(await screen.findByText('Compte rendu août')).toBeTruthy()
+    await user.click(screen.getAllByRole('tab', { name: 'Tableau de bord' })[0]!)
     expect(await screen.findByText('DIAKONIE')).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'Désigner le chef de Département Accueil' })).toBeTruthy()
 
@@ -236,4 +268,35 @@ describe('écran Départements', () => {
       expect(screen.getAllByText('Patrick MWAMBA').length).toBeGreaterThan(0)
     })
   })
+
+  it('laisse le DGE envoyer une demande à un département', async () => {
+    const { user } = renderApp()
+
+    await seConnecter(user, 'dge@eglise.org', 'Dge2026!')
+    await screen.findByRole('heading', { name: /Bonjour Esther/ }, { timeout: 8000 })
+    await ouvrirDepartements(user)
+    await user.click(screen.getAllByRole('link', { name: 'Suivi DGE' })[0]!)
+
+    await user.type(screen.getByLabelText('Titre de la demande au département'), 'Bilan du trimestre')
+    await user.type(
+      screen.getByLabelText('Description de la demande au département'),
+      'Merci de transmettre le rapport d’activités.',
+    )
+    await user.selectOptions(
+      screen.getByLabelText('Département destinataire de la demande'),
+      'Département Louange',
+    )
+    await user.click(screen.getByRole('button', { name: 'Envoyer la demande' }))
+    expect(await screen.findByText('Bilan du trimestre')).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
+    await user.click(screen.getAllByRole('button', { name: 'Déconnexion' }).at(-1)!)
+    expect(await screen.findByRole('heading', { name: 'Connexion' }, { timeout: 8000 })).toBeTruthy()
+
+    await seConnecter(user, 'chef-louange@eglise.org', 'ChefDep2026!')
+    await user.click(await screen.findByRole('button', { name: 'Ouvrir le menu' }, { timeout: 8000 }))
+    await user.click(screen.getByRole('link', { name: /Notifications/ }))
+    expect(await screen.findByText('Bilan du trimestre')).toBeTruthy()
+    expect(await screen.findByText('Demande du DGE')).toBeTruthy()
+  }, 25000)
 })

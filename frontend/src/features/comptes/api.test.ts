@@ -8,6 +8,7 @@ import {
   deleteCompte,
   listComptes,
   listCompteRoles,
+  syncCompteRoles,
   unassignRoleFromCompte,
   updateCompte,
 } from './api'
@@ -121,6 +122,31 @@ describe('API comptes', () => {
     ).rejects.toMatchObject({ status: 404 })
   })
 
+  it('réinitialise le mot de passe d’un compte existant', async () => {
+    await ouvrirSession()
+    const accueil = seedComptes.find((compte) => compte.email === 'accueil@eglise.org')
+    if (!accueil) throw new Error('compte accueil absent')
+
+    await updateCompte(accueil.idCompte, { motDePasse: 'NouveauAcces2026!' })
+
+    const { login } = await import('@/features/auth/api')
+    await expect(login({ email: 'accueil@eglise.org', motDePasse: 'Accueil2026!' })).rejects.toMatchObject({
+      status: 401,
+    })
+    const session = await login({ email: 'accueil@eglise.org', motDePasse: 'NouveauAcces2026!' })
+    expect(session.utilisateur.compte.email).toBe('accueil@eglise.org')
+  })
+
+  it('refuse un mot de passe trop court à la modification', async () => {
+    await ouvrirSession()
+    const accueil = seedComptes.find((compte) => compte.email === 'accueil@eglise.org')
+    if (!accueil) throw new Error('compte accueil absent')
+
+    await expect(updateCompte(accueil.idCompte, { motDePasse: 'court' })).rejects.toMatchObject({
+      status: 422,
+    })
+  })
+
   it('suspend un compte et horodate la désactivation', async () => {
     await ouvrirSession()
     const pasteur = seedComptes.find((compte) => compte.email === 'pasteur@eglise.org')
@@ -205,6 +231,21 @@ describe('API rôles des comptes', () => {
     await expect(
       assignRoleToCompte(admin.idCompte, { idRole: '00000000-0000-4000-8000-000000000000' }),
     ).rejects.toMatchObject({ status: 404 })
+  })
+
+  it('aligne les rôles d’un compte sur une nouvelle sélection', async () => {
+    await ouvrirSession()
+    const accueil = seedComptes.find((compte) => compte.email === 'accueil@eglise.org')
+    const accueilRole = seedRoles.find((role) => role.code === 'RESPONSABLE_ACCUEIL')
+    const pasteurRole = seedRoles.find((role) => role.code === 'PASTEUR')
+    if (!accueil || !accueilRole || !pasteurRole) throw new Error('jeu de démonstration incomplet')
+
+    await syncCompteRoles(accueil.idCompte, [pasteurRole.idRole])
+
+    const affectations = await listCompteRoles(accueil.idCompte)
+    const actifs = affectations.filter((affectation) => affectation.actif).map((item) => item.idRole)
+    expect(actifs).toEqual([pasteurRole.idRole])
+    expect(affectations.find((item) => item.idRole === accueilRole.idRole)?.actif).toBe(false)
   })
 
   it("retire un rôle sans l'effacer de l'historique", async () => {

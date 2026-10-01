@@ -4,7 +4,11 @@ import {
   isLeadershipRole,
   isSupervisionRole,
 } from '@/features/departements/roles'
-import { isLeadershipRole as isFamilleLeadership } from '@/features/familles/roles'
+import {
+  canAccessFamilleUnit,
+  isLeadershipRole as isFamilleLeadership,
+  isSupervisionRole as isFamilleSupervision,
+} from '@/features/familles/roles'
 import { usePersonneAffectations, usePersonneFamilles } from '@/features/personnes/hooks'
 import { hasWideAccess } from '@/lib/permissions'
 import { useCurrentUser } from '@/stores/authStore'
@@ -42,31 +46,55 @@ export function useAccessScope() {
   const ledFamilleIds = useMemo(
     () =>
       (famillesQuery.data ?? [])
+        .filter((affectation) => affectation.actif && canAccessFamilleUnit(affectation.fonction))
+        .map((affectation) => affectation.idFamille),
+    [famillesQuery.data],
+  )
+  const chefFamilleIds = useMemo(
+    () =>
+      (famillesQuery.data ?? [])
         .filter((affectation) => affectation.actif && isFamilleLeadership(affectation.fonction))
+        .map((affectation) => affectation.idFamille),
+    [famillesQuery.data],
+  )
+  const superviseurFamilleIds = useMemo(
+    () =>
+      (famillesQuery.data ?? [])
+        .filter((affectation) => affectation.actif && isFamilleSupervision(affectation.fonction))
         .map((affectation) => affectation.idFamille),
     [famillesQuery.data],
   )
 
   const isSuperviseur = superviseurDepartementIds.length > 0
+  const isSuperviseurFamille = superviseurFamilleIds.length > 0
   const isScoped = Boolean(user) && !wide
   const homePath = isSuperviseur
     ? '/departements'
-    : chefDepartementIds[0]
-      ? `/departements/${chefDepartementIds[0]}`
-      : ledDepartementIds[0]
-        ? `/departements/${ledDepartementIds[0]}`
-        : ledFamilleIds[0]
-          ? `/familles/${ledFamilleIds[0]}`
-          : '/'
+    : !isScoped && isSuperviseurFamille
+      ? '/familles'
+      : chefDepartementIds[0]
+        ? `/departements/${chefDepartementIds[0]}`
+        : ledDepartementIds[0]
+          ? `/departements/${ledDepartementIds[0]}`
+          : superviseurFamilleIds[0]
+            ? `/familles/${superviseurFamilleIds[0]}`
+            : chefFamilleIds[0]
+              ? `/familles/${chefFamilleIds[0]}`
+              : ledFamilleIds[0]
+                ? `/familles/${ledFamilleIds[0]}`
+                : '/'
 
   return {
     isScoped,
     isSuperviseur,
+    isSuperviseurFamille,
     isLoading: Boolean(user) && (departementsQuery.isLoading || famillesQuery.isLoading),
     homePath,
     ledDepartementIds,
     chefDepartementIds,
     superviseurDepartementIds,
     ledFamilleIds,
+    chefFamilleIds,
+    superviseurFamilleIds,
   }
 }

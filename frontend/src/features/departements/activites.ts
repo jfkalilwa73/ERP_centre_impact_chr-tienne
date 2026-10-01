@@ -1,7 +1,23 @@
+import { clampText, canMutateUnite, MAX_DESCRIPTION } from '@/lib/writeAccess'
+import { PERMISSIONS } from '@/lib/permissions'
+import type { SourceCaisse } from './budget'
+
 export type ActiviteStatut = 'planifiee' | 'faite'
 export type ActiviteConcerne = 'equipe' | 'benevoles' | 'priere' | 'tous'
 export type ActiviteRecurrence = 'unique' | 'constante'
 export type ActiviteModalite = 'presentiel' | 'en_ligne'
+
+export type PresenceMembre = {
+  idPersonne: string
+  nom: string
+  present: boolean
+}
+
+export type CompteRenduActivite = {
+  presence: PresenceMembre[]
+  deroulement: string
+  date: string
+}
 
 export type Activite = {
   id: string
@@ -17,6 +33,9 @@ export type Activite = {
   jours?: number[]
   heure?: string
   modalite?: ActiviteModalite
+  sourceBudget?: SourceCaisse
+  montantBudget?: number
+  compteRendu?: CompteRenduActivite
 }
 
 export type ActiviteDepartement = Activite
@@ -88,12 +107,27 @@ export function messageRappel(activite: Activite) {
   return activite.description.trim() ? `${debut} ${activite.description.trim()}` : debut
 }
 
+export function dateFinActivite(activite: Pick<Activite, 'date' | 'echeance'>) {
+  return activite.echeance || activite.date
+}
+
+export function besoinCompteRendu(
+  activite: Activite,
+  today = new Date().toISOString().slice(0, 10),
+) {
+  if (activite.compteRendu || activite.statut === 'faite') return false
+  if (activite.recurrence === 'constante') return false
+  return dateFinActivite(activite) <= today
+}
+
 type ActiviteInput = Omit<Activite, 'id' | 'statut'> & { statut?: ActiviteStatut }
 
+const ACTIVITE_WRITE = [PERMISSIONS.ACTIVITES_CREATE, PERMISSIONS.ACTIVITES_UPDATE] as const
+
 function applyActiviteFields(target: Activite, input: Partial<ActiviteInput>) {
-  if (input.titre !== undefined) target.titre = input.titre.trim()
+  if (input.titre !== undefined) target.titre = clampText(input.titre)
   if (input.date !== undefined) target.date = input.date
-  if (input.description !== undefined) target.description = input.description.trim()
+  if (input.description !== undefined) target.description = clampText(input.description, MAX_DESCRIPTION)
   if (input.statut !== undefined) target.statut = input.statut
   if (input.idResponsable !== undefined) target.idResponsable = input.idResponsable || undefined
   if (input.nomResponsable !== undefined) target.nomResponsable = input.nomResponsable.trim() || undefined
@@ -103,6 +137,11 @@ function applyActiviteFields(target: Activite, input: Partial<ActiviteInput>) {
   if (input.jours !== undefined) target.jours = input.jours.length ? [...input.jours] : undefined
   if (input.heure !== undefined) target.heure = input.heure || undefined
   if (input.modalite !== undefined) target.modalite = input.modalite || undefined
+  if (input.sourceBudget !== undefined) target.sourceBudget = input.sourceBudget || undefined
+  if (input.montantBudget !== undefined) {
+    target.montantBudget = input.montantBudget && input.montantBudget > 0 ? input.montantBudget : undefined
+  }
+  if (input.compteRendu !== undefined) target.compteRendu = input.compteRendu
 }
 
 /** Store local d'activités par entité (département, famille d'impact…), en attendant l'API. */
@@ -110,7 +149,16 @@ export function createActivitesStore(initiales: Record<string, Activite[]>) {
   function cloneSeed() {
     const copy: Record<string, Activite[]> = {}
     for (const [id, items] of Object.entries(initiales)) {
-      copy[id] = items.map((item) => ({ ...item, jours: item.jours ? [...item.jours] : undefined }))
+      copy[id] = items.map((item) => ({
+        ...item,
+        jours: item.jours ? [...item.jours] : undefined,
+        compteRendu: item.compteRendu
+          ? {
+              ...item.compteRendu,
+              presence: item.compteRendu.presence.map((ligne) => ({ ...ligne })),
+            }
+          : undefined,
+      }))
     }
     return copy
   }
@@ -152,11 +200,12 @@ export function createActivitesStore(initiales: Record<string, Activite[]>) {
     },
 
     add(ownerId: string, input: ActiviteInput) {
+      if (!canMutateUnite(ownerId, ACTIVITE_WRITE)) return undefined
       const created: Activite = {
         id: crypto.randomUUID(),
-        titre: input.titre.trim(),
+        titre: clampText(input.titre),
         date: input.date,
-        description: input.description.trim(),
+        description: clampText(input.description, MAX_DESCRIPTION),
         statut: input.statut ?? 'planifiee',
       }
       applyActiviteFields(created, input)
@@ -166,6 +215,7 @@ export function createActivitesStore(initiales: Record<string, Activite[]>) {
     },
 
     update(ownerId: string, activiteId: string, input: Partial<ActiviteInput>) {
+      if (!canMutateUnite(ownerId, ACTIVITE_WRITE)) return
       const found = (activites[ownerId] ?? []).find((item) => item.id === activiteId)
       if (!found) return
       applyActiviteFields(found, input)
@@ -174,12 +224,28 @@ export function createActivitesStore(initiales: Record<string, Activite[]>) {
     },
 
     marquerFaite(ownerId: string, activiteId: string) {
+      if (!canMutateUnite(ownerId, ACTIVITE_WRITE)) return
       const found = (activites[ownerId] ?? []).find((item) => item.id === activiteId)
       if (found) found.statut = 'faite'
       emit()
     },
 
+    enregistrerCompteRendu(ownerId: string, activiteId: string, input: CompteRenduActivite) {
+      if (!canMutateUnite(ownerId, ACTIVITE_WRITE)) return
+      const found = (activites[ownerId] ?? []).find((item) => item.id === activiteId)
+      if (!found) return
+      found.compteRendu = {
+        presence: input.presence.map((ligne) => ({ ...ligne })),
+        deroulement: clampText(input.deroulement, MAX_DESCRIPTION),
+        date: input.date,
+      }
+      found.statut = 'faite'
+      emit()
+      return found
+    },
+
     remove(ownerId: string, activiteId: string) {
+      if (!canMutateUnite(ownerId, ACTIVITE_WRITE)) return
       activites[ownerId] = (activites[ownerId] ?? []).filter((item) => item.id !== activiteId)
       emit()
     },
@@ -204,6 +270,15 @@ const store = createActivitesStore({
       statut: 'faite',
       concerne: 'equipe',
       recurrence: 'unique',
+      compteRendu: {
+        date: '2026-04-18',
+        deroulement: 'Équipes du dimanche réparties.',
+        presence: [
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-000000000001', nom: 'Jean KABILA', present: true },
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-000000000002', nom: 'Grâce MUKENDI', present: true },
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a', nom: 'Daniel KASONGO', present: true },
+        ],
+      },
     },
     {
       id: 'act-accueil-2',
@@ -213,6 +288,15 @@ const store = createActivitesStore({
       statut: 'faite',
       concerne: 'benevoles',
       recurrence: 'unique',
+      compteRendu: {
+        date: '2026-06-12',
+        deroulement: 'Accueil porte principale revu.',
+        presence: [
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-000000000001', nom: 'Jean KABILA', present: true },
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-000000000002', nom: 'Grâce MUKENDI', present: true },
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a', nom: 'Daniel KASONGO', present: true },
+        ],
+      },
     },
     {
       id: 'act-accueil-3',
@@ -257,6 +341,48 @@ const store = createActivitesStore({
       statut: 'faite',
       concerne: 'equipe',
       recurrence: 'unique',
+      compteRendu: {
+        date: '2026-05-03',
+        deroulement: 'Répétition tenue.',
+        presence: [
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-000000000007', nom: 'Pierre MWAMBA', present: true },
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a', nom: 'Daniel KASONGO', present: true },
+        ],
+      },
+    },
+    {
+      id: 'act-louange-atelier',
+      titre: 'Atelier vocal',
+      date: '2026-06-20',
+      description: '',
+      statut: 'faite',
+      concerne: 'equipe',
+      recurrence: 'unique',
+      compteRendu: {
+        date: '2026-06-20',
+        deroulement: 'Travail des voix.',
+        presence: [
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-000000000007', nom: 'Pierre MWAMBA', present: true },
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a', nom: 'Daniel KASONGO', present: false },
+        ],
+      },
+    },
+    {
+      id: 'act-louange-culte',
+      titre: 'Culte du 14 juin',
+      date: '2026-06-14',
+      description: '',
+      statut: 'faite',
+      concerne: 'equipe',
+      recurrence: 'unique',
+      compteRendu: {
+        date: '2026-06-14',
+        deroulement: 'Culte conduit.',
+        presence: [
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-000000000007', nom: 'Pierre MWAMBA', present: true },
+          { idPersonne: 'b2d4f6a8-0004-4000-8000-00000000000a', nom: 'Daniel KASONGO', present: false },
+        ],
+      },
     },
     {
       id: 'act-louange-2',
@@ -279,6 +405,7 @@ export const listActivites = store.list
 export const addActivite = store.add
 export const updateActivite = store.update
 export const marquerActiviteFaite = store.marquerFaite
+export const enregistrerCompteRendu = store.enregistrerCompteRendu
 export const deleteActivite = store.remove
 export const resetActivites = store.reset
 

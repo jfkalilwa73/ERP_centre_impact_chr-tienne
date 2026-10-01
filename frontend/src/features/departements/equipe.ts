@@ -1,3 +1,6 @@
+import { clampText, canMutateUnite } from '@/lib/writeAccess'
+import { PERMISSIONS } from '@/lib/permissions'
+
 export type Disponibilite = 'disponible' | 'partiel' | 'indisponible'
 
 export type FicheEquipe = {
@@ -99,13 +102,14 @@ export function getFicheEquipe(departementId: string, idPersonne: string) {
 }
 
 export function upsertFicheEquipe(departementId: string, input: FicheEquipe) {
+  if (!canMutateUnite(departementId, [PERMISSIONS.EQUIPES_MANAGE])) return
   const list = fiches[departementId] ?? []
   const found = list.find((item) => item.idPersonne === input.idPersonne)
   if (found) {
-    found.responsabilite = input.responsabilite.trim()
+    found.responsabilite = clampText(input.responsabilite)
     found.disponibilite = input.disponibilite
   } else {
-    fiches[departementId] = [...list, { ...input, responsabilite: input.responsabilite.trim() }]
+    fiches[departementId] = [...list, { ...input, responsabilite: clampText(input.responsabilite) }]
   }
   emit()
 }
@@ -118,10 +122,11 @@ export function addCreneauBenevole(
   departementId: string,
   input: Omit<CreneauBenevole, 'id'>,
 ) {
+  if (!canMutateUnite(departementId, [PERMISSIONS.EQUIPES_MANAGE])) return undefined
   const created: CreneauBenevole = {
     id: crypto.randomUUID(),
     date: input.date,
-    besoin: input.besoin.trim(),
+    besoin: clampText(input.besoin),
     idPersonne: input.idPersonne || undefined,
     nomPersonne: input.nomPersonne?.trim() || undefined,
   }
@@ -135,6 +140,7 @@ export function assignCreneauBenevole(
   creneauId: string,
   input: { idPersonne?: string; nomPersonne?: string },
 ) {
+  if (!canMutateUnite(departementId, [PERMISSIONS.EQUIPES_MANAGE])) return
   const found = (creneaux[departementId] ?? []).find((item) => item.id === creneauId)
   if (!found) return
   found.idPersonne = input.idPersonne || undefined
@@ -143,6 +149,7 @@ export function assignCreneauBenevole(
 }
 
 export function deleteCreneauBenevole(departementId: string, creneauId: string) {
+  if (!canMutateUnite(departementId, [PERMISSIONS.EQUIPES_MANAGE])) return
   creneaux[departementId] = (creneaux[departementId] ?? []).filter((item) => item.id !== creneauId)
   emit()
 }

@@ -1,20 +1,19 @@
 import { Outlet, useParams } from 'react-router-dom'
+import { canSeeAllUnits } from '@/features/auth/orgRoles'
 import { canAccessDepartementUnit } from '@/features/departements/roles'
 import { usePersonneAffectations } from '@/features/personnes/hooks'
-import { hasWideAccess, PERMISSIONS } from '@/lib/permissions'
+import { PERMISSIONS } from '@/lib/permissions'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 
-/** Interface d'un département : lecture large, ou périmètre chef / adjoint / superviseur. */
+/** Interface d'un département : DGE / admin / pasteur, ou chef / adjoint / superviseur de l'unité. */
 export function DepartementAccessRoute() {
   const { departementId } = useParams<{ departementId: string }>()
   const user = useCurrentUser()
-  const wide = hasWideAccess(user?.permissions ?? [])
   const canViewWide =
-    wide &&
-    (useHasPermission(PERMISSIONS.DEPARTEMENTS_READ) ||
-      useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE) ||
-      useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE))
+    canSeeAllUnits(user) ||
+    useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE) ||
+    useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE)
   const affectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
 
   if (!canViewWide && affectationsQuery.isLoading) {

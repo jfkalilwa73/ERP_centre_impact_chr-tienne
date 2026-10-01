@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { seedSites } from '@/mocks/fixtures'
 import { useAuthStore } from '@/stores/authStore'
-import { createDepartement, deleteDepartement, listDepartements, updateDepartement } from './api'
+import {
+  createDepartement,
+  deleteDepartement,
+  getDepartement,
+  listDepartements,
+  updateDepartement,
+} from './api'
 
 const identifiants = { email: 'admin@eglise.org', motDePasse: 'SecurePass123!' }
 const siteCentral = seedSites[0]
@@ -20,8 +26,9 @@ describe('API départements', () => {
 
     const page = await listDepartements({ page: 1, limit: 20 })
 
-    expect(page.pagination.total).toBe(3)
+    expect(page.pagination.total).toBe(4)
     expect(page.data.map((departement) => departement.code)).toContain('ACCUEIL')
+    expect(page.data.map((departement) => departement.code)).toContain('CAISSE')
   })
 
   it('filtre par site', async () => {
@@ -106,6 +113,20 @@ describe('API départements', () => {
     await expect(deleteDepartement(libre.idDepartement)).resolves.toBeUndefined()
     const remaining = await listDepartements()
     expect(remaining.data.some((item) => item.code === 'DIAKONIE')).toBe(false)
+  })
+
+  it('interdit la fiche d’un département hors périmètre', async () => {
+    await ouvrirSession('accueil@eglise.org', 'Accueil2026!')
+    const louange = (await listDepartements()).data.find((item) => item.code === 'LOUANGE')
+    if (!louange) throw new Error('département Louange absent')
+
+    await expect(getDepartement(louange.idDepartement)).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('laisse le chef lire son département', async () => {
+    await ouvrirSession('chef-louange@eglise.org', 'ChefDep2026!')
+    const departement = await getDepartement('d4f6b8c0-0006-4000-8000-000000000002')
+    expect(departement.code).toBe('LOUANGE')
   })
 
   it('interdit la création sans le droit departements.create', async () => {

@@ -9,6 +9,7 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
 import { Select } from '@/components/ui/Select'
 import { usePermissions } from '@/features/permissions/hooks'
+import { actionLabel, moduleLabel, permissionLabel } from '@/features/permissions/labels'
 import { PERMISSIONS } from '@/lib/permissions'
 import { errorId } from '@/lib/form'
 import { useHasPermission } from '@/stores/authStore'
@@ -125,7 +126,7 @@ export function RoleDetailPage() {
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-slate-900">Permissions</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Droits de ce rôle</h2>
           {canManage && (
             <Button
               size="sm"
@@ -135,7 +136,7 @@ export function RoleDetailPage() {
               }}
             >
               <Plus className="size-4" aria-hidden="true" />
-              Attribuer une permission
+              Attribuer un droit
             </Button>
           )}
         </div>
@@ -148,7 +149,7 @@ export function RoleDetailPage() {
 
         {assignedQuery.isSuccess && assigned.length === 0 && (
           <p className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-sm text-slate-500">
-            Aucune permission attribuée : ce rôle n'accorde aucun droit.
+            Aucun droit attribué : ce rôle n’ouvre encore rien.
           </p>
         )}
 
@@ -157,9 +158,9 @@ export function RoleDetailPage() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Code</th>
-                  <th className="px-4 py-3 font-medium">Module</th>
-                  <th className="hidden px-4 py-3 font-medium sm:table-cell">Action</th>
+                  <th className="px-4 py-3 font-medium">Droit</th>
+                  <th className="px-4 py-3 font-medium">Rubrique</th>
+                  <th className="hidden px-4 py-3 font-medium sm:table-cell">Ce qu’on peut faire</th>
                   {canManage && <th className="px-4 py-3 text-right font-medium">Actions</th>}
                 </tr>
               </thead>
@@ -167,14 +168,11 @@ export function RoleDetailPage() {
                 {assigned.map((permission) => (
                   <tr key={permission.idPermission} className="border-b border-slate-100 last:border-0">
                     <td className="px-4 py-3">
-                      <p className="font-mono text-xs text-slate-700">{permission.code}</p>
-                      {permission.description && (
-                        <p className="mt-0.5 text-xs text-slate-500">{permission.description}</p>
-                      )}
+                      <p className="font-medium text-slate-900">{permissionLabel(permission)}</p>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{permission.module}</td>
+                    <td className="px-4 py-3 text-slate-600">{moduleLabel(permission.module)}</td>
                     <td className="hidden px-4 py-3 text-slate-600 sm:table-cell">
-                      {permission.action}
+                      {actionLabel(permission.action)}
                     </td>
                     {canManage && (
                       <td className="px-4 py-3 text-right">
@@ -214,8 +212,8 @@ export function RoleDetailPage() {
         }}
       >
         <DialogContent
-          title="Attribuer une permission"
-          description="Le changement est audité. Une permission retirée n'apparaît plus sur ce rôle."
+          title="Attribuer un droit"
+          description="Le changement est audité. Un droit retiré n’apparaît plus sur ce rôle."
         >
           <form onSubmit={onAssign} noValidate className="flex flex-col gap-4">
             {assignMutation.isError && (
@@ -225,7 +223,7 @@ export function RoleDetailPage() {
             )}
             <FormField
               id="role-permission"
-              label="Permission"
+              label="Droit"
               error={errors.idPermission?.message}
             >
               <Select
@@ -234,11 +232,11 @@ export function RoleDetailPage() {
                 aria-describedby={errors.idPermission ? errorId('role-permission') : undefined}
                 {...register('idPermission')}
               >
-                <option value="">Choisir une permission</option>
+                <option value="">Choisir un droit</option>
                 {available.map((permission) => (
                   <option key={permission.idPermission} value={permission.idPermission}>
-                    {permission.code}
-                    {permission.description ? ` — ${permission.description}` : ''}
+                    {permissionLabel(permission)}
+                    {` (${moduleLabel(permission.module)})`}
                   </option>
                 ))}
               </Select>
@@ -248,7 +246,7 @@ export function RoleDetailPage() {
                 Annuler
               </Button>
               <Button type="submit" isLoading={assignMutation.isPending}>
-                Enregistrer la permission
+                Enregistrer le droit
               </Button>
             </div>
           </form>

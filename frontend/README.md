@@ -31,17 +31,33 @@ npm run api:types
 (`Personne`, `LoginResponse`, `Site`…). Quand le contrat évolue, on régénère et on
 corrige les erreurs de compilation qui en découlent.
 
-## API simulée
+## Connexion au backend
 
-Le backend Laravel n'expose pas encore les routes du contrat. En attendant, MSW
-(`src/mocks/`) répond à l'authentification, aux personnes, aux comptes, aux
-sites, aux départements, aux rôles, aux permissions et à la consultation de
-l'audit.
+Le frontend est prêt à consommer le backend Laravel. La variable `VITE_USE_MOCKS`
+est positionnée à `false` dans `.env` : toutes les requêtes partent vers le vrai serveur.
 
-- `VITE_USE_MOCKS=true` active la simulation ; `false` tape le vrai serveur.
-- La simulation est refusée si `VITE_APP_ENV=production`, quelle que soit la valeur
+**Proxy Vite (développement)** : `vite.config.ts` redirige `/api/*` vers `http://localhost:8000`.
+Il n'y a donc **aucun problème CORS** en développement local — il suffit que le serveur
+Laravel tourne sur le port 8000.
+
+```bash
+# Pour démarrer avec le vrai backend :
+# 1. Lancer les services Docker (PostgreSQL, Redis, Mailpit, Backend)
+docker-compose up -d
+# 2. Démarrer le frontend
+npm run dev
+```
+
+**Réactiver les mocks** (backend indisponible) :
+```bash
+# Dans frontend/.env, changer :
+VITE_USE_MOCKS=true
+```
+
+- La simulation est **refusée si `VITE_APP_ENV=production`**, quelle que soit la valeur
   de `VITE_USE_MOCKS`.
-- Comptes de démonstration dans `src/mocks/fixtures.ts`.
+- Les handlers MSW et les comptes de démonstration restent dans `src/mocks/` pour les tests.
+
 
 ## Authentification
 

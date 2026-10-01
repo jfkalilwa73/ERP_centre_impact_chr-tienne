@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { notifyMembresActivite } from './activiteNotifications'
 import {
   addActivite,
+  besoinCompteRendu,
   formatJours,
   messageRappel,
   resetActivites,
@@ -71,5 +72,40 @@ describe('activités constantes', () => {
     expect(visible[0]?.kind).toBe('rappel')
     expect(visible[0]?.description).toContain('chaque dimanche · à 8 h 30 · présentiel')
     expect(listCirculations()[0]?.idPersonnesNotifiees).toEqual(['choriste'])
+  })
+
+  it('demande un compte rendu au responsable une fois l’échéance atteinte', () => {
+    expect(
+      besoinCompteRendu({
+        id: '1',
+        titre: 'Préparation du culte',
+        date: '2026-09-07',
+        description: '',
+        statut: 'planifiee',
+        echeance: '2026-09-06',
+        recurrence: 'unique',
+      }),
+    ).toBe(true)
+    expect(
+      besoinCompteRendu({
+        id: '2',
+        titre: 'Répétition',
+        date: '2026-09-22',
+        description: '',
+        statut: 'planifiee',
+        recurrence: 'constante',
+        jours: [2, 6],
+      }),
+    ).toBe(false)
+    expect(
+      besoinCompteRendu({
+        id: '3',
+        titre: 'Répétition générale',
+        date: '2026-05-03',
+        description: '',
+        statut: 'faite',
+        recurrence: 'unique',
+      }),
+    ).toBe(false)
   })
 })

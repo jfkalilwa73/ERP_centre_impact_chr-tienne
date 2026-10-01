@@ -24,6 +24,7 @@ describe('circulation des messages de département', () => {
   it('est visible du superviseur, du pasteur et de l’admin, mais seul le destinataire répond', () => {
     resetCirculations()
     const created = createCirculation(payload)
+    if (!created) throw new Error('circulation attendue')
 
     const visibleAdmin = visibleCirculations({
       isAdmin: true,
@@ -43,9 +44,17 @@ describe('circulation des messages de département', () => {
       superviseurDepartementIds: ['louange'],
       chefDepartementIds: [],
     })
+    const visibleDge = visibleCirculations({
+      isAdmin: false,
+      isPasteur: false,
+      isDge: true,
+      superviseurDepartementIds: [],
+      chefDepartementIds: [],
+    })
 
     expect(visibleAdmin.map((item) => item.id)).toContain(created.id)
     expect(visiblePasteur.map((item) => item.id)).toContain(created.id)
+    expect(visibleDge.map((item) => item.id)).toContain(created.id)
     expect(visibleSuperviseur.map((item) => item.id)).toContain(created.id)
     expect(canReplyCirculation(created, [])).toBe(false)
     expect(canReplyCirculation(created, ['louange'])).toBe(false)
@@ -78,6 +87,7 @@ describe('circulation des messages de département', () => {
       nomAuteur: 'Pierre MWAMBA',
       idPersonnesNotifiees: ['membre-1'],
     })
+    if (!rappel) throw new Error('rappel attendu')
 
     const visibleMembre = visibleCirculations({
       idPersonne: 'membre-1',

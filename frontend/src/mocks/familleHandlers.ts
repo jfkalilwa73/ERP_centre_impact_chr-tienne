@@ -5,6 +5,7 @@ import type {
   FamilleImpactUpdate,
 } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
+import { canSeeAllUnits, leadsFamille } from './access'
 import { mockDb } from './db'
 import {
   apiUrl,
@@ -105,6 +106,9 @@ export const familleHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('GET /familles-impact/:id', result.reason)
+    const canRead =
+      canSeeAllUnits(result.account) || leadsFamille(result.account, String(params.familleId))
+    if (!canRead) return forbidden()
 
     const famille = mockDb.familles.find((candidate) => candidate.idFamille === params.familleId)
     if (!famille) return errorResponse(404, 'NOT_FOUND', 'Famille d’impact introuvable.')

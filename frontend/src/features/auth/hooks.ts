@@ -9,6 +9,10 @@ export const authKeys = {
   me: ['auth', 'me'] as const,
 }
 
+export function invalidateCurrentUser(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: authKeys.me })
+}
+
 export function useLogin() {
   const openSession = useAuthStore((state) => state.openSession)
 
@@ -40,17 +44,24 @@ export function useLogout() {
 export function useSyncCurrentUser() {
   const isAuthenticated = useIsAuthenticated()
   const setUser = useAuthStore((state) => state.setUser)
+  const closeSession = useAuthStore((state) => state.closeSession)
 
   const query = useQuery({
     queryKey: authKeys.me,
     queryFn: getCurrentUser,
     enabled: isAuthenticated,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 15 * 1000,
+    refetchOnWindowFocus: true,
   })
 
   useEffect(() => {
-    if (query.data) setUser(query.data)
-  }, [query.data, setUser])
+    if (!query.data) return
+    if (query.data.compte.statut !== 'actif') {
+      closeSession()
+      return
+    }
+    setUser(query.data)
+  }, [closeSession, query.data, setUser])
 
   return query
 }

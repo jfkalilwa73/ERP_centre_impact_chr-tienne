@@ -5,7 +5,9 @@ import { renderApp, seConnecter } from '@/test/renderApp'
 async function ouvrirFamilles(user: Awaited<ReturnType<typeof renderApp>>['user']) {
   await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
   await user.click(screen.getAllByRole('button', { name: "Familles d'impact" })[0]!)
-  await user.click(screen.getAllByRole('link', { name: "Toutes les familles d'impact" })[0]!)
+  const tableau = screen.queryAllByRole('link', { name: 'Tableau de bord' })
+  const catalog = screen.queryAllByRole('link', { name: "Toutes les familles d'impact" })
+  await user.click((tableau[0] ?? catalog[0])!)
 }
 
 describe("écran Familles d'impact", () => {
@@ -27,7 +29,11 @@ describe("écran Familles d'impact", () => {
     expect(await screen.findByText('Effectifs par famille')).toBeTruthy()
     expect(screen.queryByText('Évolution des activités')).toBeNull()
     expect(await screen.findByText('BATISSEURS')).toBeTruthy()
+    expect(await screen.findByRole('columnheader', { name: 'Superviseur' })).toBeTruthy()
     expect(await screen.findByRole('columnheader', { name: 'Chef' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Tableau de bord' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Suivi DGE' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Rapports reçus' })).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: 'Nouvelle famille' }))
     await user.type(screen.getByLabelText('Code'), 'ESPERANCE')
@@ -69,6 +75,7 @@ describe("écran Familles d'impact", () => {
     expect(await screen.findByText('Femmes')).toBeTruthy()
     expect(await screen.findByText('Évolution de la famille')).toBeTruthy()
     expect(await screen.findByText('Évolution des activités')).toBeTruthy()
+    expect(await screen.findByText('Taux de présence des membres')).toBeTruthy()
 
     await user.click(screen.getByRole('tab', { name: 'Membres' }))
     expect(await screen.findByRole('button', { name: 'Affecter un membre' })).toBeTruthy()
@@ -79,6 +86,17 @@ describe("écran Familles d'impact", () => {
     await user.type(screen.getByLabelText("Date de l'activité"), '2026-09-30')
     await user.click(screen.getByRole('button', { name: "Ajouter l'activité" }))
     expect(await screen.findByText('Réunion bâtisseurs')).toBeTruthy()
+
+    await user.click(screen.getByRole('tab', { name: 'Budget' }))
+    expect(screen.getByText('Cotisations de cellule')).toBeTruthy()
+    await user.type(screen.getByLabelText('Motif de la rentrée'), 'Offrande de famille')
+    await user.type(screen.getByLabelText('Montant de la rentrée'), '40')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer la rentrée' }))
+    expect(await screen.findByText('Offrande de famille')).toBeTruthy()
+    await user.click(screen.getByRole('tab', { name: 'Rapports' }))
+    expect((await screen.findAllByText("Rentrée d'argent : Offrande de famille")).length).toBeGreaterThan(
+      0,
+    )
   })
 
   it('laisse consulter sans proposer de création à un compte lecture seule', async () => {
@@ -100,6 +118,23 @@ describe("écran Familles d'impact", () => {
     expect(await screen.findByRole('heading', { name: "Familles d'impact" })).toBeTruthy()
     expect(await screen.findByText('BATISSEURS')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Nouvelle famille' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Suivi DGE' })).toBeNull()
+  })
+
+  it('permet au DGE de suivre les demandes et rapports des familles', async () => {
+    const { user } = renderApp()
+
+    await seConnecter(user, 'dge@eglise.org', 'Dge2026!')
+    await screen.findByRole('heading', { name: /Bonjour Esther/ }, { timeout: 8000 })
+    await ouvrirFamilles(user)
+
+    expect(await screen.findByRole('tab', { name: 'Suivi DGE' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Rapports reçus' })).toBeTruthy()
+    expect(screen.queryByText('Compte rendu août')).toBeNull()
+
+    await user.click(screen.getAllByRole('tab', { name: 'Rapports reçus' })[0]!)
+    expect(await screen.findByText('Compte rendu août')).toBeTruthy()
+    expect(await screen.findByText(/Famille Bâtisseurs/)).toBeTruthy()
   })
 
   it("limite un chef de famille à son seul tableau de bord", async () => {

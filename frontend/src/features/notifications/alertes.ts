@@ -1,5 +1,8 @@
-import { listAllActivites } from '@/features/departements/activites'
+import { besoinCompteRendu, listAllActivites } from '@/features/departements/activites'
+import { listAllActivitesFamille } from '@/features/familles/activites'
+import { presenceFaible, tauxPresenceMembres } from '@/features/departements/presence'
 import {
+  CAISSE_EGLISE,
   formatMontant,
   listBudgetDepartementIds,
   syntheseBudget,
@@ -10,29 +13,71 @@ const NOMS: Record<string, string> = {
   'd4f6b8c0-0006-4000-8000-000000000001': 'Département Accueil',
   'd4f6b8c0-0006-4000-8000-000000000002': 'Département Louange',
   'd4f6b8c0-0006-4000-8000-000000000003': 'Département Diaconie',
+  'f1a2b3c4-0008-4000-8000-000000000001': 'Famille Bâtisseurs',
+  'f1a2b3c4-0008-4000-8000-000000000002': 'Famille Lumières',
+  'f1a2b3c4-0008-4000-8000-000000000003': 'Famille Grâce',
+  [CAISSE_EGLISE.idDepartement]: CAISSE_EGLISE.nom,
+}
+
+const FAMILLE_IDS = new Set([
+  'f1a2b3c4-0008-4000-8000-000000000001',
+  'f1a2b3c4-0008-4000-8000-000000000002',
+  'f1a2b3c4-0008-4000-8000-000000000003',
+  'f1a2b3c4-0008-4000-8000-000000000004',
+])
+
+function activitesParUnite() {
+  return [
+    ...listAllActivites().map((item) => ({ ...item, idUnite: item.idDepartement })),
+    ...listAllActivitesFamille().map((item) => ({ ...item, idUnite: item.idFamille })),
+  ]
 }
 
 export function syncAlertes() {
-  const today = new Date().toISOString().slice(0, 10)
+  const activites = activitesParUnite()
   const ids = new Set([
-    ...listAllActivites().map((item) => item.idDepartement),
+    ...activites.map((item) => item.idUnite),
     ...listBudgetDepartementIds(),
   ])
   const draft: Circulation[] = []
 
   ids.forEach((idDepartement) => {
-    const nom = NOMS[idDepartement] ?? 'Département'
-    listAllActivites()
-      .filter((item) => item.idDepartement === idDepartement)
-      .filter((item) => item.echeance && item.echeance < today && item.statut !== 'faite')
+    const nom =
+      NOMS[idDepartement] ?? (FAMILLE_IDS.has(idDepartement) ? 'Famille d’impact' : 'Département')
+    const libelleCible = FAMILLE_IDS.has(idDepartement) ? 'famille' : 'département'
+    activites
+      .filter((item) => item.idUnite === idDepartement)
+      .filter((item) => besoinCompteRendu(item))
+      .forEach((item) => {
+        draft.push({
+          id: `compte-rendu:${idDepartement}:${item.id}`,
+          kind: 'compte_rendu',
+          titre: `Compte rendu à produire : ${item.titre}`,
+          description: item.nomResponsable
+            ? `${nom} · ${item.nomResponsable}, renseignez les présences et le déroulement.`
+            : `${nom} · Assignez un responsable, puis renseignez les présences et le déroulement.`,
+          idDepartementSource: idDepartement,
+          nomDepartementSource: nom,
+          idDepartementCible: idDepartement,
+          nomDepartementCible: nom,
+          idAuteur: 'systeme',
+          nomAuteur: 'Système',
+          dateCreation: `${todayStamp()}T00:00:00.000Z`,
+          reponses: [],
+          luPar: [],
+          sourceKey: `compte-rendu:${idDepartement}:${item.id}`,
+          idPersonnesNotifiees: item.idResponsable ? [item.idResponsable] : undefined,
+        })
+      })
+
+    tauxPresenceMembres(activites.filter((item) => item.idUnite === idDepartement))
+      .filter((item) => presenceFaible(item))
       .forEach((item) => {
         draft.push(
           alerte({
-            sourceKey: `echeance:${idDepartement}:${item.id}`,
-            titre: `Échéance dépassée : ${item.titre}`,
-            description: item.nomResponsable
-              ? `${nom} · Responsable ${item.nomResponsable}.`
-              : `${nom} · L’activité n’est pas encore réalisée.`,
+            sourceKey: `presence-faible:${idDepartement}:${item.idPersonne}`,
+            titre: `Présence faible : ${item.nom}`,
+            description: `${nom} · ${item.presents}/${item.convocations} activités (${item.taux} %). Alerte envoyée ${libelleCible === 'famille' ? 'à la famille' : 'au département'}, au DGE, au pasteur et à l’administrateur.`,
             idDepartement,
             nom,
           }),
@@ -40,7 +85,8 @@ export function syncAlertes() {
       })
 
     const budget = syntheseBudget(idDepartement)
-    if (budget.alloue > 0 && budget.disponible / budget.alloue <= 0.2) {
+    const base = budget.alloue + budget.rentrees
+    if (base > 0 && budget.disponible / base <= 0.2) {
       draft.push(
         alerte({
           sourceKey: `budget-serre:${idDepartement}`,

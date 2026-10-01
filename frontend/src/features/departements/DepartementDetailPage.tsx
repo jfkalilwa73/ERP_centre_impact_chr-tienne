@@ -17,9 +17,10 @@ import { getActivitesVersion, listActivites, subscribeActivites } from './activi
 import { DepartementBanner } from './banner'
 import { BudgetCards } from './BudgetCards'
 import { BudgetPanel } from './BudgetPanel'
-import { ChartPanel, EvolutionActivitesChart, EvolutionMembresChart } from './charts'
+import { ChartPanel, EvolutionActivitesChart, EvolutionMembresChart, PresenceMembresChart } from './charts'
 import { EquipePanel } from './EquipePanel'
 import { evolutionActivites, evolutionDepartement } from './evolution'
+import { tauxPresenceMembres } from './presence'
 import {
   useAssignPersonneDepartement,
   useDepartement,
@@ -28,7 +29,6 @@ import {
 } from './hooks'
 import { DepartementLoading } from './loading'
 import { personneName } from './personneName'
-import { PilotageModules } from './PilotageModules'
 import { RapportsPanel } from './RapportsPanel'
 import { isLeadershipRole, roleDepartement, ROLES_EQUIPE, type RoleDepartement } from './roles'
 import { StatCard } from './StatCard'
@@ -124,6 +124,7 @@ export function DepartementDetailPage() {
   const activites = departementId ? listActivites(departementId) : []
   const evolution = evolutionDepartement(allAffectations)
   const evolutionActs = evolutionActivites(activites)
+  const tauxPresence = tauxPresenceMembres(activites)
   const chef = membres.find((item) => roleDepartement(item.affectation.fonction) === 'Chef')
   const superviseur = membres.find((item) => roleDepartement(item.affectation.fonction) === 'Superviseur')
   const hommes = membres.filter((item) => item.personne.sexe === 'M').length
@@ -302,9 +303,16 @@ export function DepartementDetailPage() {
             <ChartPanel title="Évolution des activités" hint="Activités planifiées et réalisées chaque mois.">
               <EvolutionActivitesChart data={evolutionActs} />
             </ChartPanel>
+            <div className="md:col-span-2">
+              <ChartPanel
+                title="Taux de présence des membres"
+                hint="Selon les comptes rendus des activités réalisées."
+                bodyClassName="h-auto min-h-52"
+              >
+                <PresenceMembresChart data={tauxPresence} />
+              </ChartPanel>
+            </div>
           </div>
-
-          <PilotageModules permissions={permissions} />
         </div>
       )}
 
@@ -333,7 +341,6 @@ export function DepartementDetailPage() {
         <ActivitesPanel
           departementId={departementId}
           nomDepartement={departement.nom}
-          destinataires={destinataires}
           activites={activites}
           membres={membres.map((item) => item.personne)}
           canWrite={canWriteActivites}
@@ -345,7 +352,6 @@ export function DepartementDetailPage() {
         <BudgetPanel
           departementId={departementId}
           nomDepartement={departement.nom}
-          destinataires={destinataires}
           canRequest={canRequestBudget}
           auteur={auteur}
         />

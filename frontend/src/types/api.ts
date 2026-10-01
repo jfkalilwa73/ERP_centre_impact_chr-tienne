@@ -690,6 +690,11 @@ export interface components {
         CompteUpdate: {
             /** Format: email */
             email?: string;
+            /**
+             * Format: password
+             * @description Présent seulement si l’administrateur réinitialise l’accès.
+             */
+            motDePasse?: string;
             statut?: components["schemas"]["CompteStatut"];
             mfaActive?: boolean;
         };

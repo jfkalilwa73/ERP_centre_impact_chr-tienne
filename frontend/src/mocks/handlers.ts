@@ -9,6 +9,9 @@ import {
   apiUrl,
   authenticate,
   errorResponse,
+  fakeJwt,
+  issueAccessToken,
+  revokeAccessToken,
   unauthenticated,
 } from './http'
 import { siteHandlers } from './siteHandlers'
@@ -19,18 +22,6 @@ import { compteHandlers } from './compteHandlers'
 import { roleHandlers } from './roleHandlers'
 import { permissionHandlers } from './permissionHandlers'
 import { auditHandlers } from './auditHandlers'
-
-function base64Url(value: object) {
-  return btoa(JSON.stringify(value)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-/** JWT non signé, de forme valide, suffisant pour la mise au point du frontend. */
-function fakeJwt(subject: string, type: 'access' | 'refresh', ttlSeconds: number) {
-  const issuedAt = Math.floor(Date.now() / 1000)
-  const header = base64Url({ alg: 'HS256', typ: 'JWT' })
-  const payload = base64Url({ sub: subject, type, iat: issuedAt, exp: issuedAt + ttlSeconds })
-  return `${header}.${payload}.mock-signature`
-}
 
 const authHandlers = [
   http.post(apiUrl('auth/login'), async ({ request }) => {
@@ -58,6 +49,14 @@ const authHandlers = [
       return errorResponse(401, 'INVALID_CREDENTIALS', 'Adresse e-mail ou mot de passe incorrect.')
     }
 
+    const compte = mockDb.comptes.find(
+      (candidate) => candidate.idCompte === account.utilisateur.compte.idCompte,
+    )
+    if (compte) account.utilisateur.compte = { ...account.utilisateur.compte, ...compte }
+    if (account.utilisateur.compte.statut !== 'actif') {
+      return errorResponse(403, 'ACCOUNT_SUSPENDED', 'Ce compte est suspendu.')
+    }
+
     refreshAccountAccess(account.utilisateur.compte.idCompte)
 
     const personne =
@@ -66,7 +65,7 @@ const authHandlers = [
       ) ?? account.utilisateur.personne
 
     const body: LoginResponse = {
-      accessToken: fakeJwt(account.utilisateur.compte.idCompte, 'access', ACCESS_TOKEN_TTL),
+      accessToken: issueAccessToken(account.utilisateur.compte.idCompte),
       refreshToken: fakeJwt(account.utilisateur.compte.idCompte, 'refresh', REFRESH_TOKEN_TTL),
       tokenType: 'Bearer',
       accessTokenExpiresIn: ACCESS_TOKEN_TTL,
@@ -101,6 +100,8 @@ const authHandlers = [
 
     const result = authenticate(request.headers.get('Authorization'))
     if (!result.authenticated) return unauthenticated('POST /auth/logout', result.reason)
+    const header = request.headers.get('Authorization')
+    if (header?.startsWith('Bearer ')) revokeAccessToken(header.slice('Bearer '.length))
 
     return new HttpResponse(null, { status: 204 })
   }),

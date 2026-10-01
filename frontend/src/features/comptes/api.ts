@@ -68,3 +68,17 @@ export async function createCompteWithRoles(
   }
   return created
 }
+
+/** Aligne les rôles actifs du compte sur la sélection du formulaire. */
+export async function syncCompteRoles(compteId: string, idRoles: string[]): Promise<void> {
+  const actuel = (await listCompteRoles(compteId)).filter((affectation) => affectation.actif)
+  const actuelIds = new Set(actuel.map((affectation) => affectation.idRole))
+  const suivant = new Set(idRoles)
+
+  for (const idRole of suivant) {
+    if (!actuelIds.has(idRole)) await assignRoleToCompte(compteId, { idRole })
+  }
+  for (const idRole of actuelIds) {
+    if (!suivant.has(idRole)) await unassignRoleFromCompte(compteId, idRole)
+  }
+}

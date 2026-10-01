@@ -1,6 +1,6 @@
 import type { Permission, Role, RoleCreate, RolePage, RoleUpdate } from '@/types'
 import { PERMISSIONS } from '@/lib/permissions'
-import { canReadRoles } from './access'
+import { canReadRoles, refreshAccountsHoldingRole } from './access'
 import { appendAuditLog, mockDb } from './db'
 import {
   apiUrl,
@@ -162,6 +162,7 @@ export const roleHandlers = [
       idEntite: role.idRole,
     })
 
+    refreshAccountsHoldingRole(role.idRole)
     return HttpResponse.json(role, { status: 200 })
   }),
 
@@ -248,6 +249,7 @@ export const roleHandlers = [
       entiteType: 'role',
       idEntite: String(params.roleId),
     })
+    refreshAccountsHoldingRole(String(params.roleId))
     return HttpResponse.json(permission, { status: 201 })
   }),
 
@@ -272,6 +274,7 @@ export const roleHandlers = [
       entiteType: 'role',
       idEntite: String(params.roleId),
     })
+    refreshAccountsHoldingRole(String(params.roleId))
     return new HttpResponse(null, { status: 204 })
   }),
 ]

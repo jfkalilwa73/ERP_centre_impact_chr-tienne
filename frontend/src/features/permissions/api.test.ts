@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/stores/authStore'
-import { createPermission, deletePermission, listPermissions, updatePermission } from './api'
+import {
+  createPermission,
+  deletePermission,
+  listPermissionRoles,
+  listPermissionTitulaires,
+  listPermissions,
+  updatePermission,
+} from './api'
 
 const identifiants = { email: 'admin@eglise.org', motDePasse: 'SecurePass123!' }
 
@@ -87,6 +94,27 @@ describe('API permissions', () => {
     await expect(deletePermission(created.idPermission)).resolves.toBeUndefined()
     const remaining = await listPermissions({ q: 'rapports.archive' })
     expect(remaining.data.some((permission) => permission.code === 'rapports.archive')).toBe(false)
+  })
+
+  it('liste les rôles et les personnes qui ont budget.request', async () => {
+    await ouvrirSession()
+    const permission = (await listPermissions({ q: 'budget.request', limit: 100 })).data.find(
+      (item) => item.code === 'budget.request',
+    )
+    if (!permission) throw new Error('permission budget.request absente')
+
+    const roles = await listPermissionRoles(permission.idPermission)
+    const titulaires = await listPermissionTitulaires(permission.idPermission)
+
+    expect(roles.map((role) => role.nom)).toEqual(
+      expect.arrayContaining(['Chef de département', "Chef de famille d'impact"]),
+    )
+    expect(titulaires.map((item) => item.email)).toEqual(
+      expect.arrayContaining(['chef-louange@eglise.org', 'chef-famille@eglise.org']),
+    )
+    expect(titulaires.map((item) => `${item.prenom} ${item.nom}`)).toEqual(
+      expect.arrayContaining(['Pierre MWAMBA', 'Ruth NGOY']),
+    )
   })
 
   it('interdit la lecture sans le droit roles.manage', async () => {

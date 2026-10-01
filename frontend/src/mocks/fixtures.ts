@@ -316,6 +316,15 @@ export const seedDepartements: MockDepartement[] = [
     actif: false,
     dateCreation: '2026-02-01T08:00:00Z',
   },
+  {
+    idDepartement: 'd4f6b8c0-0006-4000-8000-000000000004',
+    code: 'CAISSE',
+    nom: "Caisse de l'église",
+    mission: "Gérer la caisse principale de l'Église, distincte des caisses de département.",
+    idSite: 'c3e5a7b9-0005-4000-8000-000000000001',
+    actif: true,
+    dateCreation: '2026-01-10T08:00:00Z',
+  },
 ]
 
 export const seedPersonnes: Personne[] = [

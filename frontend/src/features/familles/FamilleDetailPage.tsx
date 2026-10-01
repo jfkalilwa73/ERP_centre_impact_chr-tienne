@@ -1,69 +1,76 @@
-﻿import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, CalendarDays, Plus, Trash2, User, UserPlus, UserRound, Users } from 'lucide-react'
+import { ArrowLeft, CalendarDays, User, UserPlus, UserRound, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { ActivitesPanel } from '@/features/departements/ActivitesPanel'
 import { DepartementBanner } from '@/features/departements/banner'
+import { BudgetCards } from '@/features/departements/BudgetCards'
+import { BudgetPanel } from '@/features/departements/BudgetPanel'
 import {
   ChartPanel,
   EvolutionActivitesChart,
   EvolutionMembresChart,
+  PresenceMembresChart,
 } from '@/features/departements/charts'
+import { EquipePanel } from '@/features/departements/EquipePanel'
 import { DepartementLoading } from '@/features/departements/loading'
+import { personneName } from '@/features/departements/personneName'
+import { tauxPresenceMembres } from '@/features/departements/presence'
+import { RapportsPanel } from '@/features/departements/RapportsPanel'
 import { StatCard } from '@/features/departements/StatCard'
 import { useAccessScope } from '@/features/auth/accessScope'
-import { PersonneAvatar } from '@/features/personnes/PersonneAvatar'
-import { usePersonnes, usePersonnesFamilles } from '@/features/personnes/hooks'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationFamille, Personne } from '@/types'
+import { usePersonnes, usePersonnesFamilles } from '@/features/personnes/hooks'
 import {
-  addActiviteFamille,
-  deleteActiviteFamille,
+  activitesFamilleApi,
   getActivitesFamilleVersion,
   listActivitesFamille,
-  marquerActiviteFamilleFaite,
   subscribeActivitesFamille,
 } from './activites'
 import { evolutionActivites, evolutionFamille } from './evolution'
-import { useAssignPersonneFamille, useFamille, useUnassignPersonneFamille } from './hooks'
-import { isLeadershipRole, roleFamille, ROLES_FAMILLE, type RoleFamille } from './roles'
+import { useAssignPersonneFamille, useFamille, useFamilles, useUnassignPersonneFamille } from './hooks'
+import { isLeadershipRole, roleFamille, ROLES_EQUIPE_FAMILLE, type RoleFamille } from './roles'
 
 const TABS = [
   { id: 'tableau', label: 'Tableau de bord' },
   { id: 'membres', label: 'Membres' },
   { id: 'activites', label: 'Activités' },
+  { id: 'budget', label: 'Budget', permission: PERMISSIONS.BUDGET_READ },
+  { id: 'rapports', label: 'Rapports', permission: PERMISSIONS.RAPPORTS_READ },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
-
-function personneName(personne: Personne) {
-  return `${personne.prenom} ${personne.nom}`
-}
 
 export function FamilleDetailPage() {
   const { familleId } = useParams<{ familleId: string }>()
   const [tab, setTab] = useState<TabId>('tableau')
   const [assignOpen, setAssignOpen] = useState(false)
   const [membreSearch, setMembreSearch] = useState('')
-  const [roleDraft, setRoleDraft] = useState<RoleFamille>('Membre')
+  const [roleDraft, setRoleDraft] = useState<RoleFamille>('Responsable')
   const [selectedPersonneId, setSelectedPersonneId] = useState('')
-  const [activiteTitre, setActiviteTitre] = useState('')
-  const [activiteDate, setActiviteDate] = useState('')
-  const [activiteDescription, setActiviteDescription] = useState('')
 
   useSyncExternalStore(subscribeActivitesFamille, getActivitesFamilleVersion, getActivitesFamilleVersion)
 
   const user = useCurrentUser()
-  const { isScoped } = useAccessScope()
+  const permissions = user?.permissions ?? []
+  const { isScoped, ledFamilleIds } = useAccessScope()
   const canManageFamilles = useHasPermission(PERMISSIONS.FAMILLES_UPDATE)
-  const canUpdateMembres = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
 
   const familleQuery = useFamille(familleId)
+  const destinatairesQuery = useFamilles(
+    { page: 1, limit: 100 },
+    permissions.includes(PERMISSIONS.RAPPORTS_READ) ||
+      permissions.includes(PERMISSIONS.FAMILLES_READ) ||
+      permissions.includes(PERMISSIONS.BUDGET_REQUEST) ||
+      permissions.includes(PERMISSIONS.ACTIVITES_CREATE),
+  )
   const personnesQuery = usePersonnes({ page: 1, limit: 100 })
   const personnes = personnesQuery.data?.data ?? []
   const personneIds = useMemo(() => personnes.map((personne) => personne.idPersonne), [personnes])
@@ -90,7 +97,7 @@ export function FamilleDetailPage() {
     })
     .filter((item): item is { personne: Personne; affectation: AffectationFamille } => Boolean(item))
     .sort((left, right) => {
-      const order = { Chef: 0, Adjoint: 1, Membre: 2 }
+      const order = { Superviseur: 0, Chef: 1, Adjoint: 2, Responsable: 3, Membre: 4 }
       return order[roleFamille(left.affectation.fonction)] - order[roleFamille(right.affectation.fonction)]
     })
 
@@ -98,11 +105,33 @@ export function FamilleDetailPage() {
     (affectation) =>
       affectation.idPersonne === user?.personne.idPersonne && isLeadershipRole(affectation.fonction),
   )
-  const canAssign = canUpdateMembres || leadsHere || canManageFamilles
+  const auteur = user
+    ? { idPersonne: user.personne.idPersonne, nom: `${user.personne.prenom} ${user.personne.nom}` }
+    : undefined
+  const destList = destinatairesQuery.data?.data.filter((item) => item.actif) ?? []
+  const destinataires = destList.length
+    ? destList.map((item) => ({ idDepartement: item.idFamille, nom: item.nom }))
+    : familleId && familleQuery.data
+      ? [{ idDepartement: familleId, nom: familleQuery.data.nom }]
+      : []
+  const canAssign = leadsHere || (canManageFamilles && !isScoped)
+  const canManageEquipe = useHasPermission(PERMISSIONS.EQUIPES_MANAGE) || leadsHere
+  const canWriteActivites =
+    useHasPermission(PERMISSIONS.ACTIVITES_CREATE) ||
+    useHasPermission(PERMISSIONS.ACTIVITES_UPDATE) ||
+    leadsHere
+  const canRequestBudget = useHasPermission(PERMISSIONS.BUDGET_REQUEST)
+  const canWriteRapports =
+    useHasPermission(PERMISSIONS.RAPPORTS_CREATE) ||
+    useHasPermission(PERMISSIONS.OBJECTIFS_MANAGE) ||
+    leadsHere
+  const visibleTabs = TABS.filter((item) => !('permission' in item) || permissions.includes(item.permission))
   const activites = familleId ? listActivitesFamille(familleId) : []
   const evolution = evolutionFamille(allAffectations)
   const evolutionActs = evolutionActivites(activites)
+  const tauxPresence = tauxPresenceMembres(activites)
   const chef = membres.find((item) => roleFamille(item.affectation.fonction) === 'Chef')
+  const superviseur = membres.find((item) => roleFamille(item.affectation.fonction) === 'Superviseur')
   const hommes = membres.filter((item) => item.personne.sexe === 'M').length
   const femmes = membres.filter((item) => item.personne.sexe === 'F').length
   const activitesFaites = activites.filter((item) => item.statut === 'faite').length
@@ -118,25 +147,8 @@ export function FamilleDetailPage() {
   const applyRole = async (personneId: string, role: RoleFamille) => {
     if (!familleId) return
     const current = actives.find((affectation) => affectation.idPersonne === personneId)
-    const previousChef =
-      role === 'Chef'
-        ? actives.find(
-            (affectation) =>
-              roleFamille(affectation.fonction) === 'Chef' && affectation.idPersonne !== personneId,
-          )
-        : undefined
 
     try {
-      if (previousChef) {
-        await unassignMutation.mutateAsync({
-          personneId: previousChef.idPersonne,
-          familleId,
-        })
-        await assignMutation.mutateAsync({
-          personneId: previousChef.idPersonne,
-          payload: { idFamille: familleId, fonction: 'Membre' },
-        })
-      }
       if (current) {
         await unassignMutation.mutateAsync({ personneId, familleId })
       } else {
@@ -162,7 +174,7 @@ export function FamilleDetailPage() {
       setAssignOpen(false)
       setSelectedPersonneId('')
       setMembreSearch('')
-      setRoleDraft('Membre')
+      setRoleDraft('Responsable')
     } catch {
       /* mutation error already displayed */
     }
@@ -172,19 +184,6 @@ export function FamilleDetailPage() {
     event.preventDefault()
     if (!selectedPersonneId) return
     void applyRole(selectedPersonneId, roleDraft)
-  }
-
-  const onAddActivite = (event: FormEvent) => {
-    event.preventDefault()
-    if (!familleId || !activiteTitre.trim() || !activiteDate) return
-    addActiviteFamille(familleId, {
-      titre: activiteTitre,
-      date: activiteDate,
-      description: activiteDescription,
-    })
-    setActiviteTitre('')
-    setActiviteDate('')
-    setActiviteDescription('')
   }
 
   if (familleQuery.isLoading) {
@@ -238,11 +237,13 @@ export function FamilleDetailPage() {
           <DepartementBanner
             prenom={user?.personne.prenom ?? ''}
             titre={famille.nom}
-            message={
-              chef
-                ? `${famille.description || "Que cette famille serve l'Église avec fidélité."} · Chef : ${personneName(chef.personne)}`
-                : famille.description || "Que cette famille serve l'Église avec fidélité."
-            }
+            message={[
+              famille.description || "Que cette famille serve l'Église avec fidélité.",
+              superviseur ? `Superviseur : ${personneName(superviseur.personne)}` : '',
+              chef ? `Chef : ${personneName(chef.personne)}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             action={
               canAssign ? (
                 <Button
@@ -262,7 +263,7 @@ export function FamilleDetailPage() {
       </div>
 
       <div role="tablist" aria-label="Sections de la famille" className="flex flex-wrap gap-6 border-b border-slate-200">
-        {TABS.map((item) => (
+        {visibleTabs.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -306,6 +307,10 @@ export function FamilleDetailPage() {
             />
           </div>
 
+          {familleId && permissions.includes(PERMISSIONS.BUDGET_READ) && (
+            <BudgetCards departementId={familleId} hintEnveloppe="Enveloppe de la famille" />
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <ChartPanel title="Évolution de la famille" hint="Affectations et retraits sur les 12 derniers mois.">
               <EvolutionMembresChart data={evolution} />
@@ -313,175 +318,73 @@ export function FamilleDetailPage() {
             <ChartPanel title="Évolution des activités" hint="Activités planifiées et réalisées chaque mois.">
               <EvolutionActivitesChart data={evolutionActs} />
             </ChartPanel>
+            <div className="md:col-span-2">
+              <ChartPanel
+                title="Taux de présence des membres"
+                hint="Selon les comptes rendus des activités réalisées."
+                bodyClassName="h-auto min-h-52"
+              >
+                <PresenceMembresChart data={tauxPresence} />
+              </ChartPanel>
+            </div>
           </div>
         </div>
       )}
 
-      {tab === 'membres' && (
-        <div className="overflow-hidden border border-slate-200 bg-white">
-          {membres.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-slate-500">Aucun membre affecté.</p>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Membre</th>
-                  <th className="px-4 py-3 font-medium">Rôle</th>
-                  {canAssign && <th className="px-4 py-3 text-right font-medium">Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {membres.map(({ personne, affectation }) => (
-                  <tr key={personne.idPersonne} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <PersonneAvatar
-                          personne={personne}
-                          className="size-9 text-xs"
-                          initialsClassName="bg-brand-50 text-brand-700"
-                        />
-                        {isScoped ? (
-                          <span className="font-medium text-slate-900">{personneName(personne)}</span>
-                        ) : (
-                          <Link
-                            to={`/personnes/${personne.idPersonne}`}
-                            className="font-medium text-slate-900 hover:text-brand-700"
-                          >
-                            {personneName(personne)}
-                          </Link>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {canAssign ? (
-                        <Select
-                          aria-label={`Rôle de ${personneName(personne)}`}
-                          value={roleFamille(affectation.fonction)}
-                          disabled={busy}
-                          onChange={(event) =>
-                            void applyRole(personne.idPersonne, event.target.value as RoleFamille)
-                          }
-                        >
-                          {ROLES_FAMILLE.map((role) => (
-                            <option key={role} value={role}>
-                              {role}
-                            </option>
-                          ))}
-                        </Select>
-                      ) : (
-                        roleFamille(affectation.fonction)
-                      )}
-                    </td>
-                    {canAssign && (
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                          disabled={busy}
-                          onClick={() => {
-                            if (!familleId) return
-                            unassignMutation.mutate({
-                              personneId: personne.idPersonne,
-                              familleId,
-                            })
-                          }}
-                        >
-                          Retirer
-                        </Button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      {tab === 'membres' && familleId && (
+        <EquipePanel
+          departementId={familleId}
+          membres={membres}
+          canAssign={canAssign}
+          canManage={canManageEquipe}
+          isScoped={isScoped}
+          busy={busy}
+          unassigningId={
+            unassignMutation.isPending ? unassignMutation.variables?.personneId : undefined
+          }
+          onApplyRole={(personneId, role) => void applyRole(personneId, role as RoleFamille)}
+          onUnassign={(personneId) =>
+            unassignMutation.mutate({
+              personneId,
+              familleId: famille.idFamille,
+            })
+          }
+        />
       )}
 
-      {tab === 'activites' && (
-        <div className="flex flex-col gap-4">
-          {canAssign && (
-            <form onSubmit={onAddActivite} className="border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-900">Nouvelle activité</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Input
-                  value={activiteTitre}
-                  onChange={(event) => setActiviteTitre(event.target.value)}
-                  placeholder="Réunion de famille"
-                  aria-label="Titre de l'activité"
-                />
-                <Input
-                  type="date"
-                  value={activiteDate}
-                  onChange={(event) => setActiviteDate(event.target.value)}
-                  aria-label="Date de l'activité"
-                />
-                <Input
-                  value={activiteDescription}
-                  onChange={(event) => setActiviteDescription(event.target.value)}
-                  placeholder="Description (optionnel)"
-                  aria-label="Description de l'activité"
-                  className="sm:col-span-2"
-                />
-              </div>
-              <Button type="submit" className="mt-4">
-                <Plus className="size-4" aria-hidden="true" />
-                Ajouter l'activité
-              </Button>
-            </form>
-          )}
+      {tab === 'activites' && familleId && (
+        <ActivitesPanel
+          departementId={familleId}
+          nomDepartement={famille.nom}
+          activites={activites}
+          membres={membres.map((item) => item.personne)}
+          canWrite={canWriteActivites}
+          auteur={auteur}
+          store={activitesFamilleApi}
+          unite="famille"
+        />
+      )}
 
-          {activites.length === 0 ? (
-            <p className="border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
-              Aucune activité pour cette famille.
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {activites.map((activite) => (
-                <li
-                  key={activite.id}
-                  className="flex items-start justify-between gap-3 border border-slate-200 bg-white px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{activite.titre}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(
-                        new Date(activite.date),
-                      )}
-                      {activite.statut === 'faite' ? ' · Faite' : ' · Planifiée'}
-                    </p>
-                    {activite.description && (
-                      <p className="mt-1 text-sm text-slate-600">{activite.description}</p>
-                    )}
-                  </div>
-                  {canAssign && (
-                    <div className="flex gap-1">
-                      {activite.statut !== 'faite' && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => marquerActiviteFamilleFaite(famille.idFamille, activite.id)}
-                        >
-                          Marquer faite
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                        aria-label="Supprimer l'activité"
-                        onClick={() => deleteActiviteFamille(famille.idFamille, activite.id)}
-                      >
-                        <Trash2 className="size-4" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      {tab === 'budget' && familleId && (
+        <BudgetPanel
+          departementId={familleId}
+          nomDepartement={famille.nom}
+          canRequest={canRequestBudget}
+          auteur={auteur}
+          unite="famille"
+        />
+      )}
+
+      {tab === 'rapports' && familleId && (
+        <RapportsPanel
+          departementId={familleId}
+          nomDepartement={famille.nom}
+          destinataires={destinataires}
+          canWrite={canWriteRapports}
+          canConsolidate={permissions.includes(PERMISSIONS.RAPPORTS_CONSOLIDATE)}
+          consolidationIds={ledFamilleIds.length ? ledFamilleIds : [familleId]}
+          auteur={auteur}
+        />
       )}
 
       {(assignMutation.isError || unassignMutation.isError) && (
@@ -493,7 +396,7 @@ export function FamilleDetailPage() {
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent
           title="Affecter un membre"
-          description="Recherchez une personne existante, puis choisissez son rôle dans cette famille."
+          description="Recherchez une personne existante, puis choisissez adjoint ou responsable."
         >
           <form onSubmit={onAssign} className="flex flex-col gap-4">
             <Input
@@ -519,7 +422,7 @@ export function FamilleDetailPage() {
               value={roleDraft}
               onChange={(event) => setRoleDraft(event.target.value as RoleFamille)}
             >
-              {ROLES_FAMILLE.map((role) => (
+              {ROLES_EQUIPE_FAMILLE.map((role) => (
                 <option key={role} value={role}>
                   {role}
                 </option>

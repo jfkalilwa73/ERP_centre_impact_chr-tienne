@@ -1,4 +1,22 @@
-export type CirculationKind = 'rapport' | 'budget' | 'activite' | 'alerte' | 'rappel'
+import { canSeePilotageDge, isAdminFonctionnel } from '@/features/auth/orgRoles'
+import {
+  clampText,
+  canMutateUnite,
+  currentUser,
+  isTestBypass,
+  leadsUnite,
+  MAX_DESCRIPTION,
+} from '@/lib/writeAccess'
+import { PERMISSIONS } from '@/lib/permissions'
+
+export type CirculationKind =
+  | 'rapport'
+  | 'budget'
+  | 'activite'
+  | 'alerte'
+  | 'rappel'
+  | 'compte_rendu'
+  | 'demande'
 
 export type CirculationReponse = {
   id: string
@@ -52,6 +70,8 @@ export function kindLabel(kind: CirculationKind) {
   if (kind === 'activite') return 'Activité'
   if (kind === 'alerte') return 'Alerte'
   if (kind === 'rappel') return 'Rappel aux membres'
+  if (kind === 'compte_rendu') return 'Compte rendu demandé'
+  if (kind === 'demande') return 'Demande du DGE'
   return 'Rapport'
 }
 
@@ -69,12 +89,28 @@ type CirculationInput = {
   idPersonnesNotifiees?: string[]
 }
 
+function canCreateCirculation(input: CirculationInput) {
+  if (isTestBypass()) return true
+  const user = currentUser()
+  if (!user) return false
+  if (input.idAuteur !== user.personne.idPersonne) return false
+  if (input.kind === 'alerte' || input.kind === 'compte_rendu') return false
+  if (input.kind === 'demande') return canSeePilotageDge(user)
+  const needed =
+    input.kind === 'budget'
+      ? [PERMISSIONS.BUDGET_REQUEST]
+      : input.kind === 'rapport'
+        ? [PERMISSIONS.RAPPORTS_CREATE, PERMISSIONS.BUDGET_REQUEST]
+        : [PERMISSIONS.ACTIVITES_CREATE, PERMISSIONS.ACTIVITES_UPDATE, PERMISSIONS.DEMANDES_CREATE]
+  return canMutateUnite(input.idDepartementSource, needed)
+}
+
 function toCirculation(input: CirculationInput): Circulation {
   return {
     id: crypto.randomUUID(),
     ...input,
-    titre: input.titre.trim(),
-    description: input.description.trim(),
+    titre: clampText(input.titre),
+    description: clampText(input.description, MAX_DESCRIPTION),
     dateCreation: new Date().toISOString(),
     reponses: [],
     luPar: [input.idAuteur],
@@ -85,6 +121,7 @@ function toCirculation(input: CirculationInput): Circulation {
 }
 
 export function createCirculation(input: CirculationInput) {
+  if (!canCreateCirculation(input)) return undefined
   const created = toCirculation(input)
   circulations = [created, ...circulations]
   emit()
@@ -92,12 +129,13 @@ export function createCirculation(input: CirculationInput) {
 }
 
 export function upsertCirculation(input: CirculationInput) {
+  if (!canCreateCirculation(input)) return undefined
   if (input.sourceKey) {
     const found = circulations.find((item) => item.sourceKey === input.sourceKey)
     if (found) {
       found.kind = input.kind
-      found.titre = input.titre.trim()
-      found.description = input.description.trim()
+      found.titre = clampText(input.titre)
+      found.description = clampText(input.description, MAX_DESCRIPTION)
       found.idDepartementSource = input.idDepartementSource
       found.nomDepartementSource = input.nomDepartementSource
       found.idDepartementCible = input.idDepartementCible
@@ -129,11 +167,12 @@ export function visibleCirculations(input: {
   idPersonne?: string
   isAdmin: boolean
   isPasteur: boolean
+  isDge?: boolean
   superviseurDepartementIds: string[]
   chefDepartementIds: string[]
 }) {
   return listCirculations().filter((item) => {
-    if (input.isAdmin || input.isPasteur) return true
+    if (input.isAdmin || input.isPasteur || input.isDge) return true
     if (input.idPersonne && item.idPersonnesNotifiees?.includes(input.idPersonne)) return true
     if (item.idAuteur === input.idPersonne) return true
     if (input.chefDepartementIds.includes(item.idDepartementCible)) return true
@@ -146,7 +185,7 @@ export function visibleCirculations(input: {
 }
 
 export function canReplyCirculation(item: Circulation, chefDepartementIds: string[]) {
-  if (item.kind === 'alerte' || item.kind === 'rappel') return false
+  if (item.kind === 'alerte' || item.kind === 'rappel' || item.kind === 'compte_rendu') return false
   return chefDepartementIds.includes(item.idDepartementCible)
 }
 
@@ -157,7 +196,11 @@ export function repondreCirculation(
 ) {
   const found = circulations.find((item) => item.id === id)
   if (!found || !canReplyCirculation(found, chefDepartementIds)) return
-  const texte = input.texte.trim()
+  if (!isTestBypass()) {
+    const user = currentUser()
+    if (!user || input.idAuteur !== user.personne.idPersonne) return
+  }
+  const texte = clampText(input.texte, MAX_DESCRIPTION)
   if (!texte) return
   found.reponses = [
     ...found.reponses,
@@ -186,20 +229,36 @@ export function unreadCirculationsCount(
   return visible.filter((item) => !item.luPar.includes(idPersonne)).length
 }
 
+function canDeleteCirculation(item: Circulation) {
+  if (isTestBypass()) return true
+  const user = currentUser()
+  if (!user) return false
+  if (isAdminFonctionnel(user) || canSeePilotageDge(user)) return true
+  if (item.idAuteur === user.personne.idPersonne) return true
+  return (
+    leadsUnite(user.personne.idPersonne, item.idDepartementCible) ||
+    leadsUnite(user.personne.idPersonne, item.idDepartementSource)
+  )
+}
+
 export function deleteCirculation(id: string) {
   const found = circulations.find((item) => item.id === id)
-  if (!found) return
+  if (!found || !canDeleteCirculation(found)) return
   if (found.sourceKey) dismissedKeys.add(found.sourceKey)
   circulations = circulations.filter((item) => item.id !== id)
   emit()
 }
 
 export function deleteCirculations(ids: string[]) {
-  ids.forEach((id) => {
+  const allowed = ids.filter((id) => {
+    const found = circulations.find((item) => item.id === id)
+    return found ? canDeleteCirculation(found) : false
+  })
+  allowed.forEach((id) => {
     const found = circulations.find((item) => item.id === id)
     if (found?.sourceKey) dismissedKeys.add(found.sourceKey)
   })
-  const remove = new Set(ids)
+  const remove = new Set(allowed)
   const next = circulations.filter((item) => !remove.has(item.id))
   if (next.length === circulations.length) return
   circulations = next
@@ -212,8 +271,9 @@ export function replaceAlertes(next: Circulation[]) {
     if (!currentKeys.has(key)) dismissedKeys.delete(key)
   })
   const filtered = next.filter((item) => !item.sourceKey || !dismissedKeys.has(item.sourceKey))
-  const others = circulations.filter((item) => item.kind !== 'alerte')
-  const previous = circulations.filter((item) => item.kind === 'alerte')
+  const derived = (item: Circulation) => item.kind === 'alerte' || item.kind === 'compte_rendu'
+  const others = circulations.filter((item) => !derived(item))
+  const previous = circulations.filter(derived)
   const unchanged =
     previous.length === filtered.length &&
     filtered.every((item) => {

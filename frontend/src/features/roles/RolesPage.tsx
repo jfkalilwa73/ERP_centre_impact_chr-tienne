@@ -84,7 +84,7 @@ export function RolesPage() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Rôles</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Profils de droits attribués aux comptes. Les permissions se gèrent depuis la fiche.
+            Profils de droits attribués aux comptes.
           </p>
         </div>
         {canManage && (

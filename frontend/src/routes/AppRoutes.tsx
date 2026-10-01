@@ -22,6 +22,7 @@ import { GuestRoute, ProtectedRoute } from './ProtectedRoute'
 import { PermissionRoute } from './PermissionRoute'
 import { DepartementAccessRoute } from './DepartementAccessRoute'
 import { FamilleAccessRoute } from './FamilleAccessRoute'
+import { PilotageDgeRoute } from './PilotageDgeRoute'
 
 export function AppRoutes() {
   return (
@@ -50,6 +51,10 @@ export function AppRoutes() {
 
           <Route element={<PermissionRoute permission={PERMISSIONS.DEPARTEMENTS_READ} />}>
             <Route path="departements" element={<DepartementsPage />} />
+            <Route element={<PilotageDgeRoute />}>
+              <Route path="departements/suivi" element={<DepartementsPage />} />
+              <Route path="departements/rapports" element={<DepartementsPage />} />
+            </Route>
           </Route>
           <Route element={<DepartementAccessRoute />}>
             <Route path="departements/:departementId" element={<DepartementDetailPage />} />
@@ -57,6 +62,10 @@ export function AppRoutes() {
 
           <Route element={<PermissionRoute permission={PERMISSIONS.FAMILLES_READ} />}>
             <Route path="familles" element={<FamillesPage />} />
+            <Route element={<PilotageDgeRoute />}>
+              <Route path="familles/suivi" element={<FamillesPage />} />
+              <Route path="familles/rapports" element={<FamillesPage />} />
+            </Route>
           </Route>
           <Route element={<FamilleAccessRoute />}>
             <Route path="familles/:familleId" element={<FamilleDetailPage />} />

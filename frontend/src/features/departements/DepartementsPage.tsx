@@ -1,19 +1,20 @@
 import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, NavLink, Navigate, useLocation } from 'react-router-dom'
 import { CalendarDays, Layers, Pencil, Plus, Search, Shield, Trash2, Crown, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { useAccessScope } from '@/features/auth/accessScope'
+import { canSeePilotageDge, isMembreDge } from '@/features/auth/orgRoles'
 import { useComptes } from '@/features/comptes/hooks'
 import {
   createDemandeCompte,
   findDemandeEnAttente,
   type RoleDemandeCompte,
 } from '@/features/notifications/store'
+import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
-import { ROLE_CODES } from '@/lib/roleCodes'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Departement, Personne } from '@/types'
 import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
@@ -34,6 +35,13 @@ import {
 import { roleDepartement } from './roles'
 import { toDepartementCreate, toDepartementUpdate, type DepartementFormValues } from './schema'
 import { DashboardBodyLoading, TableLoading } from './loading'
+import { DgeRapportsPanel, DgeSuiviPanel } from './DgeSuiviPanel'
+
+const DGE_VUES = [
+  { to: '/departements', label: 'Tableau de bord', end: true },
+  { to: '/departements/suivi', label: 'Suivi DGE' },
+  { to: '/departements/rapports', label: 'Rapports reçus' },
+] as const
 import { StatCard } from './StatCard'
 
 const PAGE_SIZE = 20
@@ -47,6 +55,12 @@ function personneName(personne: Personne) {
 }
 
 export function DepartementsPage() {
+  const location = useLocation()
+  const vue = location.pathname.endsWith('/suivi')
+    ? 'suivi'
+    : location.pathname.endsWith('/rapports')
+      ? 'rapports'
+      : 'tableau'
   const [searchInput, setSearchInput] = useState('')
   const [submittedSearch, setSubmittedSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -66,7 +80,8 @@ export function DepartementsPage() {
   const canDelete = useHasPermission(PERMISSIONS.DEPARTEMENTS_DELETE)
   const user = useCurrentUser()
   const { isScoped, isLoading: scopeLoading, ledDepartementIds } = useAccessScope()
-  const isDge = user?.roles.some((role) => role.code === ROLE_CODES.MEMBRE_DGE) ?? false
+  const isDge = isMembreDge(user)
+  const voitPilotage = canSeePilotageDge(user)
   const canAssignSuperviseur = isDge || canUpdate
   const canAssignChef = isDge || canUpdate
   const canReadComptes = useHasPermission(PERMISSIONS.COMPTES_READ)
@@ -306,6 +321,14 @@ export function DepartementsPage() {
   const isSubmitting = createMutation.isPending || updateMutation.isPending
   const chefBusy = assignMutation.isPending || unassignMutation.isPending
 
+  if (!voitPilotage && vue !== 'tableau') {
+    return <Navigate to="/departements" replace />
+  }
+
+  const destDge = (catalogQuery.data?.data ?? [])
+    .filter((item) => item.actif)
+    .map((item) => ({ idDepartement: item.idDepartement, nom: item.nom }))
+
   return (
     <div className="flex flex-col gap-6">
       <DepartementBanner
@@ -321,7 +344,48 @@ export function DepartementsPage() {
         }
       />
 
-      {catalogQuery.isLoading ? (
+      {voitPilotage && (
+        <div>
+          <div role="tablist" aria-label="Sections DGE" className="flex flex-wrap gap-6 border-b border-slate-200">
+            {DGE_VUES.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={'end' in item ? item.end : false}
+                role="tab"
+                className={({ isActive }) =>
+                  cn(
+                    '-mb-px border-b-2 pb-3 text-sm font-medium',
+                    isActive ? 'border-gerbe-or text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800',
+                  )
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            La DGE pilote les superviseurs, qui accompagnent les chefs de département.
+          </p>
+        </div>
+      )}
+
+      {voitPilotage && vue === 'suivi' && user && (
+        <DgeSuiviPanel
+          departements={destDge}
+          filtreIds={destDge.map((item) => item.idDepartement)}
+          auteur={{
+            idPersonne: user.personne.idPersonne,
+            nom: `${user.personne.prenom} ${user.personne.nom}`,
+          }}
+        />
+      )}
+
+      {voitPilotage && vue === 'rapports' && (
+        <DgeRapportsPanel filtreIds={destDge.map((item) => item.idDepartement)} />
+      )}
+
+      {vue === 'tableau' && (catalogQuery.isLoading ? (
         <DashboardBodyLoading />
       ) : (
         <>
@@ -362,14 +426,16 @@ export function DepartementsPage() {
             </ChartPanel>
           </div>
         </>
-      )}
+      ))}
 
-      {demandeMessage && (
+      {vue === 'tableau' && demandeMessage && (
         <Alert variant="success" title="Demande transmise">
           {demandeMessage}
         </Alert>
       )}
 
+      {vue === 'tableau' && (
+      <>
       <h2 className="text-lg font-semibold text-slate-900">Départements</h2>
 
       <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row" role="search">
@@ -557,6 +623,8 @@ export function DepartementsPage() {
             </div>
           )}
         </>
+      )}
+      </>
       )}
 
       <DepartementFormDialog

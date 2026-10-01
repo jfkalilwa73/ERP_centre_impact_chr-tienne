@@ -27,15 +27,16 @@ describe('écran Rôles', () => {
     await user.click(screen.getByRole('link', { name: 'Lecteur' }))
     expect(await screen.findByRole('heading', { name: 'Lecteur' })).toBeTruthy()
 
-    await user.click(screen.getByRole('button', { name: 'Attribuer une permission' }))
-    expect(await screen.findByRole('option', { name: /membres.read/ })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Attribuer un droit' }))
+    expect(await screen.findByRole('option', { name: /Consulter les personnes/ })).toBeTruthy()
     await user.selectOptions(
-      screen.getByLabelText('Permission'),
-      screen.getByRole('option', { name: /membres.read/ }),
+      screen.getByLabelText('Droit'),
+      screen.getByRole('option', { name: /Consulter les personnes/ }),
     )
-    await user.click(screen.getByRole('button', { name: 'Enregistrer la permission' }))
+    await user.click(screen.getByRole('button', { name: 'Enregistrer le droit' }))
 
-    expect(await screen.findByText('membres.read')).toBeTruthy()
+    expect(await screen.findByText('Consulter les personnes')).toBeTruthy()
+    expect(screen.queryByText('membres.read')).toBeNull()
   })
 
   it("refuse l'administration des rôles au pasteur", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/stores/authStore'
-import { createFamille, deleteFamille, listFamilles, updateFamille } from './api'
+import { createFamille, deleteFamille, getFamille, listFamilles, updateFamille } from './api'
 
 const identifiants = { email: 'admin@eglise.org', motDePasse: 'SecurePass123!' }
 
@@ -80,6 +80,20 @@ describe("API familles d'impact", () => {
     await expect(deleteFamille(libre.idFamille)).resolves.toBeUndefined()
     const remaining = await listFamilles()
     expect(remaining.data.some((item) => item.code === 'SEMEURS')).toBe(false)
+  })
+
+  it('interdit la fiche d’une famille hors périmètre', async () => {
+    await ouvrirSession('accueil@eglise.org', 'Accueil2026!')
+    const [famille] = (await listFamilles()).data
+    if (!famille) throw new Error('aucune famille de démonstration')
+
+    await expect(getFamille(famille.idFamille)).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('laisse le chef lire sa famille', async () => {
+    await ouvrirSession('chef-famille@eglise.org', 'ChefFamille2026!')
+    const famille = await getFamille('f1a2b3c4-0008-4000-8000-000000000001')
+    expect(famille.code).toBe('BATISSEURS')
   })
 
   it('interdit la création sans le droit familles.create', async () => {

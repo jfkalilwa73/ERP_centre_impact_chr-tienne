@@ -44,7 +44,7 @@ export function ComptesPage() {
   )
   const comptesQuery = useComptes(listParams)
   const personnesQuery = usePersonnes({ page: 1, limit: 100 }, canReadPersonnes)
-  const rolesQuery = useRoles({ page: 1, limit: 100 }, canCreate && canManageRoles)
+  const rolesQuery = useRoles({ page: 1, limit: 100 }, canManageRoles && (canCreate || canUpdate))
   const createMutation = useCreateCompte()
   const updateMutation = useUpdateCompte()
   const deleteMutation = useDeleteCompte()
@@ -86,7 +86,11 @@ export function ComptesPage() {
   const handleFormSubmit = (values: CompteFormValues) => {
     if (editingCompte) {
       updateMutation.mutate(
-        { compteId: editingCompte.idCompte, payload: toCompteUpdate(values) },
+        {
+          compteId: editingCompte.idCompte,
+          payload: toCompteUpdate(values),
+          idRoles: values.idRoles,
+        },
         { onSuccess: () => setFormOpen(false) },
       )
       return

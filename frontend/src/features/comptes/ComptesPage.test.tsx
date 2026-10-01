@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { renderApp, seConnecter } from '@/test/renderApp'
 
@@ -79,6 +79,58 @@ describe('écran Comptes', () => {
     await user.click(screen.getByRole('button', { name: 'Enregistrer le rôle' }))
 
     expect(await screen.findByRole('cell', { name: /RESPONSABLE_ACCUEIL/ })).toBeTruthy()
+  })
+
+  it('permet à l’administrateur de réinitialiser un mot de passe', async () => {
+    const { user } = renderApp()
+
+    await seConnecter(user)
+    await screen.findByRole('heading', { name: /Bonjour Jean/ })
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
+    await user.click(screen.getByRole('button', { name: 'Administration' }))
+    await user.click(screen.getByRole('link', { name: 'Comptes' }))
+    await user.click(await screen.findByRole('button', { name: 'Modifier accueil@eglise.org' }))
+
+    expect(await screen.findByRole('heading', { name: 'Modifier le compte' })).toBeTruthy()
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('checkbox', { name: /Responsable accueil/ }) as HTMLInputElement).checked,
+      ).toBe(true),
+    )
+    await user.type(screen.getByLabelText('Nouveau mot de passe'), 'NouveauAcces2026!')
+    await user.type(screen.getByLabelText('Confirmer le nouveau mot de passe'), 'NouveauAcces2026!')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Modifier le compte' })).toBeNull())
+
+    const { login } = await import('@/features/auth/api')
+    const session = await login({ email: 'accueil@eglise.org', motDePasse: 'NouveauAcces2026!' })
+    expect(session.utilisateur.compte.email).toBe('accueil@eglise.org')
+  })
+
+  it('permet de changer les rôles d’accès depuis le formulaire de modification', async () => {
+    const { user } = renderApp()
+
+    await seConnecter(user)
+    await screen.findByRole('heading', { name: /Bonjour Jean/ })
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
+    await user.click(screen.getByRole('button', { name: 'Administration' }))
+    await user.click(screen.getByRole('link', { name: 'Comptes' }))
+    await user.click(await screen.findByRole('button', { name: 'Modifier accueil@eglise.org' }))
+
+    const accueilRole = await screen.findByRole('checkbox', { name: /Responsable accueil/ })
+    await waitFor(() => expect((accueilRole as HTMLInputElement).checked).toBe(true))
+    await user.click(accueilRole)
+    await user.click(await screen.findByRole('checkbox', { name: /^Pasteur/ }))
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Modifier le compte' })).toBeNull())
+
+    await user.click(await screen.findByRole('link', { name: 'accueil@eglise.org' }))
+    expect(await screen.findByRole('cell', { name: /PASTEUR/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Retirer/ })).toBeTruthy()
   })
 
   it("refuse les comptes au pasteur", async () => {

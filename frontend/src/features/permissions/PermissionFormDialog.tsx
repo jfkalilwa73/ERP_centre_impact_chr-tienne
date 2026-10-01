@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Alert } from '@/components/ui/Alert'
@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { errorId } from '@/lib/form'
 import type { Permission } from '@/types'
+import { ACTION_OPTIONS, MODULE_OPTIONS, actionLabel, moduleLabel } from './labels'
 import { emptyPermissionForm, permissionSchema, type PermissionFormValues } from './schema'
 
 type PermissionFormDialogProps = {
@@ -43,6 +45,22 @@ export function PermissionFormDialog({
   const moduleValue = watch('module')
   const actionValue = watch('action')
 
+  const moduleOptions = useMemo(() => {
+    const seen = new Map(MODULE_OPTIONS)
+    if (permission?.module && !seen.has(permission.module)) {
+      seen.set(permission.module, moduleLabel(permission.module))
+    }
+    return [...seen.entries()].sort((left, right) => left[1].localeCompare(right[1], 'fr'))
+  }, [permission?.module])
+
+  const actionOptions = useMemo(() => {
+    const seen = new Map(ACTION_OPTIONS)
+    if (permission?.action && !seen.has(permission.action)) {
+      seen.set(permission.action, actionLabel(permission.action))
+    }
+    return [...seen.entries()].sort((left, right) => left[1].localeCompare(right[1], 'fr'))
+  }, [permission?.action])
+
   useEffect(() => {
     if (!open) return
     reset(
@@ -59,21 +77,30 @@ export function PermissionFormDialog({
   }, [open, permission, reset])
 
   useEffect(() => {
-    if (!open || isEditing) return
+    if (!open) return
     const modulePart = moduleValue.trim().toLowerCase()
     const actionPart = actionValue.trim().toLowerCase()
     if (modulePart && actionPart) {
-      setValue('code', `${modulePart}.${actionPart}`, { shouldValidate: false })
+      setValue('code', `${modulePart}.${actionPart}`, { shouldValidate: true })
     }
-  }, [actionValue, isEditing, moduleValue, open, setValue])
+  }, [actionValue, moduleValue, open, setValue])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title={isEditing ? 'Modifier la permission' : 'Nouvelle permission'}
-        description="Le code suit le motif module.action, par exemple membres.read."
+        title={isEditing ? 'Modifier le droit' : 'Nouveau droit'}
+        description="Choisissez la rubrique, puis ce que la personne a le droit de faire."
       >
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit((values) =>
+            onSubmit({
+              ...values,
+              code: `${values.module.trim()}.${values.action.trim()}`.toLowerCase(),
+            }),
+          )}
+          noValidate
+          className="flex flex-col gap-4"
+        >
           {errorMessage && (
             <Alert variant="error" title="Enregistrement impossible">
               {errorMessage}
@@ -81,48 +108,53 @@ export function PermissionFormDialog({
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField id="permission-module" label="Module" error={errors.module?.message}>
-              <Input
+            <FormField id="permission-module" label="Rubrique" error={errors.module?.message}>
+              <Select
                 id="permission-module"
-                autoComplete="off"
-                placeholder="membres"
                 hasError={Boolean(errors.module)}
                 aria-describedby={errors.module ? errorId('permission-module') : undefined}
                 {...register('module')}
-              />
+              >
+                <option value="">Choisir une rubrique</option>
+                {moduleOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
             </FormField>
-            <FormField id="permission-action" label="Action" error={errors.action?.message}>
-              <Input
+            <FormField
+              id="permission-action"
+              label="Ce que la personne peut faire"
+              error={errors.action?.message}
+            >
+              <Select
                 id="permission-action"
-                autoComplete="off"
-                placeholder="read"
                 hasError={Boolean(errors.action)}
                 aria-describedby={errors.action ? errorId('permission-action') : undefined}
                 {...register('action')}
-              />
+              >
+                <option value="">Choisir une action</option>
+                {actionOptions.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
             </FormField>
           </div>
 
-          <FormField id="permission-code" label="Code" error={errors.code?.message}>
-            <Input
-              id="permission-code"
-              autoComplete="off"
-              placeholder="membres.read"
-              hasError={Boolean(errors.code)}
-              aria-describedby={errors.code ? errorId('permission-code') : undefined}
-              {...register('code')}
-            />
-          </FormField>
+          <input type="hidden" {...register('code')} />
 
           <FormField
             id="permission-description"
-            label="Description"
+            label="Intitulé du droit"
             error={errors.description?.message}
           >
             <Input
               id="permission-description"
               autoComplete="off"
-              placeholder="Consulter les personnes"
+              placeholder="Exemple : Consulter les personnes"
               hasError={Boolean(errors.description)}
               aria-describedby={
                 errors.description ? errorId('permission-description') : undefined
@@ -137,7 +169,7 @@ export function PermissionFormDialog({
               className="size-4 rounded border-slate-300 text-brand-600"
               {...register('actif')}
             />
-            Permission active
+            Droit actif
           </label>
 
           <div className="mt-2 flex justify-end gap-2">
@@ -145,7 +177,7 @@ export function PermissionFormDialog({
               Annuler
             </Button>
             <Button type="submit" isLoading={isSubmitting}>
-              {isEditing ? 'Enregistrer' : 'Créer la permission'}
+              {isEditing ? 'Enregistrer' : 'Créer le droit'}
             </Button>
           </div>
         </form>

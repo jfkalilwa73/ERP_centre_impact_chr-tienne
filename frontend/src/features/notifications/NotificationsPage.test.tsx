@@ -17,7 +17,10 @@ describe('notifications superviseur', () => {
     await screen.findByRole('heading', { name: /Bonjour Esther/ }, { timeout: 8000 })
     await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
     await user.click(screen.getAllByRole('button', { name: 'Départements' })[0]!)
-    await user.click(screen.getAllByRole('link', { name: 'Tous les départements' })[0]!)
+    await user.click(
+      (screen.queryAllByRole('link', { name: 'Tableau de bord' })[0] ??
+        screen.getAllByRole('link', { name: 'Tous les départements' })[0])!,
+    )
 
     await user.click(
       await screen.findByRole('button', { name: 'Désigner le superviseur de Département Diaconie' }),
@@ -60,7 +63,10 @@ describe('notifications superviseur', () => {
     await seConnecter(user, 'patrick.superviseur@eglise.org', 'SecurePass123!')
     await user.click(await screen.findByRole('button', { name: 'Ouvrir le menu' }, { timeout: 8000 }))
     await user.click(screen.getAllByRole('button', { name: 'Départements' })[0]!)
-    await user.click(screen.getAllByRole('link', { name: 'Tous les départements' })[0]!)
+    await user.click(
+      (screen.queryAllByRole('link', { name: 'Tableau de bord' })[0] ??
+        screen.getAllByRole('link', { name: 'Tous les départements' })[0])!,
+    )
     expect(await screen.findByRole('heading', { name: /Bonjour Patrick/ }, { timeout: 8000 })).toBeTruthy()
     expect(await screen.findByText('DIAKONIE')).toBeTruthy()
     expect(screen.queryByText('ACCUEIL')).toBeNull()
@@ -73,7 +79,10 @@ describe('notifications superviseur', () => {
     await screen.findByRole('heading', { name: /Bonjour Esther/ }, { timeout: 8000 })
     await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
     await user.click(screen.getAllByRole('button', { name: 'Départements' })[0]!)
-    await user.click(screen.getAllByRole('link', { name: 'Tous les départements' })[0]!)
+    await user.click(
+      (screen.queryAllByRole('link', { name: 'Tableau de bord' })[0] ??
+        screen.getAllByRole('link', { name: 'Tous les départements' })[0])!,
+    )
 
     await user.click(await screen.findByRole('button', { name: 'Désigner le chef de Département Accueil' }))
     await user.click(await screen.findByRole('button', { name: 'Désigner Patrick MWAMBA comme chef' }))
@@ -124,11 +133,20 @@ describe('notifications superviseur', () => {
     await user.click(await screen.findByRole('button', { name: 'Ouvrir le menu' }, { timeout: 8000 }))
     await user.click(screen.getByRole('link', { name: /Notifications/ }))
     expect(await screen.findByText('Bilan répétition')).toBeTruthy()
-    expect(await screen.findByText(/Échéance dépassée : Préparation du culte/)).toBeTruthy()
+    expect(await screen.findByText(/Compte rendu à produire : Préparation du culte/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Répondre' })).toBeNull()
     expect(screen.getAllByText(/Consultation uniquement/).length).toBeGreaterThan(0)
-    await user.click(screen.getByRole('button', { name: 'Supprimer Échéance dépassée : Préparation du culte' }))
-    expect(screen.queryByText(/Échéance dépassée : Préparation du culte/)).toBeNull()
+    await user.click(
+      screen.getByRole('button', { name: 'Supprimer Compte rendu à produire : Préparation du culte' }),
+    )
+    expect(screen.queryByText(/Compte rendu à produire : Préparation du culte/)).toBeNull()
+
+    await seDeconnecter(user)
+    await seConnecter(user, 'dge@eglise.org', 'Dge2026!')
+    await user.click(await screen.findByRole('button', { name: 'Ouvrir le menu' }, { timeout: 8000 }))
+    await user.click(screen.getByRole('link', { name: /Notifications/ }))
+    expect(await screen.findByText('Présence faible : Daniel KASONGO')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Répondre' })).toBeNull()
 
     await seDeconnecter(user)
     await seConnecter(user, 'pasteur@eglise.org', 'Pasteur2026!')
@@ -156,4 +174,24 @@ describe('notifications superviseur', () => {
     await user.click(screen.getByRole('button', { name: 'Répondre' }))
     expect(await screen.findByText('Bien reçu, on ajuste le choeur.')).toBeTruthy()
   }, 45000)
+
+  it('filtre les notifications par recherche et par type', async () => {
+    const { user } = renderApp()
+
+    await seConnecter(user, 'chef-louange@eglise.org', 'ChefDep2026!')
+    expect(await screen.findByRole('heading', { name: 'Département Louange' }, { timeout: 8000 })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
+    await user.click(screen.getByRole('link', { name: /Notifications/ }))
+
+    expect(await screen.findByLabelText('Rechercher dans les notifications')).toBeTruthy()
+    expect(await screen.findByText('Présence faible : Daniel KASONGO')).toBeTruthy()
+    await user.type(screen.getByLabelText('Rechercher dans les notifications'), 'présence')
+    expect(screen.getByText('Présence faible : Daniel KASONGO')).toBeTruthy()
+    expect(screen.queryByText('Demandes de budget en cours')).toBeNull()
+
+    await user.clear(screen.getByLabelText('Rechercher dans les notifications'))
+    await user.selectOptions(screen.getByLabelText('Filtrer par type'), 'Alertes')
+    expect(await screen.findByText('Présence faible : Daniel KASONGO')).toBeTruthy()
+    expect(screen.queryByText(/Compte rendu à produire : Préparation du culte/)).toBeNull()
+  }, 20000)
 })

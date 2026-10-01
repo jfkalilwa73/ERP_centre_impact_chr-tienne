@@ -1,17 +1,26 @@
+import { canSeeAllUnits as canSeeAllUnitsForUser } from '@/features/auth/orgRoles'
 import { canAccessDepartementUnit } from '@/features/departements/roles'
-import { isLeadershipRole as isFamilleLeadership } from '@/features/familles/roles'
+import { canAccessFamilleUnit } from '@/features/familles/roles'
 import { PERMISSIONS } from '@/lib/permissions'
 import { mockDb } from './db'
 import { mockAccounts, type MockAccount } from './fixtures'
 import { requirePermission } from './http'
 
 export function effectivePermissionsForCompte(idCompte: string) {
+  const compte = mockDb.comptes.find((candidate) => candidate.idCompte === idCompte)
+  if (!compte || compte.statut !== 'actif') return []
+
   const roleIds = mockDb.affectationsRole
     .filter((affectation) => affectation.idCompte === idCompte && affectation.actif)
     .map((affectation) => affectation.idRole)
+  const activeRoleIds = new Set(
+    mockDb.roles
+      .filter((role) => roleIds.includes(role.idRole) && role.actif)
+      .map((role) => role.idRole),
+  )
   const permissionIds = new Set(
     mockDb.rolePermissions
-      .filter((lien) => roleIds.includes(lien.idRole))
+      .filter((lien) => activeRoleIds.has(lien.idRole))
       .map((lien) => lien.idPermission),
   )
   return mockDb.permissions
@@ -36,6 +45,27 @@ export function refreshAccountAccess(idCompte: string) {
   account.utilisateur.permissions = effectivePermissionsForCompte(idCompte)
 }
 
+export function refreshAccountsHoldingRole(idRole: string) {
+  const compteIds = new Set(
+    mockDb.affectationsRole
+      .filter((affectation) => affectation.actif && affectation.idRole === idRole)
+      .map((affectation) => affectation.idCompte),
+  )
+  for (const idCompte of compteIds) refreshAccountAccess(idCompte)
+}
+
+export function refreshAccountsHoldingPermission(idPermission: string) {
+  const roleIds = mockDb.rolePermissions
+    .filter((lien) => lien.idPermission === idPermission)
+    .map((lien) => lien.idRole)
+  const compteIds = new Set(
+    mockDb.affectationsRole
+      .filter((affectation) => affectation.actif && roleIds.includes(affectation.idRole))
+      .map((affectation) => affectation.idCompte),
+  )
+  for (const idCompte of compteIds) refreshAccountAccess(idCompte)
+}
+
 export function leadsDepartement(account: MockAccount, departementId?: string) {
   const idPersonne = account.utilisateur.compte.idPersonne
   return mockDb.affectations.some(
@@ -53,9 +83,13 @@ export function leadsFamille(account: MockAccount, familleId?: string) {
     (affectation) =>
       affectation.idPersonne === idPersonne &&
       affectation.actif &&
-      isFamilleLeadership(affectation.fonction) &&
+      canAccessFamilleUnit(affectation.fonction) &&
       (!familleId || affectation.idFamille === familleId),
   )
+}
+
+export function canSeeAllUnits(account: MockAccount) {
+  return canSeeAllUnitsForUser(account.utilisateur)
 }
 
 export function isAnyLeadership(account: MockAccount) {

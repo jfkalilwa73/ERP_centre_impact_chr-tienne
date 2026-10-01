@@ -1,3 +1,7 @@
+import { canSeePilotageDge, isAdminFonctionnel } from '@/features/auth/orgRoles'
+import { canMutateUnite, currentUser, isTestBypass, leadsUnite } from '@/lib/writeAccess'
+import { PERMISSIONS } from '@/lib/permissions'
+
 export type DemandeSuperviseurStatut = 'en_attente' | 'traitee' | 'refusee'
 
 export type RoleDemandeCompte = 'Superviseur' | 'Chef'
@@ -57,6 +61,18 @@ export function findDemandeEnAttente(
   )
 }
 
+function canCreateDemandeCompte(input: { idDepartement: string; idDemandeur: string }) {
+  if (isTestBypass()) return true
+  const user = currentUser()
+  if (!user || input.idDemandeur !== user.personne.idPersonne) return false
+  if (canSeePilotageDge(user)) return true
+  return (
+    user.permissions.includes(PERMISSIONS.DEMANDES_CREATE) &&
+    (canMutateUnite(input.idDepartement, [PERMISSIONS.DEMANDES_CREATE]) ||
+      leadsUnite(user.personne.idPersonne, input.idDepartement))
+  )
+}
+
 export function createDemandeCompte(input: {
   idPersonneCible: string
   nomCible: string
@@ -66,6 +82,7 @@ export function createDemandeCompte(input: {
   nomDemandeur: string
   roleCible: RoleDemandeCompte
 }) {
+  if (!canCreateDemandeCompte(input)) return undefined
   const existing = findDemandeEnAttente(input.idPersonneCible, input.idDepartement, input.roleCible)
   if (existing) return existing
 
@@ -91,6 +108,7 @@ export function createDemandeSuperviseur(
 }
 
 export function traiterDemandeSuperviseur(id: string, emailCree: string) {
+  if (!isTestBypass() && !isAdminFonctionnel(currentUser())) return
   const found = demandes.find((demande) => demande.id === id)
   if (!found || found.statut !== 'en_attente') return
   found.statut = 'traitee'
@@ -102,6 +120,7 @@ export function traiterDemandeSuperviseur(id: string, emailCree: string) {
 }
 
 export function refuserDemandeSuperviseur(id: string) {
+  if (!isTestBypass() && !isAdminFonctionnel(currentUser())) return
   const found = demandes.find((demande) => demande.id === id)
   if (!found || found.statut !== 'en_attente') return
   found.statut = 'refusee'

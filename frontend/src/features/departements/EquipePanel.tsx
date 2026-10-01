@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { PersonneAvatar } from '@/features/personnes/PersonneAvatar'
-import type { AffectationDepartement, Personne } from '@/types'
+import type { Personne } from '@/types'
 import {
   disponibiliteLabel,
   getEquipeVersion,
@@ -16,7 +16,7 @@ import {
 import { personneName } from './personneName'
 import { isStructureRole, ROLES_EQUIPE, roleDepartement, type RoleDepartement } from './roles'
 
-type Membre = { personne: Personne; affectation: AffectationDepartement }
+type Membre = { personne: Personne; affectation: { fonction?: string } }
 
 type EquipePanelProps = {
   departementId: string

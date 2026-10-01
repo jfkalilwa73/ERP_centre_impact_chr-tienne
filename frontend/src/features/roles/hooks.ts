@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { invalidateCurrentUser } from '@/features/auth/hooks'
 import type { ApiError } from '@/lib/apiError'
 import type { Permission, Role, RoleCreate, RolePermissionCreate, RoleUpdate } from '@/types'
 import {
@@ -49,7 +50,10 @@ export function useCreateRole() {
 
   return useMutation<Role, ApiError, RoleCreate>({
     mutationFn: createRole,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roleKeys.all }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: roleKeys.all })
+      invalidateCurrentUser(queryClient)
+    },
   })
 }
 
@@ -58,7 +62,10 @@ export function useUpdateRole() {
 
   return useMutation<Role, ApiError, { roleId: string; payload: RoleUpdate }>({
     mutationFn: ({ roleId, payload }) => updateRole(roleId, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roleKeys.all }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: roleKeys.all })
+      invalidateCurrentUser(queryClient)
+    },
   })
 }
 
@@ -67,7 +74,10 @@ export function useDeleteRole() {
 
   return useMutation<void, ApiError, string>({
     mutationFn: deleteRole,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roleKeys.all }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: roleKeys.all })
+      invalidateCurrentUser(queryClient)
+    },
   })
 }
 
@@ -76,7 +86,10 @@ export function useAssignPermission(roleId: string) {
 
   return useMutation<Permission, ApiError, RolePermissionCreate>({
     mutationFn: (payload) => assignPermissionToRole(roleId, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roleKeys.permissions(roleId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: roleKeys.permissions(roleId) })
+      invalidateCurrentUser(queryClient)
+    },
   })
 }
 
@@ -85,6 +98,9 @@ export function useUnassignPermission(roleId: string) {
 
   return useMutation<void, ApiError, string>({
     mutationFn: (permissionId) => unassignPermissionFromRole(roleId, permissionId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: roleKeys.permissions(roleId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: roleKeys.permissions(roleId) })
+      invalidateCurrentUser(queryClient)
+    },
   })
 }

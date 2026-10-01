@@ -1,3 +1,7 @@
+import { canSeePilotageDge } from '@/features/auth/orgRoles'
+import { clampText, canMutateUnite, currentUser, isTestBypass, MAX_DESCRIPTION } from '@/lib/writeAccess'
+import { PERMISSIONS } from '@/lib/permissions'
+
 export type Objectif = {
   id: string
   libelle: string
@@ -29,6 +33,7 @@ export type Rapport = {
 }
 
 const LOUANGE_ID = 'd4f6b8c0-0006-4000-8000-000000000002'
+const BATISSEURS_ID = 'f1a2b3c4-0008-4000-8000-000000000001'
 
 const seedObjectifs: Record<string, Objectif[]> = {
   [LOUANGE_ID]: [
@@ -66,6 +71,17 @@ const seedRapports: Rapport[] = [
     statut: 'transmis',
     date: '2026-09-02',
   },
+  {
+    id: 'rap-batisseurs-1',
+    titre: 'Compte rendu août',
+    description: 'Cellules tenues. Visites de quartier à renforcer.',
+    idDepartementSource: BATISSEURS_ID,
+    nomDepartementSource: 'Famille Bâtisseurs',
+    idDepartementCible: BATISSEURS_ID,
+    nomDepartementCible: 'Famille Bâtisseurs',
+    statut: 'transmis',
+    date: '2026-09-03',
+  },
 ]
 
 function cloneMap<T>(source: Record<string, T[]>) {
@@ -101,12 +117,15 @@ export function listObjectifs(departementId: string) {
 }
 
 export function addObjectif(departementId: string, input: Omit<Objectif, 'id'>) {
+  if (!canMutateUnite(departementId, [PERMISSIONS.OBJECTIFS_MANAGE, PERMISSIONS.RAPPORTS_CREATE])) {
+    return undefined
+  }
   const created: Objectif = {
     id: crypto.randomUUID(),
-    libelle: input.libelle.trim(),
-    cible: input.cible.trim(),
+    libelle: clampText(input.libelle),
+    cible: clampText(input.cible),
     avancement: Math.min(100, Math.max(0, input.avancement)),
-    ecart: input.ecart.trim(),
+    ecart: clampText(input.ecart),
   }
   objectifs[departementId] = [created, ...(objectifs[departementId] ?? [])]
   emit()
@@ -114,12 +133,15 @@ export function addObjectif(departementId: string, input: Omit<Objectif, 'id'>) 
 }
 
 export function updateObjectif(departementId: string, id: string, input: Partial<Omit<Objectif, 'id'>>) {
+  if (!canMutateUnite(departementId, [PERMISSIONS.OBJECTIFS_MANAGE, PERMISSIONS.RAPPORTS_CREATE])) {
+    return
+  }
   const found = (objectifs[departementId] ?? []).find((item) => item.id === id)
   if (!found) return
-  if (input.libelle !== undefined) found.libelle = input.libelle.trim()
-  if (input.cible !== undefined) found.cible = input.cible.trim()
+  if (input.libelle !== undefined) found.libelle = clampText(input.libelle)
+  if (input.cible !== undefined) found.cible = clampText(input.cible)
   if (input.avancement !== undefined) found.avancement = Math.min(100, Math.max(0, input.avancement))
-  if (input.ecart !== undefined) found.ecart = input.ecart.trim()
+  if (input.ecart !== undefined) found.ecart = clampText(input.ecart)
   emit()
 }
 
@@ -128,10 +150,13 @@ export function listPlansAction(departementId: string) {
 }
 
 export function addPlanAction(departementId: string, input: Omit<PlanAction, 'id'>) {
+  if (!canMutateUnite(departementId, [PERMISSIONS.OBJECTIFS_MANAGE, PERMISSIONS.RAPPORTS_CREATE])) {
+    return undefined
+  }
   const created: PlanAction = {
     id: crypto.randomUUID(),
     idObjectif: input.idObjectif,
-    libelle: input.libelle.trim(),
+    libelle: clampText(input.libelle),
     echeance: input.echeance,
     statut: input.statut ?? 'ouvert',
   }
@@ -141,6 +166,9 @@ export function addPlanAction(departementId: string, input: Omit<PlanAction, 'id
 }
 
 export function marquerPlanFait(departementId: string, id: string) {
+  if (!canMutateUnite(departementId, [PERMISSIONS.OBJECTIFS_MANAGE, PERMISSIONS.RAPPORTS_CREATE])) {
+    return
+  }
   const found = (plans[departementId] ?? []).find((item) => item.id === id)
   if (found) found.statut = 'fait'
   emit()
@@ -153,6 +181,11 @@ export function listRapports(departementId: string) {
         item.idDepartementSource === departementId || item.idDepartementCible === departementId,
     )
     .sort((left, right) => right.date.localeCompare(left.date))
+}
+
+export function listAllRapports() {
+  if (!isTestBypass() && !canSeePilotageDge(currentUser())) return []
+  return [...rapports].sort((left, right) => right.date.localeCompare(left.date))
 }
 
 export function listRapportsConsolides(departementIds: string[]) {
@@ -172,10 +205,13 @@ export function addRapport(input: {
   idDepartementCible: string
   nomDepartementCible: string
 }) {
+  if (!canMutateUnite(input.idDepartementSource, [PERMISSIONS.RAPPORTS_CREATE, PERMISSIONS.BUDGET_REQUEST])) {
+    return undefined
+  }
   const created: Rapport = {
     id: crypto.randomUUID(),
-    titre: input.titre.trim(),
-    description: input.description.trim(),
+    titre: clampText(input.titre),
+    description: clampText(input.description, MAX_DESCRIPTION),
     idDepartementSource: input.idDepartementSource,
     nomDepartementSource: input.nomDepartementSource,
     idDepartementCible: input.idDepartementCible,

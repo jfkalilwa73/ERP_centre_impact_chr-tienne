@@ -141,7 +141,7 @@ export const chefFamilleRole = role(
   '000000000005',
   ROLE_CODES.CHEF_FAMILLE,
   "Chef de famille d'impact",
-  "Tableau de bord de sa famille d'impact uniquement.",
+  'Pilote sa famille : équipe, activités, demandes, budget et rapports.',
   1,
   '2026-04-01T08:00:00Z',
 )
@@ -463,8 +463,17 @@ export const seedRolePermissions: RolePermissionLink[] = [
     PERMISSIONS.FAMILLES_READ,
   ]),
   ...permissionLinks(chefFamilleRole, [
+    PERMISSIONS.EQUIPES_READ,
+    PERMISSIONS.EQUIPES_MANAGE,
     PERMISSIONS.ACTIVITES_READ,
+    PERMISSIONS.ACTIVITES_CREATE,
     PERMISSIONS.ACTIVITES_UPDATE,
+    PERMISSIONS.BUDGET_READ,
+    PERMISSIONS.BUDGET_REQUEST,
+    PERMISSIONS.RAPPORTS_READ,
+    PERMISSIONS.RAPPORTS_CREATE,
+    PERMISSIONS.DEMANDES_READ,
+    PERMISSIONS.DEMANDES_CREATE,
   ]),
 ]
 
