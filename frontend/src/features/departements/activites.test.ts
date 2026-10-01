@@ -54,7 +54,7 @@ describe('activités constantes', () => {
     })
 
     notifyMembresActivite({
-      activite: created,
+      activite: created!,
       departementId: 'd4f6b8c0-0006-4000-8000-000000000002',
       nomDepartement: 'Département Louange',
       membreIds: ['chef', 'choriste'],

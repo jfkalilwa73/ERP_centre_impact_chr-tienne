@@ -46,8 +46,16 @@ export function resetIssuedTokens() {
   issuedAccessTokens.clear()
 }
 
-export const apiUrl = (path: string) =>
-  new URL(path, `${import.meta.env.VITE_API_URL}/`).toString()
+export const apiUrl = (path: string) => {
+  const rawBase = import.meta.env.VITE_API_URL || '/api/v1'
+  if (rawBase.startsWith('http://') || rawBase.startsWith('https://')) {
+    const baseWithSlash = rawBase.endsWith('/') ? rawBase : `${rawBase}/`
+    return new URL(path.replace(/^\/+/, ''), baseWithSlash).toString()
+  }
+  const cleanBase = rawBase.replace(/\/+$/, '')
+  const cleanPath = path.replace(/^\/+/, '')
+  return `${cleanBase}/${cleanPath}`
+}
 
 export function errorResponse(status: number, code: string, message: string, details?: unknown[]) {
   const body: ErrorResponse = {

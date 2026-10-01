@@ -26,7 +26,7 @@ describe('demandes superviseur', () => {
     const first = createDemandeSuperviseur(payload)
     const second = createDemandeSuperviseur(payload)
 
-    expect(first.id).toBe(second.id)
+    expect(first!.id).toBe(second!.id)
     expect(listDemandes()).toHaveLength(1)
     expect(findDemandeEnAttente('p1', 'd1')?.statut).toBe('en_attente')
   })
@@ -61,7 +61,7 @@ describe('demandes superviseur', () => {
     })
 
     expect(unreadDemandesCount({ isAdmin: true })).toBe(1)
-    traiterDemandeSuperviseur(demande.id, 'patrick.mwamba@eglise.org')
+    traiterDemandeSuperviseur(demande!.id, 'patrick.mwamba@eglise.org')
 
     expect(listDemandes()[0]?.statut).toBe('traitee')
     expect(unreadDemandesCount({ isAdmin: true })).toBe(0)
@@ -79,7 +79,7 @@ describe('demandes superviseur', () => {
       nomDemandeur: 'Pierre MWAMBA',
     })
 
-    refuserDemandeSuperviseur(demande.id)
+    refuserDemandeSuperviseur(demande!.id)
     expect(listDemandes()[0]?.statut).toBe('refusee')
   })
 
@@ -94,11 +94,11 @@ describe('demandes superviseur', () => {
       nomDemandeur: 'Pierre MWAMBA',
     })
 
-    deleteDemande(demande.id)
+    deleteDemande(demande!.id)
     expect(listDemandes()).toHaveLength(1)
 
-    traiterDemandeSuperviseur(demande.id, 'patrick.mwamba@eglise.org')
-    deleteDemande(demande.id)
+    traiterDemandeSuperviseur(demande!.id, 'patrick.mwamba@eglise.org')
+    deleteDemande(demande!.id)
     expect(listDemandes()).toHaveLength(0)
   })
 })

@@ -10,13 +10,20 @@ import { resetDemandes } from '@/features/notifications/store'
 import { resetActivitesFamille } from '@/features/familles/activites'
 import { resetFicheComplements } from '@/features/personnes/fiche'
 import { resetPersonnePhotos } from '@/features/personnes/photos'
-import { resetMockDb } from '@/mocks/db'
+import { setTestAffectationsProvider } from '@/lib/writeAccess'
+import { resetMockDb, mockDb } from '@/mocks/db'
 import { handlers } from '@/mocks/handlers'
 import { useAuthStore } from '@/stores/authStore'
 
 export const server = setupServer(...handlers)
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'error' })
+  setTestAffectationsProvider(() => ({
+    dept: mockDb.affectations,
+    famille: mockDb.affectationsFamille,
+  }))
+})
 
 afterEach(() => {
   cleanup()

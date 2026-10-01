@@ -6,7 +6,7 @@ import { buildFichePdfHtml } from './printFiche'
 
 describe('export PDF de la fiche', () => {
   it('n’inclut que le nom, la photo, les coordonnées, le civil, les liens et les ministères', () => {
-    const jean = seedPersonnes[0]
+    const jean = seedPersonnes[0]!
     const html = buildFichePdfHtml({
       personne: jean,
       photoSrc: 'data:image/png;base64,abc',
@@ -17,7 +17,7 @@ describe('export PDF de la fiche', () => {
         ...emptyFicheComplement,
         statutCivil: 'marie',
         competences: 'Accueil',
-        liens: [{ idPersonne: seedPersonnes[1].idPersonne, lien: 'Conjoint', dateAjout: '2026-09-21T00:00:00Z' }],
+        liens: [{ idPersonne: seedPersonnes[1]!.idPersonne, lien: 'Conjoint', dateAjout: '2026-09-21T00:00:00Z' }],
       },
       personnes: seedPersonnes,
       affectationsActives: [

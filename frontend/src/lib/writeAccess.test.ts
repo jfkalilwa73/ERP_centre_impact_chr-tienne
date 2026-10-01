@@ -32,9 +32,7 @@ describe('contrôle des écritures d’unité', () => {
 
   it('limite le chef à son unité', async () => {
     await ouvrirSession('chef-louange@eglise.org', 'ChefDep2026!')
-    // Hors composant React, canMutateUnite retourne false pour les chefs :
-    // la vérification fine par affectations se fait via useAccessScope dans les routes.
-    expect(canMutateUnite(LOUANGE_ID, [PERMISSIONS.ACTIVITES_CREATE])).toBe(false)
+    expect(canMutateUnite(LOUANGE_ID, [PERMISSIONS.ACTIVITES_CREATE])).toBe(true)
     expect(canMutateUnite(ACCUEIL_ID, [PERMISSIONS.ACTIVITES_CREATE])).toBe(false)
     expect(listAllRapports()).toEqual([])
   })

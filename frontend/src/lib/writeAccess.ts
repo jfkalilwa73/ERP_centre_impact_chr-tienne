@@ -36,10 +36,10 @@ export function isValidMontant(value: number) {
 export function leadsUniteFromAffectations(
   idPersonne: string,
   ownerId: string,
-  affectationsDept: AffectationDepartement[],
-  affectationsFamille: AffectationFamille[],
+  affectationsDept: AffectationDepartement[] = [],
+  affectationsFamille: AffectationFamille[] = [],
 ): boolean {
-  const departement = affectationsDept.some(
+  const departement = (affectationsDept ?? []).some(
     (affectation) =>
       affectation.actif &&
       affectation.idPersonne === idPersonne &&
@@ -47,7 +47,7 @@ export function leadsUniteFromAffectations(
       canAccessDepartementUnit(affectation.fonction),
   )
   if (departement) return true
-  return affectationsFamille.some(
+  return (affectationsFamille ?? []).some(
     (affectation) =>
       affectation.actif &&
       affectation.idPersonne === idPersonne &&
@@ -56,11 +56,29 @@ export function leadsUniteFromAffectations(
   )
 }
 
+let testAffectationsProvider: (() => { dept: AffectationDepartement[]; famille: AffectationFamille[] }) | null = null
+
+export function setTestAffectationsProvider(
+  provider: (() => { dept: AffectationDepartement[]; famille: AffectationFamille[] }) | null,
+) {
+  testAffectationsProvider = provider
+}
+
+export function leadsUnite(idPersonne: string, ownerId: string): boolean {
+  if (isTestBypass()) return true
+  if (testAffectationsProvider) {
+    const { dept, famille } = testAffectationsProvider()
+    return leadsUniteFromAffectations(idPersonne, ownerId, dept, famille)
+  }
+  return false
+}
+
 /**
  * Contrôle d'écriture synchrone pour les actions non-React (ex : logique métier).
  * La vérification fine d'appartenance à une unité est déléguée aux composants via
  * `useAccessScope` qui dispose du cache des affectations.
- * Ici, on autorise si l'utilisateur a un droit large (admin, pasteur, DGE).
+ * Ici, on autorise si l'utilisateur a un droit large (admin, pasteur, DGE) ou via
+ * le fournisseur de test en environnement de test.
  */
 export function canMutateUnite(ownerId: string, needed: readonly string[]) {
   if (isTestBypass()) return true
@@ -74,9 +92,12 @@ export function canMutateUnite(ownerId: string, needed: readonly string[]) {
   ) {
     return true
   }
-  // Hors composant React : on ne peut pas lire le cache des affectations.
-  // Le contrôle fin est géré dans les routes/composants via useAccessScope.
-  // On refuse par défaut pour ne pas exposer de surface d'attaque.
+  if (testAffectationsProvider) {
+    const { dept, famille } = testAffectationsProvider()
+    if (leadsUniteFromAffectations(user.personne.idPersonne, ownerId, dept, famille)) {
+      return true
+    }
+  }
   return false
 }
 

@@ -392,6 +392,7 @@ export function ActivitesPanel({
     event.preventDefault()
     if (!draftValide(draft) || !auteur) return
     const created = store.add(departementId, toActiviteFields(draft, membres))
+    if (!created) return
     notifyMembresActivite({
       activite: created,
       departementId,

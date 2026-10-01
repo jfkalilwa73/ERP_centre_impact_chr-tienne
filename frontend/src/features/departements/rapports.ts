@@ -112,8 +112,17 @@ export function getRapportsVersion() {
   return version
 }
 
+export type ObjectifWithDepartement = Objectif & { idDepartement: string }
+
 export function listObjectifs(departementId: string) {
   return [...(objectifs[departementId] ?? [])]
+}
+
+export function listAllObjectifs(departementIds?: string[]): ObjectifWithDepartement[] {
+  const filter = departementIds ? new Set(departementIds) : null
+  return Object.entries(objectifs)
+    .filter(([deptId]) => (filter ? filter.has(deptId) : true))
+    .flatMap(([deptId, items]) => items.map((item) => ({ ...item, idDepartement: deptId })))
 }
 
 export function addObjectif(departementId: string, input: Omit<Objectif, 'id'>) {
