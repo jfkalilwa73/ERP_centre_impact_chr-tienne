@@ -1,75 +1,93 @@
-# React + TypeScript + Vite
+# Frontend — ERP Église (Phase 0)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript + Vite, aligné sur le contrat `openapi/openapi-phase-0.yaml`.
 
-Currently, two official plugins are available:
+## Démarrer
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev          # http://localhost:5173
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+| Commande               | Rôle                                                   |
+| ---------------------- | ------------------------------------------------------ |
+| `npm run dev`          | Serveur de développement                               |
+| `npm run test`         | Tests (Vitest + MSW + Testing Library)                 |
+| `npm run typecheck`    | Vérification TypeScript stricte                        |
+| `npm run lint`         | ESLint                                                 |
+| `npm run build`        | Build de production                                    |
+| `npm run api:types`    | Régénère `src/types/api.ts` depuis le contrat OpenAPI  |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Le contrat fait autorité
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+`openapi/openapi-phase-0.yaml` est la copie du contrat officiel. Les types TypeScript
+en sont **générés**, jamais écrits à la main :
+
+```bash
+npm run api:types
+```
+
+`src/types/index.ts` ne contient que des alias ergonomiques vers les schémas générés
+(`Personne`, `LoginResponse`, `Site`…). Quand le contrat évolue, on régénère et on
+corrige les erreurs de compilation qui en découlent.
+
+## Connexion au backend
+
+Le frontend est prêt à consommer le backend Laravel. La variable `VITE_USE_MOCKS`
+est positionnée à `false` dans `.env` : toutes les requêtes partent vers le vrai serveur.
+
+**Proxy Vite (développement)** : `vite.config.ts` redirige `/api/*` vers `http://localhost:8000`.
+Il n'y a donc **aucun problème CORS** en développement local — il suffit que le serveur
+Laravel tourne sur le port 8000.
+
+```bash
+# Pour démarrer avec le vrai backend :
+# 1. Lancer les services Docker (PostgreSQL, Redis, Mailpit, Backend)
+docker-compose up -d
+# 2. Démarrer le frontend
+npm run dev
+```
+
+**Réactiver les mocks** (backend indisponible) :
+```bash
+# Dans frontend/.env, changer :
+VITE_USE_MOCKS=true
+```
+
+- La simulation est **refusée si `VITE_APP_ENV=production`**, quelle que soit la valeur
+  de `VITE_USE_MOCKS`.
+- Les handlers MSW et les comptes de démonstration restent dans `src/mocks/` pour les tests.
+
+
+## Authentification
+
+Le contrat n'expose **aucune route de renouvellement de token** : le refresh token
+est géré côté Laravel sans endpoint public. Conséquences assumées côté React :
+
+- le refresh token n'est ni stocké ni persisté, il serait inutilisable ;
+- l'access token vit 1 heure ; passé ce délai la session est abandonnée et
+  l'utilisateur revient sur l'écran de connexion ;
+- tout `401` sur un appel authentifié ferme la session locale (`src/lib/apiClient.ts`).
+
+## Organisation
 
 ```
+src/
+  components/layout/   Ossature applicative (en-tête, contenu)
+  components/ui/       Primitives réutilisables (Button, Input, Alert…)
+  features/<domaine>/  Appels API, hooks, schémas et écrans d'un domaine
+  lib/                 Client axios, normalisation d'erreurs, client TanStack Query
+  mocks/               Handlers MSW et jeux de données de démonstration
+  pages/               Écrans sans logique de domaine propre
+  routes/              Routage et gardes d'accès
+  stores/              État global Zustand
+  types/               Types générés depuis le contrat + alias
+```
+
+Conventions :
+
+- les erreurs serveur passent par `ApiError` (`src/lib/apiError.ts`), qui normalise le
+  schéma `ErrorResponse` du contrat en message affichable ;
+- la validation de formulaire est faite avec Zod et doit refléter les contraintes du
+  contrat, pas les inventer ;
+- les libellés d'interface sont en français.
