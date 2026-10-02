@@ -1,0 +1,1611 @@
+openapi: 3.0.3
+
+info:
+  title: ERP de l'Église - API contractuelle Phase 0
+  version: 1.3.0
+  description: |
+    Contrat officiel entre le Frontend React, le Backend Laravel (PHP)
+    et PostgreSQL pour le socle transverse de la Phase 0.
+
+    RÈGLE D'OR DU PROJET :
+    Ce document fait autorité. Toute divergence entre le code et ce contrat est un bug.
+
+    PÉRIMÈTRE :
+    Personnes, comptes, authentification minimale, rôles, permissions,
+    sites, départements, familles d'impact, affectations et consultation de l'audit.
+
+  contact:
+    name: Équipe de développement ERP de l'Église
+  x-backend-framework: Laravel
+
+servers:
+  - url: /api/v1
+    description: URL commune aux environnements Development, Staging et Production
+
+tags:
+  - name: Authentification
+    description: Connexion, déconnexion et utilisateur courant
+  - name: Personnes
+    description: Gestion des identités physiques
+  - name: Comptes
+    description: Gestion des comptes de connexion
+  - name: Rôles & Permissions
+    description: RBAC, affectations et vérification des droits
+  - name: Sites & Départements
+    description: Structure organisationnelle de la Phase 0
+  - name: Familles d'impact
+    description: Cellules de proximité et appartenance des personnes
+  - name: Audit
+    description: Consultation des traces créées automatiquement
+
+security:
+  - BearerAuth: []
+
+components:
+  # ==========================================================
+  # SÉCURITÉ
+  # ==========================================================
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token JWT de la session courante, valable 1 heure.
+        Le refresh token, valable 7 jours, n'est jamais utilisé comme Bearer.
+        Le renouvellement et la révocation sont gérés dans Laravel sans route publique.
+
+  # ==========================================================
+  # PARAMÈTRES RÉUTILISABLES
+  # ==========================================================
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Numéro de page
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      description: Nombre d'éléments par page
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Search:
+      name: q
+      in: query
+      description: Recherche textuelle
+      schema: { type: string, maxLength: 100 }
+    PersonneId:
+      name: personneId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CompteId:
+      name: compteId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PermissionId:
+      name: permissionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SiteId:
+      name: siteId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DepartementId:
+      name: departementId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    FamilleId:
+      name: familleId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AuditId:
+      name: auditId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  # ==========================================================
+  # RÉPONSES STANDARDISÉES
+  # ==========================================================
+  responses:
+    UnauthorizedError:
+      description: Authentification absente, invalide ou expirée
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ForbiddenError:
+      description: Permission insuffisante
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFoundError:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ConflictError:
+      description: Conflit avec l'état courant ou une contrainte BDD
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ValidationError:
+      description: Payload non conforme
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # ==========================================================
+  # DTOs — MAPPAGE API / POSTGRESQL
+  # JSON : camelCase | PostgreSQL : snake_case
+  # ==========================================================
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [status, code, message]
+      properties:
+        status: { type: integer, example: 422 }
+        code: { type: string, example: VALIDATION_ERROR }
+        message: { type: string, example: Données non conformes }
+        details:
+          type: array
+          items: { type: object }
+        requestId: { type: string, example: req_01JABCXYZ }
+
+    Pagination:
+      type: object
+      required: [page, limit, total]
+      properties:
+        page: { type: integer, example: 1 }
+        limit: { type: integer, example: 20 }
+        total: { type: integer, example: 42 }
+
+    # --------------------------------------------------------
+    # AUTHENTIFICATION
+    # CIBLE : formulaire React de connexion
+    # BACKEND : Laravel (validation Request, Hash, middleware auth/RBAC)
+    # BDD : compte + personne + token
+    # --------------------------------------------------------
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, motDePasse]
+      properties:
+        email: { type: string, format: email, example: admin@eglise.org }
+        motDePasse: { type: string, format: password, minLength: 8, example: SecurePass123! }
+
+    LoginResponse:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+        - tokenType
+        - accessTokenExpiresIn
+        - refreshTokenExpiresIn
+        - utilisateur
+      properties:
+        accessToken:
+          type: string
+          description: JWT de type `access`, valable 1 heure.
+        refreshToken:
+          type: string
+          description: Jeton de type `refresh`, valable 7 jours et traité par Laravel.
+        tokenType: { type: string, default: Bearer }
+        accessTokenExpiresIn:
+          type: integer
+          enum: [3600]
+          example: 3600
+          description: Durée de vie de l'access token en secondes.
+        refreshTokenExpiresIn:
+          type: integer
+          enum: [604800]
+          example: 604800
+          description: Durée de vie du refresh token en secondes.
+        utilisateur: { $ref: '#/components/schemas/CurrentUser' }
+      # BDD : Laravel stocke uniquement le hash de chaque token dans `token`.
+      # RÈGLE : aucun endpoint /auth/refresh ni /tokens n'est exposé.
+
+    CurrentUser:
+      type: object
+      required: [compte, personne, roles, permissions]
+      properties:
+        compte: { $ref: '#/components/schemas/Compte' }
+        personne: { $ref: '#/components/schemas/Personne' }
+        roles:
+          type: array
+          items: { $ref: '#/components/schemas/Role' }
+        permissions:
+          type: array
+          uniqueItems: true
+          items: { type: string, example: membres.read }
+
+    # --------------------------------------------------------
+    # PERSONNE
+    # BDD : personne
+    # --------------------------------------------------------
+    PersonneCreate:
+      type: object
+      required: [nom, prenom]
+      properties:
+        nom: { type: string, minLength: 1, maxLength: 100, example: KABILA }
+        prenom: { type: string, minLength: 1, maxLength: 100, example: Jean }
+        dateNaissance: { type: string, format: date, example: '1995-08-12' }
+        sexe: { type: string, enum: [M, F], example: M }
+        telephone: { type: string, maxLength: 20, example: '+243810000000' }
+        adresse: { type: string, example: Kinshasa }
+        photoUrl: { type: string, format: uri, maxLength: 500 }
+        statut: { $ref: '#/components/schemas/PersonneStatut' }
+
+    PersonneUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nom: { type: string, minLength: 1, maxLength: 100 }
+        prenom: { type: string, minLength: 1, maxLength: 100 }
+        dateNaissance: { type: string, format: date }
+        sexe: { type: string, enum: [M, F] }
+        telephone: { type: string, maxLength: 20 }
+        adresse: { type: string }
+        photoUrl: { type: string, format: uri, maxLength: 500 }
+        statut: { $ref: '#/components/schemas/PersonneStatut' }
+
+    Personne:
+      allOf:
+        - $ref: '#/components/schemas/PersonneCreate'
+        - type: object
+          required: [idPersonne, dateCreation, dateModification]
+          properties:
+            idPersonne: { type: string, format: uuid, readOnly: true }
+            dateCreation: { type: string, format: date-time, readOnly: true }
+            dateModification: { type: string, format: date-time, readOnly: true }
+
+    PersonneStatut:
+      type: string
+      enum: [actif, inactif, archive]
+      default: actif
+
+    PersonnePage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Personne' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    # --------------------------------------------------------
+    # COMPTE
+    # BDD : compte
+    # SÉCURITÉ : mot_de_passe_hash n'est jamais retourné.
+    # --------------------------------------------------------
+    CompteCreate:
+      type: object
+      additionalProperties: false
+      required: [idPersonne, email, motDePasse]
+      properties:
+        idPersonne: { type: string, format: uuid }
+        email: { type: string, format: email, example: jean@eglise.org }
+        motDePasse: { type: string, format: password, minLength: 8, example: SecurePass123! }
+        statut: { $ref: '#/components/schemas/CompteStatut' }
+
+    CompteUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        email: { type: string, format: email }
+        statut: { $ref: '#/components/schemas/CompteStatut' }
+        mfaActive: { type: boolean }
+
+    Compte:
+      type: object
+      required: [idCompte, idPersonne, email, statut, mfaActive, dateCreation]
+      properties:
+        idCompte: { type: string, format: uuid, readOnly: true }
+        idPersonne: { type: string, format: uuid }
+        email: { type: string, format: email }
+        statut: { $ref: '#/components/schemas/CompteStatut' }
+        derniereConnexion: { type: string, format: date-time, readOnly: true }
+        mfaActive: { type: boolean, default: false }
+        dateCreation: { type: string, format: date-time, readOnly: true }
+        dateDesactivation: { type: string, format: date-time, readOnly: true }
+
+    CompteStatut:
+      type: string
+      enum: [actif, suspendu, desactive]
+      default: actif
+
+    ComptePage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Compte' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    # --------------------------------------------------------
+    # RBAC
+    # BDD : role, permission, affecter_role, attribuer
+    # --------------------------------------------------------
+    RoleCreate:
+      type: object
+      required: [code, nom]
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]*$'
+          example: ADMIN_FONCTIONNEL
+          description: >
+            Code du rôle. Référence métier du cahier des charges :
+            ADMIN_FONCTIONNEL, ADMIN_TECHNIQUE, PASTEUR, CONSEIL_PASTORAL,
+            MEMBRE_DGE, SUPERVISEUR, CHEF_DEPARTEMENT, RESPONSABLE_PROJETS,
+            FINANCE_COMPTABLE, CAISSIER, RH, ACHATS, LOGISTIQUE, PROTOCOLE_PASTEUR,
+            AUDIT_COMPLIANCE, SECRETARIAT, ARCHIVISTE, TECHNICIEN, BENEVOLE, MEMBRE.
+            Une personne peut cumuler plusieurs rôles ; les permissions s'additionnent
+            sans lever les restrictions de confidentialité (notes pastorales, salaires).
+            SUPERVISEUR : au-dessus des chefs, uniquement les départements affectés
+            sauf permission explicite supplémentaire (consultation équipes, activités,
+            objectifs, budgets, projets, rapports, consolidation, performances, demandes, alertes).
+            CHEF_DEPARTEMENT : équipe, activités, demandes, objectifs, budget, projets et rapports
+            de son département uniquement.
+        nom: { type: string, maxLength: 100, example: Administrateur fonctionnel }
+        description: { type: string }
+        niveauConfidentialite: { type: integer, minimum: 1, default: 1 }
+        actif: { type: boolean, default: true }
+
+    RoleUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        code: { type: string, pattern: '^[A-Z][A-Z0-9_]*$' }
+        nom: { type: string, maxLength: 100 }
+        description: { type: string }
+        niveauConfidentialite: { type: integer, minimum: 1 }
+        actif: { type: boolean }
+
+    Role:
+      allOf:
+        - $ref: '#/components/schemas/RoleCreate'
+        - type: object
+          required: [idRole, dateCreation]
+          properties:
+            idRole: { type: string, format: uuid, readOnly: true }
+            dateCreation: { type: string, format: date-time, readOnly: true }
+
+    RolePage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Role' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    PermissionCreate:
+      type: object
+      required: [code, module, action]
+      properties:
+        code:
+          type: string
+          pattern: '^[a-z][a-z0-9_-]*\.[a-z][a-z0-9_-]*$'
+          example: membres.read
+        module: { type: string, maxLength: 50, example: membres }
+        action: { type: string, maxLength: 50, example: read }
+        description: { type: string }
+        actif: { type: boolean, default: true }
+
+    PermissionUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        code: { type: string, pattern: '^[a-z][a-z0-9_-]*\.[a-z][a-z0-9_-]*$' }
+        module: { type: string, maxLength: 50 }
+        action: { type: string, maxLength: 50 }
+        description: { type: string }
+        actif: { type: boolean }
+
+    Permission:
+      allOf:
+        - $ref: '#/components/schemas/PermissionCreate'
+        - type: object
+          required: [idPermission]
+          properties:
+            idPermission: { type: string, format: uuid, readOnly: true }
+
+    PermissionPage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Permission' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    AffectationRoleCreate:
+      type: object
+      additionalProperties: false
+      required: [idRole]
+      properties:
+        idRole: { type: string, format: uuid }
+        dateDebut: { type: string, format: date-time }
+        dateFin: { type: string, format: date-time }
+
+    AffectationRole:
+      type: object
+      required: [idCompte, idRole, dateDebut, actif]
+      properties:
+        idCompte: { type: string, format: uuid }
+        idRole: { type: string, format: uuid }
+        dateDebut: { type: string, format: date-time }
+        dateFin: { type: string, format: date-time }
+        actif: { type: boolean }
+
+    RolePermissionCreate:
+      type: object
+      additionalProperties: false
+      required: [idPermission]
+      properties:
+        idPermission: { type: string, format: uuid }
+
+    PermissionCheck:
+      type: object
+      required: [compteId, permissionCode, autorise]
+      properties:
+        compteId: { type: string, format: uuid }
+        permissionCode: { type: string, example: membres.read }
+        autorise: { type: boolean, example: true }
+        rolesSource:
+          type: array
+          items: { type: string, format: uuid }
+
+    # --------------------------------------------------------
+    # ORGANISATION
+    # BDD : site, departement, affecter_departement
+    # --------------------------------------------------------
+    SiteCreate:
+      type: object
+      required: [code, nom, telephone]
+      properties:
+        code: { type: string, maxLength: 20, example: KIN-CENTRE }
+        nom: { type: string, maxLength: 100, example: Site central }
+        adresse: { type: string, example: Avenue de l'Église }
+        ville: { type: string, maxLength: 100, example: Kinshasa }
+        pays: { type: string, maxLength: 100, example: RDC }
+        telephone: { type: string, maxLength: 20, example: '+243810000001' }
+        actif: { type: boolean, default: true }
+
+    SiteUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        code: { type: string, maxLength: 20 }
+        nom: { type: string, maxLength: 100 }
+        adresse: { type: string }
+        ville: { type: string, maxLength: 100 }
+        pays: { type: string, maxLength: 100 }
+        telephone: { type: string, maxLength: 20 }
+        actif: { type: boolean }
+
+    Site:
+      allOf:
+        - $ref: '#/components/schemas/SiteCreate'
+        - type: object
+          required: [idSite, dateCreation]
+          properties:
+            idSite: { type: string, format: uuid, readOnly: true }
+            dateCreation: { type: string, format: date-time, readOnly: true }
+
+    SitePage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Site' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    DepartementCreate:
+      type: object
+      required: [code, nom, idSite]
+      properties:
+        code: { type: string, maxLength: 20, example: ACCUEIL }
+        nom: { type: string, maxLength: 100, example: Département Accueil }
+        mission: { type: string }
+        idSite: { type: string, format: uuid }
+        actif: { type: boolean, default: true }
+
+    DepartementUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        code: { type: string, maxLength: 20 }
+        nom: { type: string, maxLength: 100 }
+        mission: { type: string }
+        idSite: { type: string, format: uuid }
+        actif: { type: boolean }
+
+    Departement:
+      allOf:
+        - $ref: '#/components/schemas/DepartementCreate'
+        - type: object
+          required: [idDepartement, dateCreation]
+          properties:
+            idDepartement: { type: string, format: uuid, readOnly: true }
+            dateCreation: { type: string, format: date-time, readOnly: true }
+
+    DepartementPage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Departement' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    AffectationDepartementCreate:
+      type: object
+      additionalProperties: false
+      required: [idDepartement]
+      properties:
+        idDepartement: { type: string, format: uuid }
+        fonction: { type: string, maxLength: 100, example: Responsable accueil }
+        dateDebut: { type: string, format: date-time }
+        dateFin: { type: string, format: date-time }
+
+    AffectationDepartement:
+      type: object
+      required: [idPersonne, idDepartement, dateDebut, actif]
+      properties:
+        idPersonne: { type: string, format: uuid }
+        idDepartement: { type: string, format: uuid }
+        fonction: { type: string, maxLength: 100 }
+        dateDebut: { type: string, format: date-time }
+        dateFin: { type: string, format: date-time }
+        actif: { type: boolean }
+
+    # --------------------------------------------------------
+    # FAMILLES D'IMPACT
+    # BDD : famille_impact, appartenir_famille
+    # RÈGLE : une personne appartient au plus à une famille active.
+    # --------------------------------------------------------
+    FamilleImpactCreate:
+      type: object
+      required: [code, nom]
+      properties:
+        code:
+          type: string
+          maxLength: 20
+          example: BATISSEURS
+        nom: { type: string, maxLength: 100, example: Bâtisseurs }
+        zone: { type: string, maxLength: 100, example: Nord }
+        description: { type: string }
+        actif: { type: boolean, default: true }
+
+    FamilleImpactUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        code: { type: string, maxLength: 20 }
+        nom: { type: string, maxLength: 100 }
+        zone: { type: string, maxLength: 100 }
+        description: { type: string }
+        actif: { type: boolean }
+
+    FamilleImpact:
+      allOf:
+        - $ref: '#/components/schemas/FamilleImpactCreate'
+        - type: object
+          required: [idFamille, dateCreation]
+          properties:
+            idFamille: { type: string, format: uuid, readOnly: true }
+            dateCreation: { type: string, format: date-time, readOnly: true }
+
+    FamilleImpactPage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FamilleImpact' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    AffectationFamilleCreate:
+      type: object
+      additionalProperties: false
+      required: [idFamille]
+      properties:
+        idFamille: { type: string, format: uuid }
+        fonction: { type: string, maxLength: 100, example: Responsable }
+        dateDebut: { type: string, format: date-time }
+        dateFin: { type: string, format: date-time }
+
+    AffectationFamille:
+      type: object
+      required: [idPersonne, idFamille, dateDebut, actif]
+      properties:
+        idPersonne: { type: string, format: uuid }
+        idFamille: { type: string, format: uuid }
+        fonction: { type: string, maxLength: 100 }
+        dateDebut: { type: string, format: date-time }
+        dateFin: { type: string, format: date-time }
+        actif: { type: boolean }
+
+    # --------------------------------------------------------
+    # AUDIT
+    # BDD : audit_log
+    # RÈGLE : DTO de sortie uniquement, écriture côté serveur.
+    # --------------------------------------------------------
+    AuditLog:
+      type: object
+      required: [idAudit, action, entiteType, idEntite, dateAction]
+      properties:
+        idAudit: { type: string, format: uuid, readOnly: true }
+        idCompte: { type: string, format: uuid }
+        action: { type: string, example: PERSONNE_CREATED }
+        entiteType: { type: string, example: personne }
+        idEntite: { type: string, format: uuid }
+        anciennesValeurs: { type: object }
+        nouvellesValeurs: { type: object }
+        adresseIp: { type: string, example: 192.0.2.10 }
+        userAgent: { type: string }
+        dateAction: { type: string, format: date-time, readOnly: true }
+
+    AuditLogPage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AuditLog' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+# ============================================================
+# ROUTES API — PHASE 0 UNIQUEMENT
+# ============================================================
+paths:
+  # ----------------------------------------------------------
+  # AUTHENTIFICATION
+  # ----------------------------------------------------------
+  /auth/login:
+    post:
+      tags: [Authentification]
+      operationId: login
+      summary: Authentifier un compte
+      security: []
+      # CIBLE : formulaire de connexion React
+      # BACKEND : Laravel FormRequest + Hash::check + service d'authentification
+      # BDD : SELECT compte + personne, puis INSERT de deux hashes dans token
+      # TOKENS : access=1h, refresh=7j
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Session ouverte
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/logout:
+    post:
+      tags: [Authentification]
+      operationId: logout
+      summary: Fermer la session courante
+      # BACKEND : Laravel révoque les deux tokens de la session courante.
+      # RÈGLE : aucun endpoint public de gestion des tokens.
+      responses:
+        '204': { description: Session fermée }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+
+  /auth/me:
+    get:
+      tags: [Authentification]
+      operationId: getCurrentUser
+      summary: Récupérer l'utilisateur et ses droits effectifs
+      responses:
+        '200':
+          description: Contexte courant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentUser' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+
+  # ----------------------------------------------------------
+  # PERSONNES
+  # ----------------------------------------------------------
+  /personnes:
+    get:
+      tags: [Personnes]
+      operationId: listPersonnes
+      summary: Lister les personnes
+      # BDD : SELECT personne avec recherche, filtre et pagination
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Search' }
+        - name: statut
+          in: query
+          schema: { $ref: '#/components/schemas/PersonneStatut' }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonnePage' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Personnes]
+      operationId: createPersonne
+      summary: Créer une personne
+      # BDD : INSERT personne ; création automatique d'une trace audit_log
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonneCreate' }
+      responses:
+        '201':
+          description: Personne créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Personne' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /personnes/{personneId}:
+    parameters:
+      - { $ref: '#/components/parameters/PersonneId' }
+    get:
+      tags: [Personnes]
+      operationId: getPersonne
+      summary: Consulter une personne
+      responses:
+        '200':
+          description: Personne trouvée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Personne' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Personnes]
+      operationId: updatePersonne
+      summary: Modifier une personne
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PersonneUpdate' }
+      responses:
+        '200':
+          description: Personne modifiée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Personne' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Personnes]
+      operationId: deletePersonne
+      summary: Supprimer une personne inactive ou archivée
+      description: |
+        Le trigger `trg_prevent_active_personne_delete` interdit la suppression
+        lorsque le statut vaut `actif`.
+      responses:
+        '204': { description: Personne supprimée }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  /personnes/{personneId}/departements:
+    parameters:
+      - { $ref: '#/components/parameters/PersonneId' }
+    get:
+      tags: [Sites & Départements]
+      operationId: listPersonneDepartements
+      summary: Lister les affectations départementales d'une personne
+      parameters:
+        - name: actif
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Affectations trouvées
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AffectationDepartement' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      tags: [Sites & Départements]
+      operationId: assignPersonneDepartement
+      summary: Affecter une personne à un département
+      # BDD : INSERT affecter_departement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AffectationDepartementCreate' }
+      responses:
+        '201':
+          description: Affectation créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AffectationDepartement' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /personnes/{personneId}/departements/{departementId}:
+    parameters:
+      - { $ref: '#/components/parameters/PersonneId' }
+      - { $ref: '#/components/parameters/DepartementId' }
+    delete:
+      tags: [Sites & Départements]
+      operationId: unassignPersonneDepartement
+      summary: Clôturer l'affectation active à un département
+      # RÈGLE : renseigne date_fin et actif=false afin de conserver l'historique.
+      responses:
+        '204': { description: Affectation clôturée }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  /personnes/{personneId}/familles-impact:
+    parameters:
+      - { $ref: '#/components/parameters/PersonneId' }
+    get:
+      tags: [Familles d'impact]
+      operationId: listPersonneFamilles
+      summary: Lister les appartenances d'une personne à des familles d'impact
+      parameters:
+        - name: actif
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Appartenances trouvées
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AffectationFamille' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      tags: [Familles d'impact]
+      operationId: assignPersonneFamille
+      summary: Rattacher une personne à une famille d'impact
+      description: |
+        Refusé (409) si la personne appartient déjà à une famille active :
+        clôturer d'abord l'appartenance en cours.
+      # BDD : INSERT appartenir_famille
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AffectationFamilleCreate' }
+      responses:
+        '201':
+          description: Appartenance créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AffectationFamille' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /personnes/{personneId}/familles-impact/{familleId}:
+    parameters:
+      - { $ref: '#/components/parameters/PersonneId' }
+      - { $ref: '#/components/parameters/FamilleId' }
+    delete:
+      tags: [Familles d'impact]
+      operationId: unassignPersonneFamille
+      summary: Clôturer l'appartenance active à une famille d'impact
+      # RÈGLE : renseigne date_fin et actif=false afin de conserver l'historique.
+      responses:
+        '204': { description: Appartenance clôturée }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  # ----------------------------------------------------------
+  # COMPTES
+  # ----------------------------------------------------------
+  /comptes:
+    get:
+      tags: [Comptes]
+      operationId: listComptes
+      summary: Lister les comptes
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Search' }
+        - name: statut
+          in: query
+          schema: { $ref: '#/components/schemas/CompteStatut' }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComptePage' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Comptes]
+      operationId: createCompte
+      summary: Créer un compte lié à une personne
+      # BDD : INSERT compte ; mot de passe obligatoirement hashé côté backend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompteCreate' }
+      responses:
+        '201':
+          description: Compte créé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Compte' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /comptes/{compteId}:
+    parameters:
+      - { $ref: '#/components/parameters/CompteId' }
+    get:
+      tags: [Comptes]
+      operationId: getCompte
+      summary: Consulter un compte
+      responses:
+        '200':
+          description: Compte trouvé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Compte' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Comptes]
+      operationId: updateCompte
+      summary: Modifier le statut ou les paramètres d'un compte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompteUpdate' }
+      responses:
+        '200':
+          description: Compte modifié
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Compte' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Comptes]
+      operationId: deleteCompte
+      summary: Supprimer un compte non actif
+      responses:
+        '204': { description: Compte supprimé }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  # ----------------------------------------------------------
+  # RBAC — RÔLES ET PERMISSIONS
+  # ----------------------------------------------------------
+  /comptes/{compteId}/roles:
+    parameters:
+      - { $ref: '#/components/parameters/CompteId' }
+    get:
+      tags: [Rôles & Permissions]
+      operationId: listCompteRoles
+      summary: Lister les rôles attribués à un compte
+      responses:
+        '200':
+          description: Affectations trouvées
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AffectationRole' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      tags: [Rôles & Permissions]
+      operationId: assignRoleToCompte
+      summary: Attribuer un rôle à un compte
+      # BDD : INSERT affecter_role ; changement obligatoirement audité
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AffectationRoleCreate' }
+      responses:
+        '201':
+          description: Rôle attribué
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AffectationRole' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  /comptes/{compteId}/roles/{roleId}:
+    parameters:
+      - { $ref: '#/components/parameters/CompteId' }
+      - { $ref: '#/components/parameters/RoleId' }
+    delete:
+      tags: [Rôles & Permissions]
+      operationId: unassignRoleFromCompte
+      summary: Clôturer l'affectation active d'un rôle
+      responses:
+        '204': { description: Affectation clôturée }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  /comptes/{compteId}/permissions/{permissionCode}:
+    parameters:
+      - { $ref: '#/components/parameters/CompteId' }
+      - name: permissionCode
+        in: path
+        required: true
+        example: membres.read
+        schema: { type: string, maxLength: 100 }
+    get:
+      tags: [Rôles & Permissions]
+      operationId: checkComptePermission
+      summary: Vérifier le droit effectif d'un compte
+      # BDD : compte → affecter_role → role → attribuer → permission
+      responses:
+        '200':
+          description: Résultat de la vérification
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermissionCheck' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  /roles:
+    get:
+      tags: [Rôles & Permissions]
+      operationId: listRoles
+      summary: Lister les rôles
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Search' }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RolePage' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Rôles & Permissions]
+      operationId: createRole
+      summary: Créer un rôle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoleCreate' }
+      responses:
+        '201':
+          description: Rôle créé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Role' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /roles/{roleId}:
+    parameters:
+      - { $ref: '#/components/parameters/RoleId' }
+    get:
+      tags: [Rôles & Permissions]
+      operationId: getRole
+      summary: Consulter un rôle
+      responses:
+        '200':
+          description: Rôle trouvé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Role' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Rôles & Permissions]
+      operationId: updateRole
+      summary: Modifier un rôle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoleUpdate' }
+      responses:
+        '200':
+          description: Rôle modifié
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Role' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Rôles & Permissions]
+      operationId: deleteRole
+      summary: Supprimer un rôle non utilisé
+      responses:
+        '204': { description: Rôle supprimé }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  /roles/{roleId}/permissions:
+    parameters:
+      - { $ref: '#/components/parameters/RoleId' }
+    get:
+      tags: [Rôles & Permissions]
+      operationId: listRolePermissions
+      summary: Lister les permissions d'un rôle
+      responses:
+        '200':
+          description: Permissions attribuées
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Permission' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      tags: [Rôles & Permissions]
+      operationId: assignPermissionToRole
+      summary: Attribuer une permission à un rôle
+      # BDD : INSERT attribuer ; opération obligatoirement auditée
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RolePermissionCreate' }
+      responses:
+        '201':
+          description: Permission attribuée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Permission' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  /roles/{roleId}/permissions/{permissionId}:
+    parameters:
+      - { $ref: '#/components/parameters/RoleId' }
+      - { $ref: '#/components/parameters/PermissionId' }
+    delete:
+      tags: [Rôles & Permissions]
+      operationId: unassignPermissionFromRole
+      summary: Retirer une permission d'un rôle
+      responses:
+        '204': { description: Permission retirée }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  /permissions:
+    get:
+      tags: [Rôles & Permissions]
+      operationId: listPermissions
+      summary: Lister les permissions
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Search' }
+        - name: module
+          in: query
+          schema: { type: string, maxLength: 50 }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermissionPage' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Rôles & Permissions]
+      operationId: createPermission
+      summary: Créer une permission atomique
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PermissionCreate' }
+      responses:
+        '201':
+          description: Permission créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Permission' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /permissions/{permissionId}:
+    parameters:
+      - { $ref: '#/components/parameters/PermissionId' }
+    get:
+      tags: [Rôles & Permissions]
+      operationId: getPermission
+      summary: Consulter une permission
+      responses:
+        '200':
+          description: Permission trouvée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Permission' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Rôles & Permissions]
+      operationId: updatePermission
+      summary: Modifier une permission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PermissionUpdate' }
+      responses:
+        '200':
+          description: Permission modifiée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Permission' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Rôles & Permissions]
+      operationId: deletePermission
+      summary: Supprimer une permission non attribuée
+      responses:
+        '204': { description: Permission supprimée }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  # ----------------------------------------------------------
+  # SITES ET DÉPARTEMENTS
+  # ----------------------------------------------------------
+  /sites:
+    get:
+      tags: [Sites & Départements]
+      operationId: listSites
+      summary: Lister les sites
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Search' }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SitePage' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Sites & Départements]
+      operationId: createSite
+      summary: Créer un site avec son numéro d'accueil
+      # BDD : INSERT site
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SiteCreate' }
+      responses:
+        '201':
+          description: Site créé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /sites/{siteId}:
+    parameters:
+      - { $ref: '#/components/parameters/SiteId' }
+    get:
+      tags: [Sites & Départements]
+      operationId: getSite
+      summary: Consulter un site
+      responses:
+        '200':
+          description: Site trouvé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Sites & Départements]
+      operationId: updateSite
+      summary: Modifier un site
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SiteUpdate' }
+      responses:
+        '200':
+          description: Site modifié
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Sites & Départements]
+      operationId: deleteSite
+      summary: Supprimer un site non utilisé
+      responses:
+        '204': { description: Site supprimé }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  /departements:
+    get:
+      tags: [Sites & Départements]
+      operationId: listDepartements
+      summary: Lister les départements
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Search' }
+        - name: siteId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DepartementPage' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Sites & Départements]
+      operationId: createDepartement
+      summary: Créer un département rattaché à un site
+      # BDD : INSERT departement ; id_site obligatoire
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DepartementCreate' }
+      responses:
+        '201':
+          description: Département créé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Departement' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /departements/{departementId}:
+    parameters:
+      - { $ref: '#/components/parameters/DepartementId' }
+    get:
+      tags: [Sites & Départements]
+      operationId: getDepartement
+      summary: Consulter un département
+      responses:
+        '200':
+          description: Département trouvé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Departement' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Sites & Départements]
+      operationId: updateDepartement
+      summary: Modifier un département
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DepartementUpdate' }
+      responses:
+        '200':
+          description: Département modifié
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Departement' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Sites & Départements]
+      operationId: deleteDepartement
+      summary: Supprimer un département non utilisé
+      responses:
+        '204': { description: Département supprimé }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  # ----------------------------------------------------------
+  # FAMILLES D'IMPACT
+  # ----------------------------------------------------------
+  /familles-impact:
+    get:
+      tags: [Familles d'impact]
+      operationId: listFamilles
+      summary: Lister les familles d'impact
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Search' }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilleImpactPage' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Familles d'impact]
+      operationId: createFamille
+      summary: Créer une famille d'impact
+      # BDD : INSERT famille_impact ; nom unique
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FamilleImpactCreate' }
+      responses:
+        '201':
+          description: Famille créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilleImpact' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /familles-impact/{familleId}:
+    parameters:
+      - { $ref: '#/components/parameters/FamilleId' }
+    get:
+      tags: [Familles d'impact]
+      operationId: getFamille
+      summary: Consulter une famille d'impact
+      responses:
+        '200':
+          description: Famille trouvée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilleImpact' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Familles d'impact]
+      operationId: updateFamille
+      summary: Modifier une famille d'impact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FamilleImpactUpdate' }
+      responses:
+        '200':
+          description: Famille modifiée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FamilleImpact' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Familles d'impact]
+      operationId: deleteFamille
+      summary: Supprimer une famille d'impact sans membre actif
+      responses:
+        '204': { description: Famille supprimée }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  # ----------------------------------------------------------
+  # AUDIT — LECTURE SEULE
+  # ----------------------------------------------------------
+  /audit-logs:
+    get:
+      tags: [Audit]
+      operationId: listAuditLogs
+      summary: Consulter les traces d'audit
+      description: |
+        Les traces sont créées automatiquement côté serveur.
+        Aucun client ne peut écrire ou modifier un audit.
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+        - name: compteId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: entiteType
+          in: query
+          schema: { type: string, maxLength: 50 }
+        - name: entiteId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: action
+          in: query
+          schema: { type: string, maxLength: 50 }
+        - name: depuis
+          in: query
+          schema: { type: string, format: date-time }
+        - name: jusqua
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditLogPage' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+
+  /audit-logs/{auditId}:
+    parameters:
+      - { $ref: '#/components/parameters/AuditId' }
+    get:
+      tags: [Audit]
+      operationId: getAuditLog
+      summary: Consulter une trace d'audit
+      responses:
+        '200':
+          description: Trace trouvée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditLog' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }

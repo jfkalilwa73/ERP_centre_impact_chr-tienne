@@ -1,0 +1,111 @@
+import { describe, expect, it } from 'vitest'
+import {
+  canReplyCirculation,
+  createCirculation,
+  repondreCirculation,
+  resetCirculations,
+  unreadCirculationsCount,
+  visibleCirculations,
+} from './circulation'
+
+const payload = {
+  kind: 'rapport' as const,
+  titre: 'Bilan répétition',
+  description: 'Choeur complet.',
+  idDepartementSource: 'louange',
+  nomDepartementSource: 'Louange',
+  idDepartementCible: 'accueil',
+  nomDepartementCible: 'Accueil',
+  idAuteur: 'chef-louange',
+  nomAuteur: 'Pierre MWAMBA',
+}
+
+describe('circulation des messages de département', () => {
+  it('est visible du superviseur, du pasteur et de l’admin, mais seul le destinataire répond', () => {
+    resetCirculations()
+    const created = createCirculation(payload)
+    if (!created) throw new Error('circulation attendue')
+
+    const visibleAdmin = visibleCirculations({
+      isAdmin: true,
+      isPasteur: false,
+      superviseurDepartementIds: [],
+      chefDepartementIds: [],
+    })
+    const visiblePasteur = visibleCirculations({
+      isAdmin: false,
+      isPasteur: true,
+      superviseurDepartementIds: [],
+      chefDepartementIds: [],
+    })
+    const visibleSuperviseur = visibleCirculations({
+      isAdmin: false,
+      isPasteur: false,
+      superviseurDepartementIds: ['louange'],
+      chefDepartementIds: [],
+    })
+    const visibleDge = visibleCirculations({
+      isAdmin: false,
+      isPasteur: false,
+      isDge: true,
+      superviseurDepartementIds: [],
+      chefDepartementIds: [],
+    })
+
+    expect(visibleAdmin.map((item) => item.id)).toContain(created.id)
+    expect(visiblePasteur.map((item) => item.id)).toContain(created.id)
+    expect(visibleDge.map((item) => item.id)).toContain(created.id)
+    expect(visibleSuperviseur.map((item) => item.id)).toContain(created.id)
+    expect(canReplyCirculation(created, [])).toBe(false)
+    expect(canReplyCirculation(created, ['louange'])).toBe(false)
+    expect(canReplyCirculation(created, ['accueil'])).toBe(true)
+
+    repondreCirculation(created.id, { texte: 'Vu', idAuteur: 'sup', nomAuteur: 'Daniel' }, [])
+    expect(created.reponses).toHaveLength(0)
+
+    repondreCirculation(
+      created.id,
+      { texte: 'Reçu, on prépare l’accueil.', idAuteur: 'chef-accueil', nomAuteur: 'Jean' },
+      ['accueil'],
+    )
+    expect(created.reponses).toHaveLength(1)
+    expect(unreadCirculationsCount('admin', visibleAdmin)).toBe(1)
+    expect(unreadCirculationsCount('chef-louange', [created])).toBe(0)
+  })
+
+  it('montre le rappel d’activité à chaque membre notifié, sans réponse', () => {
+    resetCirculations()
+    const rappel = createCirculation({
+      kind: 'rappel',
+      titre: 'Répétition',
+      description: 'Répétition commence chaque mardi et samedi · à 18 h · présentiel.',
+      idDepartementSource: 'louange',
+      nomDepartementSource: 'Louange',
+      idDepartementCible: 'louange',
+      nomDepartementCible: 'Louange',
+      idAuteur: 'chef-louange',
+      nomAuteur: 'Pierre MWAMBA',
+      idPersonnesNotifiees: ['membre-1'],
+    })
+    if (!rappel) throw new Error('rappel attendu')
+
+    const visibleMembre = visibleCirculations({
+      idPersonne: 'membre-1',
+      isAdmin: false,
+      isPasteur: false,
+      superviseurDepartementIds: [],
+      chefDepartementIds: [],
+    })
+    const invisibleAutre = visibleCirculations({
+      idPersonne: 'membre-2',
+      isAdmin: false,
+      isPasteur: false,
+      superviseurDepartementIds: [],
+      chefDepartementIds: [],
+    })
+
+    expect(visibleMembre.map((item) => item.id)).toContain(rappel.id)
+    expect(invisibleAutre.map((item) => item.id)).not.toContain(rappel.id)
+    expect(canReplyCirculation(rappel, ['louange'])).toBe(false)
+  })
+})
