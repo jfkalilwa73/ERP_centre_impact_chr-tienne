@@ -30,6 +30,7 @@ class StorePersonneRequest extends FormRequest
             'telephone' => ['nullable', 'string', 'max:20'],
             'adresse' => ['nullable', 'string'],
             'photo_url' => ['nullable', 'string', 'max:500'],
+            'statut' => ['nullable', Rule::in(['actif', 'inactif', 'archive'])],
         ];
     }
 }

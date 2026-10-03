@@ -81,7 +81,17 @@ class Phase0ScenarioSeeder extends Seeder
             'actif' => true,
         ]);
 
-        $this->command->info("   ✅ Rôle ({$role->code}) et Permission ({$permission->code}) créés.");
+        $permissionCreateId = (string) Str::uuid();
+        $permissionCreate = PermissionMetier::create([
+            'id_permission' => $permissionCreateId,
+            'code' => 'membres.create',
+            'module' => 'membres',
+            'action' => 'create',
+            'description' => 'Créer une personne',
+            'actif' => true,
+        ]);
+
+        $this->command->info("   ✅ Rôle ({$role->code}) et permissions membres.read / membres.create créés.");
 
         // ---------------------------------------------------------
         // Scénario 5 & 6 : Attribuer un rôle à un compte + Attribuer des permissions à un rôle
@@ -100,7 +110,10 @@ class Phase0ScenarioSeeder extends Seeder
             'id_permission' => $permission->id_permission,
         ]);
 
-        $this->command->info("   ✅ Attribution réussie.");
+        AttribuerPermission::create([
+            'id_role' => $role->id_role,
+            'id_permission' => $permissionCreate->id_permission,
+        ]);
 
         // ---------------------------------------------------------
         // Scénario 7 & 8 : Créer un site + Créer un département rattaché

@@ -20,7 +20,7 @@ class PersonneService
             'telephone' => $donnees['telephone'] ?? null,
             'adresse' => $donnees['adresse'] ?? null,
             'photo_url' => $donnees['photo_url'] ?? null,
-            'statut' => 'actif',
+            'statut' => $donnees['statut'] ?? 'actif',
         ]);
     }
     public function supprimer(Personne $personne): void

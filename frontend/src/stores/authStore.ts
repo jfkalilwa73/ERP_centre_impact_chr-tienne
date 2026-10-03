@@ -7,6 +7,7 @@ type SessionProfil = {
   name: string
   email: string
   statut: string
+  permissions?: string[]
 }
 
 type AuthState = {
@@ -63,5 +64,9 @@ export const useCurrentUser = () => useAuthStore((state) => state.user)
 export const useSessionProfil = () => useAuthStore((state) => state.profil)
 
 export function useHasPermission(code: string): boolean {
-  return useAuthStore((state) => state.user?.permissions?.includes(code) ?? false)
+  return useAuthStore((state) => {
+    const fromUser = state.user?.permissions
+    if (fromUser && fromUser.length > 0) return fromUser.includes(code)
+    return state.profil?.permissions?.includes(code) ?? false
+  })
 }
