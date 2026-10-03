@@ -1,112 +1,216 @@
 @import "tailwindcss";
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+@theme {
+  --font-sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Charte Impact Centre Chrétien, échantillonnée sur le logo officiel. */
+  --color-brand-50: #f7f2fc;
+  --color-brand-100: #ede0f8;
+  --color-brand-200: #d9c1f0;
+  --color-brand-300: #bd98e3;
+  --color-brand-400: #9c6bd1;
+  --color-brand-500: #6e2dae;
+  --color-brand-600: #3c0173;
+  --color-brand-700: #320160;
+  --color-brand-800: #28014d;
+  --color-brand-900: #1e0139;
+  --color-brand-950: #130025;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  /* Couleurs de la gerbe du logo, réservées aux accents graphiques. */
+  --color-gerbe-rouge: #dd1c16;
+  --color-gerbe-bleu: #047bca;
+  --color-gerbe-vert: #409d3b;
+  --color-gerbe-or: #ecb708;
+  --color-gerbe-violet: #501080;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background-color: var(--color-slate-50);
+    color: var(--color-slate-900);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+@keyframes page-enter {
+  from {
+    opacity: 0;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  to {
+    opacity: 1;
   }
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
-p {
-  margin: 0;
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+@keyframes drawer-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(-100%);
+  }
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@layer components {
+  .page-enter {
+    animation: page-enter 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .nav-overlay[data-state='open'] {
+    animation: overlay-in 0.22s ease-out both;
+  }
+
+  .nav-overlay[data-state='closed'] {
+    animation: overlay-out 0.18s ease-in both;
+  }
+
+  .nav-drawer[data-state='open'] {
+    animation: drawer-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .nav-drawer[data-state='closed'] {
+    animation: drawer-out 0.22s ease-in both;
+  }
+
+  .dialog-overlay[data-state='open'] {
+    animation: overlay-in 0.2s ease-out both;
+  }
+
+  .dialog-overlay[data-state='closed'] {
+    animation: overlay-out 0.16s ease-in both;
+  }
+
+  .dialog-panel[data-state='open'] {
+    animation: dialog-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .dialog-panel[data-state='closed'] {
+    animation: dialog-out 0.18s ease-in both;
+  }
+
+  .nav-accordion {
+    display: grid;
+    transition:
+      grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s ease;
+  }
+
+  .nav-accordion[data-open='true'] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  .nav-accordion[data-open='false'] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .nav-overlay,
+  .nav-drawer,
+  .dialog-overlay,
+  .dialog-panel {
+    animation: none !important;
+  }
+
+  .nav-accordion {
+    transition: none;
+  }
+}
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #fiche-impression,
+  #fiche-impression * {
+    visibility: visible !important;
+  }
+
+  #fiche-impression {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    background: white !important;
+  }
+
+  .page-enter,
+  .nav-overlay,
+  .nav-drawer,
+  .dialog-overlay,
+  .dialog-panel {
+    animation: none !important;
+  }
 }
