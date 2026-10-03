@@ -8,7 +8,7 @@ import { SidebarNav } from '@/components/layout/SidebarNav'
 import { useLogout, useSyncCurrentUser } from '@/features/auth/hooks'
 import { useUnreadDemandes } from '@/features/notifications/useUnreadDemandes'
 import { PERMISSIONS } from '@/lib/permissions'
-import { useCurrentUser, useHasPermission } from '@/stores/authStore'
+import { useCurrentUser, useHasPermission, useSessionProfil } from '@/stores/authStore'
 import { cn } from '@/lib/cn'
 
 function BrandMark({ collapsed = false }: { collapsed?: boolean }) {
@@ -74,15 +74,15 @@ function SidebarShell({ children, collapsed = false }: { children: ReactNode; co
 export function AppLayout() {
   const [isNavOpen, setIsNavOpen] = useState(false)
   const user = useCurrentUser()
+  const profil = useSessionProfil()
   const logoutMutation = useLogout()
   const canSeeNotifications = useHasPermission(PERMISSIONS.DEMANDES_READ)
   const unreadDemandes = useUnreadDemandes()
 
   useSyncCurrentUser()
 
-  const fullName = user ? `${user.personne.prenom} ${user.personne.nom}` : ''
-  const email = user?.compte.email ?? ''
-
+  const fullName = user ? `${user.personne.prenom} ${user.personne.nom}` : (profil?.name ?? '')
+  const email = user?.compte.email ?? profil?.email ?? ''
   const session = (
     <SessionFooter
       fullName={fullName}
