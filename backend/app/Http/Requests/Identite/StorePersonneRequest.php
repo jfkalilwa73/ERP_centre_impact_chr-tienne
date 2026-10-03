@@ -12,6 +12,14 @@ class StorePersonneRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'date_naissance' => $this->input('dateNaissance', $this->input('date_naissance')),
+            'photo_url' => $this->input('photoUrl', $this->input('photo_url')),
+        ]);
+    }
+
     public function rules(): array
     {
         return [

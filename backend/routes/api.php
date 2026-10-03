@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Organisation\DepartementController;
 use App\Http\Controllers\Api\V1\Organisation\AffectationDepartementController;
 use App\Http\Controllers\Api\V1\Audit\AuditLogController;
 use App\Http\Controllers\Api\V1\Acces\VerifierDroitController;
+
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [SessionController::class, 'login'])
         ->middleware('throttle:5,1');
@@ -20,6 +21,8 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/logout', [SessionController::class, 'logout']);
         Route::get('/auth/me', [SessionController::class, 'me']);
+        Route::get('/personnes', [PersonneController::class, 'index']);
+        Route::post('/personnes', [PersonneController::class, 'store']);
         Route::post('/identite/personnes', [PersonneController::class, 'store']);
         Route::post('/identite/comptes', [CompteController::class, 'store']);
         Route::post('/acces/roles', [RoleController::class, 'store']);

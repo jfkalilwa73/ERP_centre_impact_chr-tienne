@@ -10,16 +10,17 @@ class PersonneResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id_personne' => $this->id_personne,
+            'idPersonne' => $this->id_personne,
             'nom' => $this->nom,
             'prenom' => $this->prenom,
-            'date_naissance' => $this->date_naissance?->format('Y-m-d'),
+            'dateNaissance' => $this->date_naissance?->format('Y-m-d'),
             'sexe' => $this->sexe,
             'telephone' => $this->telephone,
             'adresse' => $this->adresse,
-            'photo_url' => $this->photo_url,
+            'photoUrl' => $this->photo_url,
             'statut' => $this->statut,
-            'user_id' => $this->user_id,
+            'dateCreation' => $this->date_creation?->toIso8601String(),
+            'dateModification' => $this->date_modification?->toIso8601String(),
         ];
     }
 }

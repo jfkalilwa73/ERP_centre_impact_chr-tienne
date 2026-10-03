@@ -5,16 +5,40 @@ namespace App\Http\Controllers\Api\V1\Identite;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Identite\StorePersonneRequest;
 use App\Http\Resources\Identite\PersonneResource;
+use App\Models\Personne;
 use App\Services\Identite\PersonneService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use OpenApi\Attributes as OA;
-use App\Models\Personne;
+
 class PersonneController extends Controller
 {
     public function __construct(
         private PersonneService $personnes
     ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = min(100, max(1, (int) $request->query('limit', 20)));
+
+        $resultat = $this->personnes->lister(
+            $page,
+            $limit,
+            $request->query('q'),
+            $request->query('statut'),
+        );
+
+        return response()->json([
+            'data' => PersonneResource::collection($resultat->items())->resolve(),
+            'pagination' => [
+                'page' => $resultat->currentPage(),
+                'limit' => $resultat->perPage(),
+                'total' => $resultat->total(),
+            ],
+        ]);
+    }
 
     #[OA\Post(
         path: '/api/v1/identite/personnes',
@@ -51,6 +75,7 @@ class PersonneController extends Controller
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }
+
     #[OA\Delete(
         path: '/api/v1/identite/personnes/{personne}',
         summary: 'Supprimer une personne inactive ou archivée',

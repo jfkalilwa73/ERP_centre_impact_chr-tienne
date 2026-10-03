@@ -37,4 +37,23 @@ class PersonneService
             throw $e;
         }
     }
+    public function lister(int $page, int $limit, ?string $recherche, ?string $statut)
+    {
+        $requete = Personne::query()->orderBy('nom')->orderBy('prenom');
+
+        if ($statut) {
+            $requete->where('statut', $statut);
+        }
+
+        if ($recherche) {
+            $terme = '%'.$recherche.'%';
+            $requete->where(function ($q) use ($terme) {
+                $q->where('nom', 'ilike', $terme)
+                    ->orWhere('prenom', 'ilike', $terme)
+                    ->orWhere('telephone', 'ilike', $terme);
+            });
+        }
+
+        return $requete->paginate($limit, ['*'], 'page', $page);
+    }
 }
