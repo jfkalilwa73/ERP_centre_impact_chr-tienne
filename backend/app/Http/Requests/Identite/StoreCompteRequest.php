@@ -12,6 +12,14 @@ class StoreCompteRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'id_personne' => $this->input('idPersonne', $this->input('id_personne')),
+            'password' => $this->input('motDePasse', $this->input('password')),
+        ]);
+    }
+
     public function rules(): array
     {
         return [

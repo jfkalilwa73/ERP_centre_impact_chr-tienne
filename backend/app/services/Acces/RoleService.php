@@ -24,4 +24,19 @@ class RoleService
 
         return $role;
     }
+
+    public function lister(int $page, int $limit, ?string $recherche)
+    {
+        $requete = RoleMetier::query()->orderBy('nom');
+
+        if ($recherche) {
+            $terme = '%'.$recherche.'%';
+            $requete->where(function ($q) use ($terme) {
+                $q->where('nom', 'ilike', $terme)
+                    ->orWhere('code', 'ilike', $terme);
+            });
+        }
+
+        return $requete->paginate($limit, ['*'], 'page', $page);
+    }
 }

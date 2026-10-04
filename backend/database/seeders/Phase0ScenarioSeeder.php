@@ -91,7 +91,37 @@ class Phase0ScenarioSeeder extends Seeder
             'actif' => true,
         ]);
 
-        $this->command->info("   ✅ Rôle ({$role->code}) et permissions membres.read / membres.create créés.");
+        $permissionComptesReadId = (string) Str::uuid();
+        $permissionComptesRead = PermissionMetier::create([
+            'id_permission' => $permissionComptesReadId,
+            'code' => 'comptes.read',
+            'module' => 'comptes',
+            'action' => 'read',
+            'description' => 'Consulter les comptes',
+            'actif' => true,
+        ]);
+
+        $permissionComptesCreateId = (string) Str::uuid();
+        $permissionComptesCreate = PermissionMetier::create([
+            'id_permission' => $permissionComptesCreateId,
+            'code' => 'comptes.create',
+            'module' => 'comptes',
+            'action' => 'create',
+            'description' => 'Créer un compte',
+            'actif' => true,
+        ]);
+
+        $permissionRolesManageId = (string) Str::uuid();
+        $permissionRolesManage = PermissionMetier::create([
+            'id_permission' => $permissionRolesManageId,
+            'code' => 'roles.manage',
+            'module' => 'roles',
+            'action' => 'manage',
+            'description' => 'Administrer les rôles et les permissions',
+            'actif' => true,
+        ]);
+
+        $this->command->info("   ✅ Rôle ({$role->code}) et permissions personnes / comptes / rôles créés.");
 
         // ---------------------------------------------------------
         // Scénario 5 & 6 : Attribuer un rôle à un compte + Attribuer des permissions à un rôle
@@ -113,6 +143,21 @@ class Phase0ScenarioSeeder extends Seeder
         AttribuerPermission::create([
             'id_role' => $role->id_role,
             'id_permission' => $permissionCreate->id_permission,
+        ]);
+
+        AttribuerPermission::create([
+            'id_role' => $role->id_role,
+            'id_permission' => $permissionComptesRead->id_permission,
+        ]);
+
+        AttribuerPermission::create([
+            'id_role' => $role->id_role,
+            'id_permission' => $permissionComptesCreate->id_permission,
+        ]);
+
+        AttribuerPermission::create([
+            'id_role' => $role->id_role,
+            'id_permission' => $permissionRolesManage->id_permission,
         ]);
 
         // ---------------------------------------------------------

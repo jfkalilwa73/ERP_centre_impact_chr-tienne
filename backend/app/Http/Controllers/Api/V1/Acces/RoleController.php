@@ -7,6 +7,7 @@ use App\Http\Requests\Acces\StoreRoleRequest;
 use App\Http\Resources\Acces\RoleResource;
 use App\Services\Acces\RoleService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use OpenApi\Attributes as OA;
 
@@ -15,6 +16,27 @@ class RoleController extends Controller
     public function __construct(
         private RoleService $roles
     ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = min(100, max(1, (int) $request->query('limit', 20)));
+
+        $resultat = $this->roles->lister(
+            $page,
+            $limit,
+            $request->query('q'),
+        );
+
+        return response()->json([
+            'data' => RoleResource::collection($resultat->items())->resolve(),
+            'pagination' => [
+                'page' => $resultat->currentPage(),
+                'limit' => $resultat->perPage(),
+                'total' => $resultat->total(),
+            ],
+        ]);
+    }
 
     #[OA\Post(
         path: '/api/v1/acces/roles',

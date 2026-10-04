@@ -7,6 +7,7 @@ use App\Http\Requests\Identite\StoreCompteRequest;
 use App\Http\Resources\Identite\CompteResource;
 use App\Services\Identite\CompteService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use OpenApi\Attributes as OA;
 
@@ -15,6 +16,28 @@ class CompteController extends Controller
     public function __construct(
         private CompteService $comptes
     ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = min(100, max(1, (int) $request->query('limit', 20)));
+
+        $resultat = $this->comptes->lister(
+            $page,
+            $limit,
+            $request->query('q'),
+            $request->query('statut'),
+        );
+
+        return response()->json([
+            'data' => CompteResource::collection($resultat->items())->resolve(),
+            'pagination' => [
+                'page' => $resultat->currentPage(),
+                'limit' => $resultat->perPage(),
+                'total' => $resultat->total(),
+            ],
+        ]);
+    }
 
     #[OA\Post(
         path: '/api/v1/identite/comptes',
@@ -46,8 +69,9 @@ class CompteController extends Controller
     {
         $user = $this->comptes->creer($request->validated());
 
-        return (new CompteResource($user))
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return response()->json(
+            (new CompteResource($user))->resolve(),
+            Response::HTTP_CREATED
+        );
     }
 }

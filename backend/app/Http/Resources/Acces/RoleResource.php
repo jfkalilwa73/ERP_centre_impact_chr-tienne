@@ -10,13 +10,13 @@ class RoleResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id_role' => $this->id_role,
+            'idRole' => $this->id_role,
             'code' => $this->code,
             'nom' => $this->nom,
             'description' => $this->description,
-            'niveau_confidentialite' => $this->niveau_confidentialite,
-            'actif' => $this->actif,
-            'date_creation' => $this->date_creation?->toIso8601String(),
+            'niveauConfidentialite' => $this->niveau_confidentialite,
+            'actif' => (bool) $this->actif,
+            'dateCreation' => $this->date_creation?->toIso8601String(),
         ];
     }
 }

@@ -39,4 +39,27 @@ class CompteService
             return $user;
         });
     }
+
+    public function lister(int $page, int $limit, ?string $recherche, ?string $statut)
+    {
+        $requete = User::query()->with('personne')->orderBy('name');
+
+        if ($statut) {
+            $requete->where('statut', $statut);
+        }
+
+        if ($recherche) {
+            $terme = '%'.$recherche.'%';
+            $requete->where(function ($q) use ($terme) {
+                $q->where('email', 'ilike', $terme)
+                    ->orWhere('name', 'ilike', $terme)
+                    ->orWhereHas('personne', function ($personne) use ($terme) {
+                        $personne->where('nom', 'ilike', $terme)
+                            ->orWhere('prenom', 'ilike', $terme);
+                    });
+            });
+        }
+
+        return $requete->paginate($limit, ['*'], 'page', $page);
+    }
 }

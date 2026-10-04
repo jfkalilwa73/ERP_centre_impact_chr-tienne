@@ -24,7 +24,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/personnes', [PersonneController::class, 'index']);
         Route::post('/personnes', [PersonneController::class, 'store']);
         Route::post('/identite/personnes', [PersonneController::class, 'store']);
+        Route::get('/comptes', [CompteController::class, 'index']);
+        Route::post('/comptes', [CompteController::class, 'store']);
+        Route::post('/comptes/{user}/roles', [AffectationRoleController::class, 'store']);
         Route::post('/identite/comptes', [CompteController::class, 'store']);
+        Route::get('/roles', [RoleController::class, 'index']);
         Route::post('/acces/roles', [RoleController::class, 'store']);
         Route::post('/acces/permissions', [PermissionController::class, 'store']);
         Route::post('/acces/comptes/{user}/roles', [AffectationRoleController::class, 'store']);

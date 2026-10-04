@@ -9,15 +9,17 @@ class CompteResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $this->resource->loadMissing('personne');
+
         return [
-            'id' => $this->id,
-            'id_personne' => $this->personne?->id_personne,
-            'name' => $this->name,
+            'idCompte' => (string) $this->id,
+            'idPersonne' => $this->personne?->id_personne,
             'email' => $this->email,
             'statut' => $this->statut,
-            'mfa_active' => $this->mfa_active,
-            'derniere_connexion' => $this->derniere_connexion?->toIso8601String(),
-            'date_desactivation' => $this->date_desactivation?->toIso8601String(),
+            'derniereConnexion' => $this->derniere_connexion?->toIso8601String(),
+            'mfaActive' => (bool) $this->mfa_active,
+            'dateCreation' => $this->created_at?->toIso8601String(),
+            'dateDesactivation' => $this->date_desactivation?->toIso8601String(),
         ];
     }
 }
