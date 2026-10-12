@@ -11,6 +11,16 @@ class StoreRoleRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'niveau_confidentialite' => $this->input(
+                'niveauConfidentialite',
+                $this->input('niveau_confidentialite')
+            ),
+        ]);
+    }
+
     public function rules(): array
     {
         return [

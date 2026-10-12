@@ -39,7 +39,7 @@ class RoleController extends Controller
     }
 
     #[OA\Post(
-        path: '/api/v1/acces/roles',
+        path: '/api/v1/roles',
         summary: 'Créer un rôle métier',
         description: 'Crée un rôle (role_metier). Nécessite une session cookie. Le code doit être unique.',
         tags: ['Accès'],
@@ -49,10 +49,10 @@ class RoleController extends Controller
             content: new OA\JsonContent(
                 required: ['code', 'nom'],
                 properties: [
-                    new OA\Property(property: 'code', type: 'string', example: 'ADMIN_FONCTIONNEL'),
-                    new OA\Property(property: 'nom', type: 'string', example: 'Administrateur Fonctionnel'),
-                    new OA\Property(property: 'description', type: 'string', example: 'Gestion globale de l\'ERP', nullable: true),
-                    new OA\Property(property: 'niveau_confidentialite', type: 'integer', example: 3, nullable: true),
+                    new OA\Property(property: 'code', type: 'string', example: 'PASTEUR'),
+                    new OA\Property(property: 'nom', type: 'string', example: 'Pasteur'),
+                    new OA\Property(property: 'description', type: 'string', example: 'Accompagnement pastoral', nullable: true),
+                    new OA\Property(property: 'niveauConfidentialite', type: 'integer', example: 3, nullable: true),
                     new OA\Property(property: 'actif', type: 'boolean', example: true, nullable: true),
                 ]
             )
@@ -68,8 +68,9 @@ class RoleController extends Controller
     {
         $role = $this->roles->creer($request->validated());
 
-        return (new RoleResource($role))
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return response()->json(
+            (new RoleResource($role))->resolve(),
+            Response::HTTP_CREATED
+        );
     }
 }

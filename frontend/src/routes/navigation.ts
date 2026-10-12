@@ -76,7 +76,7 @@ export const navigation: NavEntry[] = [
     icon: Settings,
     children: [
       { to: '/comptes', label: 'Comptes', icon: KeyRound, permission: PERMISSIONS.COMPTES_READ },
-      { to: '/roles', label: 'Rôles', icon: Shield, permission: PERMISSIONS.ROLES_READ },
+      { to: '/roles', label: 'Rôles', icon: Shield, permission: PERMISSIONS.ROLES_MANAGE },
       {
         to: '/permissions',
         label: 'Permissions',
