@@ -7,6 +7,7 @@ use App\Http\Requests\Acces\StorePermissionRequest;
 use App\Http\Resources\Acces\PermissionResource;
 use App\Services\Acces\PermissionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use OpenApi\Attributes as OA;
 
@@ -42,12 +43,34 @@ class PermissionController extends Controller
             new OA\Response(response: 422, description: 'Données invalides'),
         ]
     )]
+    public function index(Request $request): JsonResponse
+    {
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = min(100, max(1, (int) $request->query('limit', 20)));
+
+        $resultat = $this->permissions->lister(
+            $page,
+            $limit,
+            $request->query('q'),
+            $request->query('module'),
+        );
+
+        return response()->json([
+            'data' => PermissionResource::collection($resultat->items())->resolve(),
+            'pagination' => [
+                'page' => $resultat->currentPage(),
+                'limit' => $resultat->perPage(),
+                'total' => $resultat->total(),
+            ],
+        ]);
+    }
     public function store(StorePermissionRequest $request): JsonResponse
     {
         $permission = $this->permissions->creer($request->validated());
 
-        return (new PermissionResource($permission))
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return response()->json(
+            (new PermissionResource($permission))->resolve(),
+            Response::HTTP_CREATED
+        );    
     }
 }

@@ -32,4 +32,24 @@ class PermissionService
 
         return $permission;
     }
+    public function lister(int $page, int $limit, ?string $recherche, ?string $module)
+    {
+        $requete = PermissionMetier::query()->orderBy('module')->orderBy('action');
+
+        if ($module) {
+            $requete->where('module', $module);
+        }
+
+        if ($recherche) {
+            $terme = '%'.$recherche.'%';
+            $requete->where(function ($q) use ($terme) {
+                $q->where('code', 'ilike', $terme)
+                    ->orWhere('module', 'ilike', $terme)
+                    ->orWhere('action', 'ilike', $terme)
+                    ->orWhere('description', 'ilike', $terme);
+            });
+        }
+
+        return $requete->paginate($limit, ['*'], 'page', $page);
+    }
 }
