@@ -62,4 +62,15 @@ class CompteService
 
         return $requete->paginate($limit, ['*'], 'page', $page);
     }
+
+    public function trouver(string $compteId): User
+    {
+        $compte = User::query()->find($compteId);
+
+        if ($compte === null) {
+            abort(404, 'Compte introuvable.');
+        }
+
+        return $compte;
+    }
 }

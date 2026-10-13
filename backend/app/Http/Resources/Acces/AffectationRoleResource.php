@@ -10,11 +10,11 @@ class AffectationRoleResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'user_id' => $this->user_id,
-            'id_role' => $this->id_role,
-            'date_debut' => $this->date_debut?->toIso8601String(),
-            'date_fin' => $this->date_fin?->toIso8601String(),
-            'actif' => $this->actif,
+            'idCompte' => (string) $this->user_id,
+            'idRole' => $this->id_role,
+            'dateDebut' => $this->date_debut?->toIso8601String(),
+            'dateFin' => $this->date_fin?->toIso8601String(),
+            'actif' => (bool) $this->actif,
         ];
     }
 }

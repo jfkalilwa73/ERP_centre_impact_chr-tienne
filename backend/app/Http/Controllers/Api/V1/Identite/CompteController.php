@@ -38,6 +38,12 @@ class CompteController extends Controller
             ],
         ]);
     }
+    public function show(string $compteId): JsonResponse
+    {
+        $compte = $this->comptes->trouver($compteId);
+
+        return response()->json((new CompteResource($compte))->resolve());
+    }
 
     #[OA\Post(
         path: '/api/v1/identite/comptes',

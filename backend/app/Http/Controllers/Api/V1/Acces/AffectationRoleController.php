@@ -50,12 +50,21 @@ class AffectationRoleController extends Controller
             new OA\Response(response: 422, description: 'Données invalides'),
         ]
     )]
+    public function index(string $compteId): JsonResponse
+    {
+        $affectations = $this->affectations->lister($compteId);
+
+        return response()->json(
+            AffectationRoleResource::collection($affectations)->resolve()
+        );
+    }
     public function store(StoreAffectationRoleRequest $request, User $user): JsonResponse
     {
         $affectation = $this->affectations->attribuer($user, $request->validated());
 
-        return (new AffectationRoleResource($affectation))
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return response()->json(
+            (new AffectationRoleResource($affectation))->resolve(),
+            Response::HTTP_CREATED
+        );
     }
 }

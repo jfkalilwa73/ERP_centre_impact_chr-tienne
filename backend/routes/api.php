@@ -25,12 +25,14 @@ Route::prefix('v1')->group(function () {
         Route::post('/personnes', [PersonneController::class, 'store']);
         Route::post('/identite/personnes', [PersonneController::class, 'store']);
         Route::get('/comptes', [CompteController::class, 'index']);
+        Route::get('/comptes/{compteId}', [CompteController::class, 'show']);
         Route::post('/comptes', [CompteController::class, 'store']);
+        Route::get('/comptes/{compteId}/roles', [AffectationRoleController::class, 'index']);
         Route::post('/comptes/{user}/roles', [AffectationRoleController::class, 'store']);
         Route::post('/identite/comptes', [CompteController::class, 'store']);
         Route::get('/roles', [RoleController::class, 'index']);
         Route::post('/roles', [RoleController::class, 'store']);
-        Route::get('/permissions', [PermissionController::class, 'index']);        
+        Route::get('/permissions', [PermissionController::class, 'index']);
         Route::post('/permissions', [PermissionController::class, 'store']);
         Route::post('/acces/comptes/{user}/roles', [AffectationRoleController::class, 'store']);
         Route::post('/acces/roles/{role}/permissions', [AttribuerPermissionController::class, 'store']);

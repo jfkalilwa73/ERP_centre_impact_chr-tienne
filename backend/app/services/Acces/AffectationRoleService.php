@@ -34,4 +34,17 @@ class AffectationRoleService
             'actif' => true,
         ]);
     }
+    public function lister(string $compteId)
+    {
+        $compte = User::query()->find($compteId);
+
+        if ($compte === null) {
+            abort(404, 'Compte introuvable.');
+        }
+
+        return AffecterRoleMetier::query()
+            ->where('user_id', $compte->id)
+            ->orderByDesc('date_debut')
+            ->get();
+    }
 }
