@@ -304,7 +304,8 @@ export function PersonneDetailPage() {
   const [historyTick, setHistoryTick] = useState(0)
 
   const canUpdate = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
-  const canReadDepartements = useHasPermission(PERMISSIONS.DEPARTEMENTS_READ)
+  const canAssignDepartement = canUpdate || useHasPermission(PERMISSIONS.ROLES_MANAGE)
+  const canReadDepartements =useHasPermission(PERMISSIONS.DEPARTEMENTS_READ) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canReadFamilles = useHasPermission(PERMISSIONS.FAMILLES_READ)
   const canReadComptes = useHasPermission(PERMISSIONS.COMPTES_READ)
 
@@ -808,7 +809,7 @@ export function PersonneDetailPage() {
           <div className="mt-4 flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-slate-900">Responsabilités & Ministères</h2>
-              {canUpdate && (
+              {canAssignDepartement && (
                 <Button
                   size="sm"
                   onClick={() => {

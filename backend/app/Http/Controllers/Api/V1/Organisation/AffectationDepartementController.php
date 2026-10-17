@@ -9,6 +9,7 @@ use App\Models\Personne;
 use App\Services\Organisation\AffectationDepartementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class AffectationDepartementController extends Controller
@@ -16,6 +17,18 @@ class AffectationDepartementController extends Controller
     public function __construct(
         private AffectationDepartementService $affectations
     ) {}
+
+    public function index(Request $request, string $personneId): JsonResponse
+    {
+        $affectations = $this->affectations->lister(
+            $personneId,
+            $request->query('actif'),
+        );
+
+        return response()->json(
+            AffectationDepartementResource::collection($affectations)->resolve()
+        );
+    }
 
     #[OA\Post(
         path: '/api/v1/organisation/personnes/{personne}/departements',
@@ -55,8 +68,9 @@ class AffectationDepartementController extends Controller
     {
         $affectation = $this->affectations->affecter($personne, $request->validated());
 
-        return (new AffectationDepartementResource($affectation))
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return response()->json(
+            (new AffectationDepartementResource($affectation))->resolve(),
+            Response::HTTP_CREATED
+        );
     }
 }

@@ -10,6 +10,14 @@ class StoreAffectationDepartementRequest extends FormRequest
     {
         return true;
     }
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'id_departement' => $this->input('idDepartement', $this->input('id_departement')),
+            'date_debut' => $this->input('dateDebut', $this->input('date_debut')),
+            'date_fin' => $this->input('dateFin', $this->input('date_fin')),
+        ]);
+    }
 
     public function rules(): array
     {

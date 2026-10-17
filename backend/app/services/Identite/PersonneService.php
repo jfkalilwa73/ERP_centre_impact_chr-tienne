@@ -56,4 +56,15 @@ class PersonneService
 
         return $requete->paginate($limit, ['*'], 'page', $page);
     }
+
+    public function trouver(string $personneId): Personne
+    {
+        $personne = Personne::query()->find($personneId);
+
+        if ($personne === null) {
+            abort(404, 'Personne introuvable.');
+        }
+
+        return $personne;
+    }
 }

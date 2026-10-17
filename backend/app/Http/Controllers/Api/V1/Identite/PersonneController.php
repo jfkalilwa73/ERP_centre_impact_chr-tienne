@@ -76,6 +76,13 @@ class PersonneController extends Controller
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
+    public function show(string $personneId): JsonResponse
+    {
+        $personne = $this->personnes->trouver($personneId);
+
+        return response()->json((new PersonneResource($personne))->resolve());
+    }
+
     #[OA\Delete(
         path: '/api/v1/identite/personnes/{personne}',
         summary: 'Supprimer une personne inactive ou archivée',

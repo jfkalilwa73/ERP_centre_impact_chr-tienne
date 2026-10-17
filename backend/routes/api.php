@@ -22,6 +22,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout', [SessionController::class, 'logout']);
         Route::get('/auth/me', [SessionController::class, 'me']);
         Route::get('/personnes', [PersonneController::class, 'index']);
+        Route::get('/personnes/{personneId}', [PersonneController::class, 'show']);
+        Route::get('/personnes/{personneId}/departements', [AffectationDepartementController::class, 'index']);
         Route::post('/personnes', [PersonneController::class, 'store']);
         Route::post('/identite/personnes', [PersonneController::class, 'store']);
         Route::get('/comptes', [CompteController::class, 'index']);
@@ -42,8 +44,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/sites', [SiteController::class, 'store']);
         Route::get('/departements', [DepartementController::class, 'index']);
         Route::post('/departements', [DepartementController::class, 'store']);
-        Route::post('/organisation/personnes/{personne}/departements', [AffectationDepartementController::class, 'store']);
-        Route::get('/audit/logs', [AuditLogController::class, 'index']);
+        Route::post('/personnes/{personne}/departements', [AffectationDepartementController::class, 'store']);
+        Route::post('/personnes/{personne}/departements', [AffectationDepartementController::class, 'store']);        Route::get('/audit/logs', [AuditLogController::class, 'index']);
         Route::get('/acces/comptes/{user}/permissions/{permissionCode}', [VerifierDroitController::class, 'show']);
         Route::delete('/identite/personnes/{personne}', [PersonneController::class, 'destroy']);
     });

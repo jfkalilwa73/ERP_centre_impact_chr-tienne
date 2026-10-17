@@ -35,4 +35,23 @@ class AffectationDepartementService
             'actif' => true,
         ]);
     }
+
+    public function lister(string $personneId, ?string $actif)
+    {
+        $personne = Personne::query()->find($personneId);
+
+        if ($personne === null) {
+            abort(404, 'Personne introuvable.');
+        }
+
+        $requete = AffecterDepartement::query()
+            ->where('id_personne', $personne->id_personne)
+            ->orderByDesc('date_debut');
+
+        if ($actif !== null && $actif !== '') {
+            $requete->where('actif', filter_var($actif, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        return $requete->get();
+    }
 }
