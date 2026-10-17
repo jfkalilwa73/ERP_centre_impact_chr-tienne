@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Acces;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Acces\StoreAttribuerPermissionRequest;
 use App\Http\Resources\Acces\AttribuerPermissionResource;
+use App\Http\Resources\Acces\PermissionResource;
 use App\Models\RoleMetier;
 use App\Services\Acces\AttribuerPermissionService;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,14 @@ class AttribuerPermissionController extends Controller
     public function __construct(
         private AttribuerPermissionService $attributions
     ) {}
+    public function index(string $roleId): JsonResponse
+    {
+        $permissions = $this->attributions->lister($roleId);
 
+        return response()->json(
+            PermissionResource::collection($permissions)->resolve()
+        );
+    }
     #[OA\Post(
         path: '/api/v1/acces/roles/{role}/permissions',
         summary: 'Attribuer une permission à un rôle',
@@ -52,8 +60,9 @@ class AttribuerPermissionController extends Controller
     {
         $attribution = $this->attributions->attribuer($role, $request->validated());
 
-        return (new AttribuerPermissionResource($attribution))
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return response()->json(
+            (new PermissionResource($attribution->permission))->resolve(),
+            Response::HTTP_CREATED
+        );
     }
 }

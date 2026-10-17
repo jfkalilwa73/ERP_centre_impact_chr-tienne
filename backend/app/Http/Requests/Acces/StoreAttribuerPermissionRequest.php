@@ -11,6 +11,13 @@ class StoreAttribuerPermissionRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'id_permission' => $this->input('idPermission', $this->input('id_permission')),
+        ]);
+    }
+
     public function rules(): array
     {
         return [

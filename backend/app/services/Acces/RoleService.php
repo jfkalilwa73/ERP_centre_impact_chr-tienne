@@ -39,4 +39,15 @@ class RoleService
 
         return $requete->paginate($limit, ['*'], 'page', $page);
     }
+
+    public function trouver(string $roleId): RoleMetier
+    {
+        $role = RoleMetier::query()->find($roleId);
+
+        if ($role === null) {
+            abort(404, 'Rôle introuvable.');
+        }
+
+        return $role;
+    }
 }

@@ -30,4 +30,14 @@ class AttribuerPermissionService
             'id_permission' => $permission->id_permission,
         ]);
     }
+    public function lister(string $roleId)
+    {
+        $role = RoleMetier::query()->find($roleId);
+
+        if ($role === null) {
+            abort(404, 'Rôle introuvable.');
+        }
+
+        return $role->permissions()->orderBy('module')->orderBy('action')->get();
+    }
 }

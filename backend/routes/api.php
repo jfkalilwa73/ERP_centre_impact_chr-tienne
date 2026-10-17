@@ -31,12 +31,13 @@ Route::prefix('v1')->group(function () {
         Route::post('/comptes/{user}/roles', [AffectationRoleController::class, 'store']);
         Route::post('/identite/comptes', [CompteController::class, 'store']);
         Route::get('/roles', [RoleController::class, 'index']);
+        Route::get('/roles/{roleId}', [RoleController::class, 'show']);
+        Route::get('/roles/{roleId}/permissions', [AttribuerPermissionController::class, 'index']);
         Route::post('/roles', [RoleController::class, 'store']);
         Route::get('/permissions', [PermissionController::class, 'index']);
         Route::post('/permissions', [PermissionController::class, 'store']);
         Route::post('/acces/comptes/{user}/roles', [AffectationRoleController::class, 'store']);
-        Route::post('/acces/roles/{role}/permissions', [AttribuerPermissionController::class, 'store']);
-        Route::post('/organisation/sites', [SiteController::class, 'store']);
+        Route::post('/roles/{role}/permissions', [AttribuerPermissionController::class, 'store']);        Route::post('/organisation/sites', [SiteController::class, 'store']);
         Route::post('/organisation/departements', [DepartementController::class, 'store']);
         Route::post('/organisation/personnes/{personne}/departements', [AffectationDepartementController::class, 'store']);
         Route::get('/audit/logs', [AuditLogController::class, 'index']);

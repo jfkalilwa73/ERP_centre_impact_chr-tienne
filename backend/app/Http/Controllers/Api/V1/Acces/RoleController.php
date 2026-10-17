@@ -37,6 +37,12 @@ class RoleController extends Controller
             ],
         ]);
     }
+    public function show(string $roleId): JsonResponse
+    {
+        $role = $this->roles->trouver($roleId);
+
+        return response()->json((new RoleResource($role))->resolve());
+    }
 
     #[OA\Post(
         path: '/api/v1/roles',
