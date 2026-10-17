@@ -50,4 +50,20 @@ class RoleService
 
         return $role;
     }
+
+    public function modifier(RoleMetier $role, array $donnees): RoleMetier
+    {
+        if (array_key_exists('code', $donnees)
+            && RoleMetier::query()
+                ->where('code', $donnees['code'])
+                ->where('id_role', '!=', $role->id_role)
+                ->exists()) {
+            abort(409, 'Ce code de rôle est déjà utilisé.');
+        }
+
+        $role->fill($donnees);
+        $role->save();
+
+        return $role;
+    }
 }

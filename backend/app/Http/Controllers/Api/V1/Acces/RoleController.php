@@ -8,6 +8,7 @@ use App\Http\Resources\Acces\RoleResource;
 use App\Services\Acces\RoleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Http\Requests\Acces\UpdateRoleRequest;
 use Illuminate\Http\Response;
 use OpenApi\Attributes as OA;
 
@@ -40,6 +41,14 @@ class RoleController extends Controller
     public function show(string $roleId): JsonResponse
     {
         $role = $this->roles->trouver($roleId);
+
+        return response()->json((new RoleResource($role))->resolve());
+    }
+
+    public function update(UpdateRoleRequest $request, string $roleId): JsonResponse
+    {
+        $role = $this->roles->trouver($roleId);
+        $role = $this->roles->modifier($role, $request->validated());
 
         return response()->json((new RoleResource($role))->resolve());
     }

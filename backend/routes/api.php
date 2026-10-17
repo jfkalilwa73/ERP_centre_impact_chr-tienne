@@ -34,6 +34,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/identite/comptes', [CompteController::class, 'store']);
         Route::get('/roles', [RoleController::class, 'index']);
         Route::get('/roles/{roleId}', [RoleController::class, 'show']);
+        Route::patch('/roles/{roleId}', [RoleController::class, 'update']);
         Route::get('/roles/{roleId}/permissions', [AttribuerPermissionController::class, 'index']);
         Route::post('/roles', [RoleController::class, 'store']);
         Route::get('/permissions', [PermissionController::class, 'index']);
