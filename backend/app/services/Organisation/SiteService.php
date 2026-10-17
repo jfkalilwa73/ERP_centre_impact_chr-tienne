@@ -26,4 +26,20 @@ class SiteService
 
         return $site;
     }
+
+    public function lister(int $page, int $limit, ?string $recherche)
+    {
+        $requete = Site::query()->orderBy('nom');
+
+        if ($recherche) {
+            $terme = '%'.$recherche.'%';
+            $requete->where(function ($q) use ($terme) {
+                $q->where('nom', 'ilike', $terme)
+                    ->orWhere('code', 'ilike', $terme)
+                    ->orWhere('ville', 'ilike', $terme);
+            });
+        }
+
+        return $requete->paginate($limit, ['*'], 'page', $page);
+    }
 }

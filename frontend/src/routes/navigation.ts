@@ -4,6 +4,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Layers,
+  MapPin,
   List,
   ScrollText,
   Settings,
@@ -76,6 +77,7 @@ export const navigation: NavEntry[] = [
     icon: Settings,
     children: [
       { to: '/comptes', label: 'Comptes', icon: KeyRound, permission: PERMISSIONS.COMPTES_READ },
+      { to: '/sites', label: 'Sites', icon: MapPin, permission: PERMISSIONS.ROLES_MANAGE },
       { to: '/roles', label: 'Rôles', icon: Shield, permission: PERMISSIONS.ROLES_MANAGE },
       {
         to: '/permissions',

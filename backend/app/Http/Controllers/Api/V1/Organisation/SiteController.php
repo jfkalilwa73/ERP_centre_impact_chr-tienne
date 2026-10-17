@@ -8,6 +8,7 @@ use App\Http\Resources\Organisation\SiteResource;
 use App\Services\Organisation\SiteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class SiteController extends Controller
@@ -15,6 +16,26 @@ class SiteController extends Controller
     public function __construct(
         private SiteService $sites
     ) {}
+    public function index(Request $request): JsonResponse
+    {
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = min(100, max(1, (int) $request->query('limit', 20)));
+
+        $resultat = $this->sites->lister(
+            $page,
+            $limit,
+            $request->query('q'),
+        );
+
+        return response()->json([
+            'data' => SiteResource::collection($resultat->items())->resolve(),
+            'pagination' => [
+                'page' => $resultat->currentPage(),
+                'limit' => $resultat->perPage(),
+                'total' => $resultat->total(),
+            ],
+        ]);
+    }
 
     #[OA\Post(
         path: '/api/v1/organisation/sites',
@@ -48,8 +69,9 @@ class SiteController extends Controller
     {
         $site = $this->sites->creer($request->validated());
 
-        return (new SiteResource($site))
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return response()->json(
+            (new SiteResource($site))->resolve(),
+            Response::HTTP_CREATED
+        );
     }
 }

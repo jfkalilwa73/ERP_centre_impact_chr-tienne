@@ -23,6 +23,7 @@ import { PermissionRoute } from './PermissionRoute'
 import { DepartementAccessRoute } from './DepartementAccessRoute'
 import { FamilleAccessRoute } from './FamilleAccessRoute'
 import { PilotageDgeRoute } from './PilotageDgeRoute'
+import { SitesPage } from '@/features/sites/SitesPage'  
 
 export function AppRoutes() {
   return (
@@ -69,6 +70,10 @@ export function AppRoutes() {
           </Route>
           <Route element={<FamilleAccessRoute />}>
             <Route path="familles/:familleId" element={<FamilleDetailPage />} />
+          </Route>
+
+          <Route element={<PermissionRoute permission={PERMISSIONS.ROLES_MANAGE} />}>
+            <Route path="sites" element={<SitesPage />} />
           </Route>
 
           <Route
