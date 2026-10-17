@@ -10,10 +10,10 @@ class DroitResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'user_id' => $this['user_id'],
-            'permission_code' => $this['permission_code'],
+            'compteId' => (string) $this['user_id'],
+            'permissionCode' => $this['permission_code'],
             'autorise' => $this['autorise'],
-            'roles_source' => $this['roles_source'],
+            'rolesSource' => $this['roles_source'],
         ];
     }
 }

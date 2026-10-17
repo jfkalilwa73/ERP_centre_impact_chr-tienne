@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Acces;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Acces\DroitResource;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use App\Services\Acces\VerifierDroitService;
 use OpenApi\Attributes as OA;
 
@@ -40,10 +41,12 @@ class VerifierDroitController extends Controller
             new OA\Response(response: 404, description: 'Compte introuvable'),
         ]
     )]
-    public function show(User $user, string $permissionCode): DroitResource
+    public function show(User $user, string $permissionCode): JsonResponse
     {
-        return new DroitResource(
-            $this->droits->verifier($user, $permissionCode)
+        return response()->json(
+            (new DroitResource(
+                $this->droits->verifier($user, $permissionCode)
+            ))->resolve()
         );
     }
 }
