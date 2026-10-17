@@ -40,6 +40,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/roles', [RoleController::class, 'store']);
         Route::get('/permissions', [PermissionController::class, 'index']);
         Route::post('/permissions', [PermissionController::class, 'store']);
+        Route::patch('/permissions/{permissionId}', [PermissionController::class, 'update']);
+        Route::delete('/permissions/{permissionId}', [PermissionController::class, 'destroy']);
         Route::post('/acces/comptes/{user}/roles', [AffectationRoleController::class, 'store']);
         Route::post('/roles/{role}/permissions', [AttribuerPermissionController::class, 'store']);
         Route::get('/permissions/{permissionId}/comptes', [PermissionController::class, 'comptes']);

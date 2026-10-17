@@ -9,6 +9,8 @@ use App\Services\Acces\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Http\Requests\Acces\UpdatePermissionRequest;
+use App\Models\PermissionMetier;
 use OpenApi\Attributes as OA;
 
 class PermissionController extends Controller
@@ -79,5 +81,30 @@ class PermissionController extends Controller
         return response()->json(
             $this->permissions->listerTitulaires($permissionId)
         );
+    }
+    public function update(UpdatePermissionRequest $request, string $permissionId): JsonResponse
+    {
+        $permission = PermissionMetier::query()->find($permissionId);
+
+        if ($permission === null) {
+            abort(404, 'Permission introuvable.');
+        }
+
+        $permission = $this->permissions->modifier($permission, $request->validated());
+
+        return response()->json((new PermissionResource($permission))->resolve());
+    }
+
+    public function destroy(string $permissionId): Response
+    {
+        $permission = PermissionMetier::query()->find($permissionId);
+
+        if ($permission === null) {
+            abort(404, 'Permission introuvable.');
+        }
+
+        $this->permissions->supprimer($permission);
+
+        return response()->noContent();
     }
 }

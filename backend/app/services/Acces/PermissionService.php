@@ -99,4 +99,41 @@ class PermissionService
             ];
         })->values()->all();
     }
+
+    public function modifier(PermissionMetier $permission, array $donnees): PermissionMetier
+    {
+        if (array_key_exists('code', $donnees)
+            && PermissionMetier::query()
+                ->where('code', $donnees['code'])
+                ->where('id_permission', '!=', $permission->id_permission)
+                ->exists()) {
+            abort(409, 'Ce code de permission est déjà utilisé.');
+        }
+
+        $module = $donnees['module'] ?? $permission->module;
+        $action = $donnees['action'] ?? $permission->action;
+
+        if ((array_key_exists('module', $donnees) || array_key_exists('action', $donnees))
+            && PermissionMetier::query()
+                ->where('module', $module)
+                ->where('action', $action)
+                ->where('id_permission', '!=', $permission->id_permission)
+                ->exists()) {
+            abort(409, 'Cette permission (module + action) existe déjà.');
+        }
+
+        $permission->fill($donnees);
+        $permission->save();
+
+        return $permission;
+    }
+
+    public function supprimer(PermissionMetier $permission): void
+    {
+        if ($permission->roles()->exists()) {
+            abort(409, 'Ce droit est encore utilisé par un rôle.');
+        }
+
+        $permission->delete();
+    }
 }
