@@ -49,6 +49,5 @@ Route::prefix('v1')->group(function () {
         Route::post('/personnes/{personne}/departements', [AffectationDepartementController::class, 'store']);        
         Route::get('/audit/logs', [AuditLogController::class, 'index']);
         Route::get('/comptes/{user}/permissions/{permissionCode}', [VerifierDroitController::class, 'show']);        
-        Route::delete('/identite/personnes/{personne}', [PersonneController::class, 'destroy']);
-    });
+        Route::delete('/personnes/{personne}', [PersonneController::class, 'destroy']);    });
 });

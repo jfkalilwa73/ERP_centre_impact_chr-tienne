@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertTriangle, ArrowLeft, Camera, FileDown, Heart, Pencil, Plus, StickyNote, Trash2 } from 'lucide-react'
@@ -41,6 +41,7 @@ import {
 import {
   useAssignDepartement,
   useAssignFamille,
+  useDeletePersonne,
   usePersonne,
   usePersonneAffectations,
   usePersonneFamilles,
@@ -294,9 +295,11 @@ function FicheImpression({
 
 export function PersonneDetailPage() {
   const { personneId } = useParams<{ personneId: string }>()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<TabId>('general')
   const [assignOpen, setAssignOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
   const [complement, setComplement] = useState(emptyFicheComplement)
@@ -305,6 +308,8 @@ export function PersonneDetailPage() {
 
   const canUpdate = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
   const canAssignDepartement = canUpdate || useHasPermission(PERMISSIONS.ROLES_MANAGE)
+  const canDelete =
+    useHasPermission(PERMISSIONS.MEMBRES_DELETE) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canReadDepartements =useHasPermission(PERMISSIONS.DEPARTEMENTS_READ) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canReadFamilles = useHasPermission(PERMISSIONS.FAMILLES_READ)
   const canReadComptes = useHasPermission(PERMISSIONS.COMPTES_READ)
@@ -326,6 +331,7 @@ export function PersonneDetailPage() {
   const assignFamilleMutation = useAssignFamille(personneId ?? '')
   const unassignFamilleMutation = useUnassignFamille(personneId ?? '')
   const updateMutation = useUpdatePersonne()
+  const deleteMutation = useDeletePersonne()
 
   const {
     register,
@@ -543,6 +549,18 @@ export function PersonneDetailPage() {
                 <Button variant="secondary" onClick={() => setEditOpen(true)}>
                   <Pencil className="size-4" aria-hidden="true" />
                   Modifier
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    deleteMutation.reset()
+                    setDeleteOpen(true)
+                  }}
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Supprimer
                 </Button>
               )}
               <Button
@@ -917,6 +935,44 @@ export function PersonneDetailPage() {
         affectationsActives={affectationsActives}
         nomDepartement={nomDepartement}
       />
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open)
+          if (!open) deleteMutation.reset()
+        }}
+      >
+        <DialogContent
+          title="Supprimer cette personne ?"
+          description="Une personne active ne peut pas être supprimée."
+        >
+          {deleteMutation.isError && (
+            <Alert variant="error" title="Suppression impossible">
+              {deleteMutation.error.message}
+            </Alert>
+          )}
+          <p className="text-sm text-slate-600">
+            {personne.prenom} {personne.nom} est au statut {STATUT_LABELS[statut]}.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="danger"
+              isLoading={deleteMutation.isPending}
+              onClick={() => {
+                deleteMutation.mutate(personne.idPersonne, {
+                  onSuccess: () => navigate('/personnes'),
+                })
+              }}
+            >
+              Supprimer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <PersonneFormDialog
         open={editOpen}
