@@ -53,6 +53,14 @@ class RoleController extends Controller
         return response()->json((new RoleResource($role))->resolve());
     }
 
+    public function destroy(string $roleId): Response
+    {
+        $role = $this->roles->trouver($roleId);
+        $this->roles->supprimer($role);
+
+        return response()->noContent();
+    }
+
     #[OA\Post(
         path: '/api/v1/roles',
         summary: 'Créer un rôle métier',

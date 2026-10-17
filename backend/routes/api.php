@@ -35,12 +35,14 @@ Route::prefix('v1')->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
         Route::get('/roles/{roleId}', [RoleController::class, 'show']);
         Route::patch('/roles/{roleId}', [RoleController::class, 'update']);
+        Route::delete('/roles/{roleId}', [RoleController::class, 'destroy']);
         Route::get('/roles/{roleId}/permissions', [AttribuerPermissionController::class, 'index']);
         Route::post('/roles', [RoleController::class, 'store']);
         Route::get('/permissions', [PermissionController::class, 'index']);
         Route::post('/permissions', [PermissionController::class, 'store']);
         Route::post('/acces/comptes/{user}/roles', [AffectationRoleController::class, 'store']);
-        Route::post('/roles/{role}/permissions', [AttribuerPermissionController::class, 'store']); 
+        Route::post('/roles/{role}/permissions', [AttribuerPermissionController::class, 'store']);
+        Route::get('/permissions/{permissionId}/comptes', [PermissionController::class, 'comptes']);
         Route::get('/sites', [SiteController::class, 'index']);       
         Route::post('/sites', [SiteController::class, 'store']);
         Route::get('/departements', [DepartementController::class, 'index']);

@@ -73,4 +73,11 @@ class PermissionController extends Controller
             Response::HTTP_CREATED
         );    
     }
+
+    public function comptes(string $permissionId): JsonResponse
+    {
+        return response()->json(
+            $this->permissions->listerTitulaires($permissionId)
+        );
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Services\Acces;
 
 use App\Models\RoleMetier;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class RoleService
 {
@@ -65,5 +66,16 @@ class RoleService
         $role->save();
 
         return $role;
+    }
+    public function supprimer(RoleMetier $role): void
+    {
+        if ($role->users()->exists()) {
+            abort(409, 'Ce rôle est encore rattaché à un compte.');
+        }
+
+        DB::transaction(function () use ($role) {
+            $role->permissions()->detach();
+            $role->delete();
+        });
     }
 }

@@ -4,6 +4,8 @@ namespace App\Services\Acces;
 
 use App\Models\PermissionMetier;
 use Illuminate\Support\Str;
+use App\Models\AffecterRoleMetier;
+use App\Models\User;
 
 class PermissionService
 {
@@ -51,5 +53,50 @@ class PermissionService
         }
 
         return $requete->paginate($limit, ['*'], 'page', $page);
+    }
+    public function listerTitulaires(string $permissionId): array
+    {
+        $permission = PermissionMetier::query()->find($permissionId);
+
+        if ($permission === null) {
+            abort(404, 'Permission introuvable.');
+        }
+
+        $rolesQuiDonnent = $permission->roles()->pluck('role_metier.id_role');
+
+        $userIds = AffecterRoleMetier::query()
+            ->where('actif', true)
+            ->whereIn('id_role', $rolesQuiDonnent)
+            ->pluck('user_id')
+            ->unique()
+            ->values();
+
+        $comptes = User::query()
+            ->with('personne')
+            ->whereIn('id', $userIds)
+            ->get();
+
+        $affectations = AffecterRoleMetier::query()
+            ->where('actif', true)
+            ->whereIn('user_id', $userIds)
+            ->get()
+            ->groupBy('user_id');
+
+        return $comptes->map(function (User $compte) use ($affectations) {
+            $personne = $compte->personne;
+
+            return [
+                'idCompte' => (string) $compte->id,
+                'email' => $compte->email,
+                'statut' => $compte->statut,
+                'idPersonne' => $personne?->id_personne,
+                'nom' => $personne?->nom ?? '',
+                'prenom' => $personne?->prenom ?? '',
+                'idRoles' => ($affectations->get($compte->id) ?? collect())
+                    ->pluck('id_role')
+                    ->values()
+                    ->all(),
+            ];
+        })->values()->all();
     }
 }
