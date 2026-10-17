@@ -10,7 +10,12 @@ class StoreDepartementRequest extends FormRequest
     {
         return true;
     }
-
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'id_site' => $this->input('idSite', $this->input('id_site')),
+        ]);
+    }
     public function rules(): array
     {
         return [

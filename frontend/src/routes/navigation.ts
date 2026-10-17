@@ -52,7 +52,7 @@ export const navigation: NavEntry[] = [
         to: '/departements',
         label: 'Tous les départements',
         icon: List,
-        permission: PERMISSIONS.DEPARTEMENTS_READ,
+        permission: PERMISSIONS.ROLES_MANAGE,
         end: true,
       },
     ],

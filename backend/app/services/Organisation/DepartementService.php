@@ -31,4 +31,24 @@ class DepartementService
 
         return $departement;
     }
+
+    public function lister(int $page, int $limit, ?string $recherche, ?string $siteId)
+    {
+        $requete = Departement::query()->orderBy('nom');
+
+        if ($siteId) {
+            $requete->where('id_site', $siteId);
+        }
+
+        if ($recherche) {
+            $terme = '%'.$recherche.'%';
+            $requete->where(function ($q) use ($terme) {
+                $q->where('nom', 'ilike', $terme)
+                    ->orWhere('code', 'ilike', $terme)
+                    ->orWhere('mission', 'ilike', $terme);
+            });
+        }
+
+        return $requete->paginate($limit, ['*'], 'page', $page);
+    }
 }

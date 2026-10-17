@@ -40,7 +40,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/roles/{role}/permissions', [AttribuerPermissionController::class, 'store']); 
         Route::get('/sites', [SiteController::class, 'index']);       
         Route::post('/sites', [SiteController::class, 'store']);
-        Route::post('/organisation/departements', [DepartementController::class, 'store']);
+        Route::get('/departements', [DepartementController::class, 'index']);
+        Route::post('/departements', [DepartementController::class, 'store']);
         Route::post('/organisation/personnes/{personne}/departements', [AffectationDepartementController::class, 'store']);
         Route::get('/audit/logs', [AuditLogController::class, 'index']);
         Route::get('/acces/comptes/{user}/permissions/{permissionCode}', [VerifierDroitController::class, 'show']);

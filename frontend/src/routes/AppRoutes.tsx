@@ -50,7 +50,7 @@ export function AppRoutes() {
             <Route path="comptes/:compteId" element={<CompteDetailPage />} />
           </Route>
 
-          <Route element={<PermissionRoute permission={PERMISSIONS.DEPARTEMENTS_READ} />}>
+          <Route element={<PermissionRoute permission={[PERMISSIONS.DEPARTEMENTS_READ, PERMISSIONS.ROLES_MANAGE]} />}>
             <Route path="departements" element={<DepartementsPage />} />
             <Route element={<PilotageDgeRoute />}>
               <Route path="departements/suivi" element={<DepartementsPage />} />
