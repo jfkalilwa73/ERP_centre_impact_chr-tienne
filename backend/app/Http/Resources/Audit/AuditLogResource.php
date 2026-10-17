@@ -10,16 +10,16 @@ class AuditLogResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id_audit' => $this->id_audit,
-            'user_id' => $this->user_id,
+            'idAudit' => $this->id_audit,
+            'idCompte' => $this->user_id !== null ? (string) $this->user_id : null,
             'action' => $this->action,
-            'entite_type' => $this->entite_type,
-            'id_entite' => $this->id_entite,
-            'anciennes_valeurs' => $this->anciennes_valeurs,
-            'nouvelles_valeurs' => $this->nouvelles_valeurs,
-            'adresse_ip' => $this->adresse_ip,
-            'user_agent' => $this->user_agent,
-            'date_action' => $this->date_action?->toIso8601String(),
+            'entiteType' => $this->entite_type,
+            'idEntite' => $this->id_entite,
+            'anciennesValeurs' => $this->anciennes_valeurs,
+            'nouvellesValeurs' => $this->nouvelles_valeurs,
+            'adresseIp' => $this->adresse_ip,
+            'userAgent' => $this->user_agent,
+            'dateAction' => $this->date_action?->toIso8601String(),
         ];
     }
 }

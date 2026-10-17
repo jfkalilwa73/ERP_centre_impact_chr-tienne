@@ -86,7 +86,7 @@ export function AppRoutes() {
             <Route path="permissions" element={<PermissionsPage />} />
           </Route>
 
-          <Route element={<PermissionRoute permission={PERMISSIONS.AUDIT_READ} />}>
+          <Route element={<PermissionRoute permission={[PERMISSIONS.AUDIT_READ, PERMISSIONS.ROLES_MANAGE]} />}>
             <Route path="audit" element={<AuditPage />} />
             <Route path="audit/:auditId" element={<AuditDetailPage />} />
           </Route>

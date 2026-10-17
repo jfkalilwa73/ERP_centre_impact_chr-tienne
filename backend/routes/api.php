@@ -45,6 +45,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/departements', [DepartementController::class, 'index']);
         Route::post('/departements', [DepartementController::class, 'store']);
         Route::post('/personnes/{personne}/departements', [AffectationDepartementController::class, 'store']);
+        Route::get('/audit-logs', [AuditLogController::class, 'index']);        
         Route::post('/personnes/{personne}/departements', [AffectationDepartementController::class, 'store']);        Route::get('/audit/logs', [AuditLogController::class, 'index']);
         Route::get('/acces/comptes/{user}/permissions/{permissionCode}', [VerifierDroitController::class, 'show']);
         Route::delete('/identite/personnes/{personne}', [PersonneController::class, 'destroy']);

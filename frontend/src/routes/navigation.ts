@@ -85,7 +85,7 @@ export const navigation: NavEntry[] = [
         icon: ShieldCheck,
         permission: PERMISSIONS.ROLES_MANAGE,
       },
-      { to: '/audit', label: 'Audit', icon: ScrollText, permission: PERMISSIONS.AUDIT_READ },
+      { to: '/audit', label: 'Audit', icon: ScrollText, permission: PERMISSIONS.ROLES_MANAGE },
     ],
   },
 ]

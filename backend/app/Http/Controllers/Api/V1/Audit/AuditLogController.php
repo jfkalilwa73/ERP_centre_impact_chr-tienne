@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Audit\AuditLogResource;
 use App\Services\Audit\AuditLogService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class AuditLogController extends Controller
@@ -25,9 +26,25 @@ class AuditLogController extends Controller
             new OA\Response(response: 401, description: 'Non authentifié'),
         ]
     )]
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return AuditLogResource::collection($this->audits->lister())
-            ->response();
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = min(100, max(1, (int) $request->query('limit', 20)));
+
+        $resultat = $this->audits->lister(
+            $page,
+            $limit,
+            $request->query('action'),
+            $request->query('entiteType'),
+        );
+
+        return response()->json([
+            'data' => AuditLogResource::collection($resultat->items())->resolve(),
+            'pagination' => [
+                'page' => $resultat->currentPage(),
+                'limit' => $resultat->perPage(),
+                'total' => $resultat->total(),
+            ],
+        ]);
     }
 }

@@ -3,7 +3,6 @@
 namespace App\Services\Audit;
 
 use App\Models\AuditLog;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 
 class AuditLogService
@@ -25,10 +24,18 @@ class AuditLogService
         return $log;
     }
 
-    public function lister(): Collection
+    public function lister(int $page, int $limit, ?string $action, ?string $entiteType)
     {
-        return AuditLog::query()
-            ->orderByDesc('date_action')
-            ->get();
+        $requete = AuditLog::query()->orderByDesc('date_action');
+
+        if ($action) {
+            $requete->where('action', 'ilike', '%'.$action.'%');
+        }
+
+        if ($entiteType) {
+            $requete->where('entite_type', $entiteType);
+        }
+
+        return $requete->paginate($limit, ['*'], 'page', $page);
     }
 }

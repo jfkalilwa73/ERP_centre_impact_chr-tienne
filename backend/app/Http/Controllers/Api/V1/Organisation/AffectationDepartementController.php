@@ -10,12 +10,14 @@ use App\Services\Organisation\AffectationDepartementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Http\Request;
+use App\Services\Audit\AuditLogService;
 use OpenApi\Attributes as OA;
 
 class AffectationDepartementController extends Controller
 {
     public function __construct(
-        private AffectationDepartementService $affectations
+        private AffectationDepartementService $affectations,
+        private AuditLogService $audits,
     ) {}
 
     public function index(Request $request, string $personneId): JsonResponse
@@ -67,6 +69,19 @@ class AffectationDepartementController extends Controller
     public function store(StoreAffectationDepartementRequest $request, Personne $personne): JsonResponse
     {
         $affectation = $this->affectations->affecter($personne, $request->validated());
+
+        $this->audits->enregistrer([
+            'user_id' => $request->user()?->id,
+            'action' => 'AFFECTATION_DEPARTEMENT',
+            'entite_type' => 'personne',
+            'id_entite' => $personne->id_personne,
+            'nouvelles_valeurs' => [
+                'idDepartement' => $affectation->id_departement,
+                'fonction' => $affectation->fonction,
+            ],
+            'adresse_ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
         return response()->json(
             (new AffectationDepartementResource($affectation))->resolve(),
