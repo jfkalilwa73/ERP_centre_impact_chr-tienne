@@ -40,4 +40,12 @@ class AttribuerPermissionService
 
         return $role->permissions()->orderBy('module')->orderBy('action')->get();
     }
+
+    public function retirer(string $roleId, string $permissionId): void
+    {
+        $role = RoleMetier::query()->find($roleId);
+        if ($role === null) abort(404, 'Rôle introuvable.');
+        $deleted = AttribuerPermission::query()->where('id_role', $roleId)->where('id_permission', $permissionId)->delete();
+        if (! $deleted) abort(404, 'Permission non attribuée à ce rôle.');
+    }
 }

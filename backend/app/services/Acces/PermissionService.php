@@ -100,6 +100,17 @@ class PermissionService
         })->values()->all();
     }
 
+    public function trouver(string $permissionId): PermissionMetier
+    {
+        return PermissionMetier::query()->find($permissionId) ?? abort(404, 'Permission introuvable.');
+    }
+
+    public function listerRoles(string $permissionId)
+    {
+        $permission = $this->trouver($permissionId);
+        return $permission->roles()->orderBy('nom')->get();
+    }
+
     public function modifier(PermissionMetier $permission, array $donnees): PermissionMetier
     {
         if (array_key_exists('code', $donnees)

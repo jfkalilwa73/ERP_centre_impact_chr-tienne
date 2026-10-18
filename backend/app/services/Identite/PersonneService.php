@@ -37,6 +37,15 @@ class PersonneService
             throw $e;
         }
     }
+
+    public function modifier(Personne $personne, array $donnees): Personne
+    {
+        $personne->fill($donnees);
+        $personne->save();
+
+        return $personne;
+    }
+
     public function lister(int $page, int $limit, ?string $recherche, ?string $statut)
     {
         $requete = Personne::query()->orderBy('nom')->orderBy('prenom');

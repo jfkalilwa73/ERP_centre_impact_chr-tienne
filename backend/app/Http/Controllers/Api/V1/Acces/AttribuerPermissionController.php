@@ -65,4 +65,10 @@ class AttribuerPermissionController extends Controller
             Response::HTTP_CREATED
         );
     }
+
+    public function destroy(string $roleId, string $permissionId): Response
+    {
+        $this->attributions->retirer($roleId, $permissionId);
+        return response()->noContent();
+    }
 }

@@ -47,4 +47,15 @@ class AffectationRoleService
             ->orderByDesc('date_debut')
             ->get();
     }
+
+    public function retirer(string $compteId, string $roleId): void
+    {
+        $affectation = AffecterRoleMetier::query()->where('user_id', $compteId)->where('id_role', $roleId)->where('actif', true)->first();
+        if ($affectation === null) abort(404, 'Affectation de rôle introuvable.');
+        AffecterRoleMetier::query()
+            ->where('user_id', $compteId)
+            ->where('id_role', $roleId)
+            ->where('date_debut', $affectation->date_debut)
+            ->update(['actif' => false, 'date_fin' => now()]);
+    }
 }

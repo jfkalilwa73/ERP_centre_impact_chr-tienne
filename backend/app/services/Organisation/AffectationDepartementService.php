@@ -54,4 +54,21 @@ class AffectationDepartementService
 
         return $requete->get();
     }
+
+    public function cloturer(string $personneId, string $departementId): void
+    {
+        $affectation = AffecterDepartement::query()
+            ->where('id_personne', $personneId)
+            ->where('id_departement', $departementId)
+            ->where('actif', true)
+            ->orderByDesc('date_debut')
+            ->first();
+        if ($affectation === null) abort(404, 'Affectation active introuvable.');
+
+        AffecterDepartement::query()
+            ->where('id_personne', $personneId)
+            ->where('id_departement', $departementId)
+            ->where('date_debut', $affectation->date_debut)
+            ->update(['actif' => false, 'date_fin' => now()]);
+    }
 }

@@ -88,4 +88,10 @@ class AffectationDepartementController extends Controller
             Response::HTTP_CREATED
         );
     }
+
+    public function destroy(string $personneId, string $departementId): Response
+    {
+        $this->affectations->cloturer($personneId, $departementId);
+        return response()->noContent();
+    }
 }

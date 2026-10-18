@@ -51,4 +51,26 @@ class DepartementService
 
         return $requete->paginate($limit, ['*'], 'page', $page);
     }
+
+    public function trouver(string $departementId): Departement
+    {
+        return Departement::query()->find($departementId) ?? abort(404, 'Département introuvable.');
+    }
+
+    public function modifier(Departement $departement, array $donnees): Departement
+    {
+        if (isset($donnees['id_site']) && ! Site::query()->whereKey($donnees['id_site'])->exists()) abort(404, 'Site introuvable.');
+        if (isset($donnees['code']) && Departement::query()->where('code', $donnees['code'])->where('id_departement', '!=', $departement->id_departement)->exists()) {
+            abort(409, 'Ce code de département est déjà utilisé.');
+        }
+        $departement->fill($donnees);
+        $departement->save();
+        return $departement;
+    }
+
+    public function supprimer(Departement $departement): void
+    {
+        if ($departement->affectations()->exists()) abort(409, 'Ce département a un historique d’affectations et ne peut pas être supprimé.');
+        $departement->delete();
+    }
 }

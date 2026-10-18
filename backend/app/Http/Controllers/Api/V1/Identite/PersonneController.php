@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Identite;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Identite\StorePersonneRequest;
+use App\Http\Requests\Identite\UpdatePersonneRequest;
 use App\Http\Resources\Identite\PersonneResource;
 use App\Models\Personne;
 use App\Services\Identite\PersonneService;
@@ -79,6 +80,14 @@ class PersonneController extends Controller
     public function show(string $personneId): JsonResponse
     {
         $personne = $this->personnes->trouver($personneId);
+
+        return response()->json((new PersonneResource($personne))->resolve());
+    }
+
+    public function update(UpdatePersonneRequest $request, string $personneId): JsonResponse
+    {
+        $personne = $this->personnes->trouver($personneId);
+        $personne = $this->personnes->modifier($personne, $request->validated());
 
         return response()->json((new PersonneResource($personne))->resolve());
     }

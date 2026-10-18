@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Acces;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Acces\StorePermissionRequest;
 use App\Http\Resources\Acces\PermissionResource;
+use App\Http\Resources\Acces\RoleResource;
 use App\Services\Acces\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,6 +82,16 @@ class PermissionController extends Controller
         return response()->json(
             $this->permissions->listerTitulaires($permissionId)
         );
+    }
+
+    public function show(string $permissionId): JsonResponse
+    {
+        return response()->json((new PermissionResource($this->permissions->trouver($permissionId)))->resolve());
+    }
+
+    public function roles(string $permissionId): JsonResponse
+    {
+        return response()->json(RoleResource::collection($this->permissions->listerRoles($permissionId))->resolve());
     }
     public function update(UpdatePermissionRequest $request, string $permissionId): JsonResponse
     {

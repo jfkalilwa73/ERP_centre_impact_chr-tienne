@@ -42,4 +42,25 @@ class SiteService
 
         return $requete->paginate($limit, ['*'], 'page', $page);
     }
+
+    public function trouver(string $siteId): Site
+    {
+        return Site::query()->find($siteId) ?? abort(404, 'Site introuvable.');
+    }
+
+    public function modifier(Site $site, array $donnees): Site
+    {
+        if (isset($donnees['code']) && Site::query()->where('code', $donnees['code'])->where('id_site', '!=', $site->id_site)->exists()) {
+            abort(409, 'Ce code de site est déjà utilisé.');
+        }
+        $site->fill($donnees);
+        $site->save();
+        return $site;
+    }
+
+    public function supprimer(Site $site): void
+    {
+        if ($site->departements()->exists()) abort(409, 'Ce site contient encore des départements.');
+        $site->delete();
+    }
 }

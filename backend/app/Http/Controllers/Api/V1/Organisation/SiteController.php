@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Organisation;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organisation\StoreSiteRequest;
+use App\Http\Requests\Organisation\UpdateSiteRequest;
 use App\Http\Resources\Organisation\SiteResource;
 use App\Services\Organisation\SiteService;
 use Illuminate\Http\JsonResponse;
@@ -73,5 +74,22 @@ class SiteController extends Controller
             (new SiteResource($site))->resolve(),
             Response::HTTP_CREATED
         );
+    }
+
+    public function show(string $siteId): JsonResponse
+    {
+        return response()->json((new SiteResource($this->sites->trouver($siteId)))->resolve());
+    }
+
+    public function update(UpdateSiteRequest $request, string $siteId): JsonResponse
+    {
+        $site = $this->sites->modifier($this->sites->trouver($siteId), $request->validated());
+        return response()->json((new SiteResource($site))->resolve());
+    }
+
+    public function destroy(string $siteId): Response
+    {
+        $this->sites->supprimer($this->sites->trouver($siteId));
+        return response()->noContent();
     }
 }

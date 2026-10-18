@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Organisation;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organisation\StoreDepartementRequest;
+use App\Http\Requests\Organisation\UpdateDepartementRequest;
 use App\Http\Resources\Organisation\DepartementResource;
 use App\Services\Organisation\DepartementService;
 use Illuminate\Http\JsonResponse;
@@ -74,5 +75,22 @@ class DepartementController extends Controller
             (new DepartementResource($departement))->resolve(),
             Response::HTTP_CREATED
         );
+    }
+
+    public function show(string $departementId): JsonResponse
+    {
+        return response()->json((new DepartementResource($this->departements->trouver($departementId)))->resolve());
+    }
+
+    public function update(UpdateDepartementRequest $request, string $departementId): JsonResponse
+    {
+        $departement = $this->departements->modifier($this->departements->trouver($departementId), $request->validated());
+        return response()->json((new DepartementResource($departement))->resolve());
+    }
+
+    public function destroy(string $departementId): Response
+    {
+        $this->departements->supprimer($this->departements->trouver($departementId));
+        return response()->noContent();
     }
 }

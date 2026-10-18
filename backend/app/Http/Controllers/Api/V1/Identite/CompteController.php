@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Identite;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Identite\StoreCompteRequest;
+use App\Http\Requests\Identite\UpdateCompteRequest;
 use App\Http\Resources\Identite\CompteResource;
 use App\Services\Identite\CompteService;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +44,18 @@ class CompteController extends Controller
         $compte = $this->comptes->trouver($compteId);
 
         return response()->json((new CompteResource($compte))->resolve());
+    }
+
+    public function update(UpdateCompteRequest $request, string $compteId): JsonResponse
+    {
+        $compte = $this->comptes->modifier($this->comptes->trouver($compteId), $request->validated());
+        return response()->json((new CompteResource($compte))->resolve());
+    }
+
+    public function destroy(string $compteId): Response
+    {
+        $this->comptes->supprimer($this->comptes->trouver($compteId));
+        return response()->noContent();
     }
 
     #[OA\Post(

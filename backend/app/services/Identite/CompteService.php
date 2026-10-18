@@ -73,4 +73,31 @@ class CompteService
 
         return $compte;
     }
+
+    public function modifier(User $compte, array $donnees): User
+    {
+        if (array_key_exists('mfaActive', $donnees)) {
+            $donnees['mfa_active'] = $donnees['mfaActive'];
+            unset($donnees['mfaActive']);
+        }
+        if (array_key_exists('statut', $donnees)) {
+            $donnees['date_desactivation'] = $donnees['statut'] === 'actif' ? null : now();
+        }
+        $compte->fill($donnees);
+        $compte->save();
+        return $compte->fresh();
+    }
+
+    public function supprimer(User $compte): void
+    {
+        if ($compte->statut === 'actif') abort(409, 'Un compte actif ne peut pas être supprimé. Désactivez-le avant.');
+
+        DB::transaction(function () use ($compte) {
+            $compte->tokensMetier()->delete();
+            DB::table('personal_access_tokens')->where('tokenable_type', User::class)->where('tokenable_id', $compte->id)->delete();
+            \App\Models\AffecterRoleMetier::query()->where('user_id', $compte->id)->delete();
+            $compte->personne()->update(['user_id' => null]);
+            $compte->delete();
+        });
+    }
 }

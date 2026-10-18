@@ -28,14 +28,26 @@ class AuditLogController extends Controller
     )]
     public function index(Request $request): JsonResponse
     {
+        $filters = $request->validate([
+            'action' => ['sometimes', 'string', 'max:50'],
+            'entiteType' => ['sometimes', 'string', 'max:50'],
+            'compteId' => ['sometimes', 'string', 'max:40'],
+            'entiteId' => ['sometimes', 'uuid'],
+            'depuis' => ['sometimes', 'date'],
+            'jusqua' => ['sometimes', 'date', 'after_or_equal:depuis'],
+        ]);
         $page = max(1, (int) $request->query('page', 1));
         $limit = min(100, max(1, (int) $request->query('limit', 20)));
 
         $resultat = $this->audits->lister(
             $page,
             $limit,
-            $request->query('action'),
-            $request->query('entiteType'),
+            $filters['action'] ?? null,
+            $filters['entiteType'] ?? null,
+            $filters['compteId'] ?? null,
+            $filters['entiteId'] ?? null,
+            $filters['depuis'] ?? null,
+            $filters['jusqua'] ?? null,
         );
 
         return response()->json([
@@ -46,5 +58,11 @@ class AuditLogController extends Controller
                 'total' => $resultat->total(),
             ],
         ]);
+    }
+
+    public function show(string $auditId): JsonResponse
+    {
+        $audit = $this->audits->trouver($auditId);
+        return response()->json((new AuditLogResource($audit))->resolve());
     }
 }

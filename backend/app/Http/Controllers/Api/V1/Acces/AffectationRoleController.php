@@ -67,4 +67,10 @@ class AffectationRoleController extends Controller
             Response::HTTP_CREATED
         );
     }
+
+    public function destroy(string $compteId, string $roleId): Response
+    {
+        $this->affectations->retirer($compteId, $roleId);
+        return response()->noContent();
+    }
 }
