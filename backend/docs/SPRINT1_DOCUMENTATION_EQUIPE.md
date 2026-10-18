@@ -96,6 +96,33 @@ Le seeder `Sprint1MembresFamillesSeeder` génère :
 
 ## 4️⃣ Comment utiliser ces données pour le développement
 
+### 🔧 Commandes à exécuter
+
+```bash
+# Via Docker (recommandé)
+# Régénère toutes les données (Phase 0 + Sprint 1)
+docker compose exec backend php artisan migrate:fresh --seed
+
+# Vérifier l'état des migrations
+docker compose exec backend php artisan migrate:status
+
+# Vider le cache
+docker compose exec backend php artisan cache:clear
+
+# Exécuter uniquement les migrations (sans recréer les données)
+docker compose exec backend php artisan migrate
+
+# Ou en local (si PHP installé sur Windows)
+php artisan migrate:fresh --seed
+php artisan migrate:status
+php artisan cache:clear
+php artisan migrate
+```
+
+⚠️ **Attention** : `migrate:fresh --seed` supprime **toutes les données** et recrée le schéma + les données de test (Phase 0 + Sprint 1).
+
+---
+
 ### Pour Elie (Frontend)
 
 #### Listes et Fiches
