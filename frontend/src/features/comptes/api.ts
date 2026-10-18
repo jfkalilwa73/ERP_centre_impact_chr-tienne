@@ -7,6 +7,7 @@ import type {
   ComptePage,
   CompteStatut,
   CompteUpdate,
+  PermissionCheck,
 } from '@/types'
 
 export type ListComptesParams = {
@@ -14,6 +15,16 @@ export type ListComptesParams = {
   limit?: number
   q?: string
   statut?: CompteStatut
+}
+
+export async function checkComptePermission(
+  compteId: string,
+  permissionCode: string,
+): Promise<PermissionCheck> {
+  const { data } = await api.get<PermissionCheck>(
+    `/comptes/${compteId}/permissions/${encodeURIComponent(permissionCode)}`,
+  )
+  return data
 }
 
 export async function listComptes(params: ListComptesParams = {}): Promise<ComptePage> {

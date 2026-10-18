@@ -2,13 +2,19 @@ import { Navigate } from 'react-router-dom'
 import { Alert } from '@/components/ui/Alert'
 import { useAccessScope } from '@/features/auth/accessScope'
 import { permissionLabelFromCode } from '@/features/permissions/labels'
-import { useCurrentUser } from '@/stores/authStore'
+import { useCurrentUser, useSessionProfil } from '@/stores/authStore'
 
 export function DashboardPage() {
   const user = useCurrentUser()
+  const profil = useSessionProfil()
   const scope = useAccessScope()
 
-  if (!user) return null
+  if (!user) {
+    if (!profil) return null
+    return (
+      <h1 className="text-2xl font-semibold text-slate-900">Bonjour {profil.name}</h1>
+    )
+  }
   if (scope.isScoped) {
     if (scope.isLoading) {
       return <p className="text-sm text-slate-500">Chargement de votre espace…</p>

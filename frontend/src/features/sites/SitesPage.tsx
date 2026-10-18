@@ -25,7 +25,7 @@ export function SitesPage() {
   const [editingSite, setEditingSite] = useState<Site | null>(null)
   const [siteToDelete, setSiteToDelete] = useState<Site | null>(null)
 
-  const canCreate = useHasPermission(PERMISSIONS.SITES_CREATE)
+  const canCreate = useHasPermission(PERMISSIONS.SITES_CREATE) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canUpdate = useHasPermission(PERMISSIONS.SITES_UPDATE)
   const canDelete = useHasPermission(PERMISSIONS.SITES_DELETE)
 

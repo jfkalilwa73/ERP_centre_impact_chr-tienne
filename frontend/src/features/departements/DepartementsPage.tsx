@@ -75,7 +75,7 @@ export function DepartementsPage() {
 
   useSyncExternalStore(subscribeActivites, getActivitesVersion, getActivitesVersion)
 
-  const canCreate = useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE)
+  const canCreate = useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canUpdate = useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE)
   const canDelete = useHasPermission(PERMISSIONS.DEPARTEMENTS_DELETE)
   const user = useCurrentUser()

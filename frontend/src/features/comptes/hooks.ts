@@ -7,9 +7,11 @@ import type {
   Compte,
   CompteCreate,
   CompteUpdate,
+  PermissionCheck,
 } from '@/types'
 import {
   assignRoleToCompte,
+  checkComptePermission,
   createCompteWithRoles,
   deleteCompte,
   getCompte,
@@ -115,5 +117,11 @@ export function useUnassignRole(compteId: string) {
   return useMutation<void, ApiError, string>({
     mutationFn: (roleId) => unassignRoleFromCompte(compteId, roleId),
     onSuccess: () => invalidateComptes(queryClient, compteId),
+  })
+}
+
+export function useCheckComptePermission(compteId: string) {
+  return useMutation<PermissionCheck, ApiError, string>({
+    mutationFn: (permissionCode) => checkComptePermission(compteId, permissionCode),
   })
 }

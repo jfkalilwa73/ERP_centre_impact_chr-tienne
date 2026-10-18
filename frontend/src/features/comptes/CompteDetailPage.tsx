@@ -8,12 +8,20 @@ import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
 import { Select } from '@/components/ui/Select'
+import { usePermissions } from '@/features/permissions/hooks'
+import { permissionLabel } from '@/features/permissions/labels'
 import { usePersonne } from '@/features/personnes/hooks'
 import { useRoles } from '@/features/roles/hooks'
 import { errorId } from '@/lib/form'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useHasPermission } from '@/stores/authStore'
-import { useAssignRole, useCompte, useCompteRoles, useUnassignRole } from './hooks'
+import {
+  useAssignRole,
+  useCheckComptePermission,
+  useCompte,
+  useCompteRoles,
+  useUnassignRole,
+} from './hooks'
 import { affectationRoleSchema, type AffectationRoleFormValues } from './schema'
 import { statutCompteBadgeClass, statutCompteLabels } from './statut'
 
@@ -26,6 +34,7 @@ function formatDateTime(value: string) {
 export function CompteDetailPage() {
   const { compteId } = useParams<{ compteId: string }>()
   const [assignOpen, setAssignOpen] = useState(false)
+  const [permissionCode, setPermissionCode] = useState('')
 
   const canManageRoles = useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canReadPersonnes = useHasPermission(PERMISSIONS.MEMBRES_READ)
@@ -35,6 +44,9 @@ export function CompteDetailPage() {
   const rolesQuery = useRoles({ page: 1, limit: 100 }, canManageRoles)
   const assignMutation = useAssignRole(compteId ?? '')
   const unassignMutation = useUnassignRole(compteId ?? '')
+  const permissionsQuery = usePermissions({ page: 1, limit: 100 }, canManageRoles)
+  const checkMutation = useCheckComptePermission(compteId ?? '')
+  const permissions = (permissionsQuery.data?.data ?? []).filter((permission) => permission.actif)
 
   const compte = compteQuery.data
   const personneQuery = usePersonne(canReadPersonnes ? compte?.idPersonne : undefined)
@@ -70,6 +82,11 @@ export function CompteDetailPage() {
       },
     )
   })
+
+  const onCheckPermission = () => {
+    if (!permissionCode) return
+    checkMutation.mutate(permissionCode)
+  }
 
   if (compteQuery.isLoading) {
     return <p className="text-sm text-slate-500">Chargement du compte…</p>
@@ -248,6 +265,57 @@ export function CompteDetailPage() {
           </Alert>
         )}
       </section>
+
+      {canManageRoles && (
+        <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-slate-900">Vérifier un droit</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <FormField id="check-permission" label="Droit">
+                <Select
+                  id="check-permission"
+                  value={permissionCode}
+                  onChange={(event) => {
+                    setPermissionCode(event.target.value)
+                    checkMutation.reset()
+                  }}
+                >
+                  <option value="">Choisir un droit</option>
+                  {permissions.map((permission) => (
+                    <option key={permission.idPermission} value={permission.code}>
+                      {permissionLabel(permission)} ({permission.code})
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            </div>
+            <Button
+              type="button"
+              onClick={onCheckPermission}
+              disabled={!permissionCode}
+              isLoading={checkMutation.isPending}
+            >
+              Vérifier
+            </Button>
+          </div>
+          {checkMutation.isError && (
+            <Alert variant="error" title="Vérification impossible">
+              {checkMutation.error.message}
+            </Alert>
+          )}
+          {checkMutation.isSuccess && (
+            <Alert
+              variant={checkMutation.data.autorise ? 'success' : 'warning'}
+              title={checkMutation.data.autorise ? 'Droit accordé' : 'Droit refusé'}
+            >
+              {checkMutation.data.permissionCode}
+              {checkMutation.data.autorise
+                ? ' est accordé à ce compte.'
+                : ' n’est pas accordé à ce compte.'}
+            </Alert>
+          )}
+        </section>
+      )}
 
       <Dialog
         open={assignOpen}

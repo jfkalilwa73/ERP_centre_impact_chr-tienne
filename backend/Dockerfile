@@ -23,6 +23,8 @@ RUN apk add --no-cache \
 # Installer Composer globalement
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
 # Définir le répertoire de travail
 WORKDIR /var/www/html
 

@@ -23,6 +23,7 @@ import { PermissionRoute } from './PermissionRoute'
 import { DepartementAccessRoute } from './DepartementAccessRoute'
 import { FamilleAccessRoute } from './FamilleAccessRoute'
 import { PilotageDgeRoute } from './PilotageDgeRoute'
+import { SitesPage } from '@/features/sites/SitesPage'  
 
 export function AppRoutes() {
   return (
@@ -49,7 +50,7 @@ export function AppRoutes() {
             <Route path="comptes/:compteId" element={<CompteDetailPage />} />
           </Route>
 
-          <Route element={<PermissionRoute permission={PERMISSIONS.DEPARTEMENTS_READ} />}>
+          <Route element={<PermissionRoute permission={[PERMISSIONS.DEPARTEMENTS_READ, PERMISSIONS.ROLES_MANAGE]} />}>
             <Route path="departements" element={<DepartementsPage />} />
             <Route element={<PilotageDgeRoute />}>
               <Route path="departements/suivi" element={<DepartementsPage />} />
@@ -71,6 +72,10 @@ export function AppRoutes() {
             <Route path="familles/:familleId" element={<FamilleDetailPage />} />
           </Route>
 
+          <Route element={<PermissionRoute permission={PERMISSIONS.ROLES_MANAGE} />}>
+            <Route path="sites" element={<SitesPage />} />
+          </Route>
+
           <Route
             element={
               <PermissionRoute permission={[PERMISSIONS.ROLES_READ, PERMISSIONS.ROLES_MANAGE]} />
@@ -81,7 +86,7 @@ export function AppRoutes() {
             <Route path="permissions" element={<PermissionsPage />} />
           </Route>
 
-          <Route element={<PermissionRoute permission={PERMISSIONS.AUDIT_READ} />}>
+          <Route element={<PermissionRoute permission={[PERMISSIONS.AUDIT_READ, PERMISSIONS.ROLES_MANAGE]} />}>
             <Route path="audit" element={<AuditPage />} />
             <Route path="audit/:auditId" element={<AuditDetailPage />} />
           </Route>

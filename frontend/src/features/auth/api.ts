@@ -1,17 +1,44 @@
+import axios from 'axios'
 import { api } from '@/lib/apiClient'
-import type { CurrentUser, LoginRequest, LoginResponse } from '@/types'
+import type { LoginRequest } from '@/types'
 
-export async function login(payload: LoginRequest): Promise<LoginResponse> {
-  const { data } = await api.post<LoginResponse>('/auth/login', payload)
-  return data
+export type SessionProfil = {
+  id: number
+  name: string
+  email: string
+  statut: string
 }
 
-export async function getCurrentUser(): Promise<CurrentUser> {
-  const { data } = await api.get<CurrentUser>('/auth/me')
-  return data
+function csrfCookieUrl(): string {
+  const base = import.meta.env.VITE_API_URL
+  if (base.startsWith('http')) {
+    return `${new URL(base).origin}/sanctum/csrf-cookie`
+  }
+  return '/sanctum/csrf-cookie'
 }
 
-/** Laravel révoque les deux tokens de la session courante ; réponse 204. */
+export async function ensureCsrfCookie(): Promise<void> {
+  await axios.get(csrfCookieUrl(), {
+    withCredentials: true,
+    withXSRFToken: true,
+  })
+}
+
+export async function login(payload: LoginRequest): Promise<SessionProfil> {
+  await ensureCsrfCookie()
+  const { data } = await api.post<{ data: SessionProfil }>('/auth/login', {
+    email: payload.email,
+    password: payload.motDePasse,
+  })
+  return data.data
+}
+
+export async function getCurrentUser(): Promise<SessionProfil> {
+  const { data } = await api.get<{ data: SessionProfil }>('/auth/me')
+  return data.data
+}
+
 export async function logout(): Promise<void> {
+  await ensureCsrfCookie()
   await api.post('/auth/logout')
 }

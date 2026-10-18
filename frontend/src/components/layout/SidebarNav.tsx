@@ -4,7 +4,7 @@ import { ChevronDown, FileText, Heart, LayoutDashboard, Layers, List } from 'luc
 import { cn } from '@/lib/cn'
 import { canSeePilotageDge } from '@/features/auth/orgRoles'
 import { PERMISSIONS } from '@/lib/permissions'
-import { useCurrentUser } from '@/stores/authStore'
+import { useCurrentUser, useSessionProfil } from '@/stores/authStore'
 import { useAccessScope } from '@/features/auth/accessScope'
 import { useUnreadDemandes } from '@/features/notifications/useUnreadDemandes'
 import { useDepartements, useDepartementsByIds } from '@/features/departements/hooks'
@@ -160,10 +160,11 @@ function DepartementsNav({
   onToggle: (id: string) => void
 }) {
   const user = useCurrentUser()
-  const permissions = user?.permissions ?? []
-  const canManageAll =
-    permissions.includes(PERMISSIONS.DEPARTEMENTS_UPDATE) ||
-    permissions.includes(PERMISSIONS.DEPARTEMENTS_CREATE)
+  const userPermissions = useCurrentUser()?.permissions ?? []
+  const sessionPermissions =
+    (useSessionProfil() as { permissions?: string[] } | null)?.permissions ?? []
+  const permissions = userPermissions.length > 0 ? userPermissions : sessionPermissions  
+  const canManageAll =permissions.includes(PERMISSIONS.DEPARTEMENTS_UPDATE) ||permissions.includes(PERMISSIONS.DEPARTEMENTS_CREATE)
   const canSeeCatalog = permissions.includes(PERMISSIONS.DEPARTEMENTS_READ)
   const affectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
   const ledIds = useMemo(
@@ -251,10 +252,11 @@ function FamillesNav({
   onToggle: (id: string) => void
 }) {
   const user = useCurrentUser()
-  const permissions = user?.permissions ?? []
-  const canManageAll =
-    permissions.includes(PERMISSIONS.FAMILLES_UPDATE) ||
-    permissions.includes(PERMISSIONS.FAMILLES_CREATE)
+  const userPermissions = useCurrentUser()?.permissions ?? []
+  const sessionPermissions =
+    (useSessionProfil() as { permissions?: string[] } | null)?.permissions ?? []
+  const permissions = userPermissions.length > 0 ? userPermissions : sessionPermissions  
+  const canManageAll =permissions.includes(PERMISSIONS.FAMILLES_UPDATE) ||permissions.includes(PERMISSIONS.FAMILLES_CREATE)
   const canSeeCatalog = permissions.includes(PERMISSIONS.FAMILLES_READ)
   const affectationsQuery = usePersonneFamilles(user?.personne.idPersonne)
   const ledIds = useMemo(
@@ -330,7 +332,10 @@ function FamillesNav({
 
 export function SidebarNav({ onNavigate, collapsed = false }: SidebarNavProps) {
   const location = useLocation()
-  const permissions = useCurrentUser()?.permissions ?? []
+  const userPermissions = useCurrentUser()?.permissions ?? []
+  const sessionPermissions =
+    (useSessionProfil() as { permissions?: string[] } | null)?.permissions ?? []
+  const permissions = userPermissions.length > 0 ? userPermissions : sessionPermissions  
   const { isScoped } = useAccessScope()
   const routeGroupId = groupIdFromPath(location.pathname)
   const [manualOpen, setManualOpen] = useState<{ path: string; id: string | null } | null>(null)
