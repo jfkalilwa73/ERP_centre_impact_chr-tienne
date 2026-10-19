@@ -71,7 +71,7 @@ return new class extends Migration {
             RETURNS TRIGGER AS $$
             BEGIN
                 IF OLD.statut_membre = \'actif\' THEN
-                    RAISE EXCEPTION \'Impossible de supprimer un membre actif. Passer le statut à inactif ou archive d\'abord.\';
+                    RAISE EXCEPTION \'Impossible de supprimer un membre actif. Passer le statut à inactif ou archive d\'\'abord.\';
                 END IF;
                 RETURN OLD;
             END;
