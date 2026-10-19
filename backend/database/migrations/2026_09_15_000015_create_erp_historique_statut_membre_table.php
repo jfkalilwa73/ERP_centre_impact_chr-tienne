@@ -13,7 +13,7 @@ return new class extends Migration {
                 ancien_statut VARCHAR(20),
                 nouveau_statut VARCHAR(20) NOT NULL CHECK (nouveau_statut IN (\'actif\', \'inactif\', \'en_attente\', \'archive\')),
                 motif TEXT,
-                change_par UUID REFERENCES users(id) ON DELETE SET NULL,
+                change_par BIGINT REFERENCES users(id) ON DELETE SET NULL,
                 date_changement TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
 

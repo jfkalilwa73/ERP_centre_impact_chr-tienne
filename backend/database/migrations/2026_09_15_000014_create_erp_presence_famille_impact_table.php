@@ -13,7 +13,7 @@ return new class extends Migration {
                 date_reunion DATE NOT NULL,
                 present BOOLEAN NOT NULL DEFAULT FALSE,
                 commentaire TEXT,
-                enregistre_par UUID REFERENCES users(id) ON DELETE SET NULL
+                enregistre_par BIGINT REFERENCES users(id) ON DELETE SET NULL
             );
 
             CREATE INDEX idx_presence_affectation ON presence_famille_impact(id_affectation);
