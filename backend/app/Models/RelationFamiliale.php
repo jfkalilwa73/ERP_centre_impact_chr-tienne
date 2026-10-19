@@ -10,6 +10,7 @@ class RelationFamiliale extends Model
     protected $table = 'relation_familiale';
     protected $primaryKey = 'id_relation';
     public $incrementing = false;
+    protected $keyType = 'string';
     public $timestamps = false;
 
     protected $fillable = [

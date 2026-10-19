@@ -10,6 +10,7 @@ class HistoriqueStatutMembre extends Model
     protected $table = 'historique_statut_membre';
     protected $primaryKey = 'id_historique';
     public $incrementing = false;
+    protected $keyType = 'string';
     public $timestamps = false;
 
     protected $fillable = [

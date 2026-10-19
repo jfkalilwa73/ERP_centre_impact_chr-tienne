@@ -10,6 +10,7 @@ class AffecterFamilleImpact extends Model
     protected $table = 'affecter_famille_impact';
     protected $primaryKey = 'id_affectation';
     public $incrementing = false;
+    protected $keyType = 'string';
     public $timestamps = false;
 
     protected $fillable = [

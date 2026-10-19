@@ -10,6 +10,7 @@ class PresenceFamilleImpact extends Model
     protected $table = 'presence_famille_impact';
     protected $primaryKey = 'id_presence';
     public $incrementing = false;
+    protected $keyType = 'string';
     public $timestamps = false;
 
     protected $fillable = [
