@@ -231,7 +231,7 @@ SELECT fi.nom,
        SUM(CASE WHEN pr.present THEN 1 ELSE 0 END) AS presences,
        ROUND(SUM(CASE WHEN pr.present THEN 1 ELSE 0 END)::numeric / COUNT(pr.id_presence) * 100, 2) AS taux_presence
 FROM famille_impact fi
-JOIN affecter_famille_impact af ON fi.id_famille = af.id_famille
+JOIN affecter_famille_impact af ON fi.id_famille = af.id_famille_impact
 JOIN presence_famille_impact pr ON af.id_affectation = pr.id_affectation
 WHERE af.actif = TRUE
 GROUP BY fi.nom;
