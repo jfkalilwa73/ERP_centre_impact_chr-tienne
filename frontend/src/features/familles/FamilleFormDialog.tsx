@@ -6,15 +6,19 @@ import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { errorId } from '@/lib/form'
 import type { FamilleImpact } from '@/types'
 import { CarteOsm } from './CarteOsm'
 import { RechercheLieu } from './RechercheLieu'
 import { emptyFamilleForm, familleSchema, valuesFromFamille, type FamilleFormValues } from './schema'
 
+type PersonneOption = { idPersonne: string; prenom: string; nom: string }
+
 type FamilleFormDialogProps = {
   open: boolean
   famille?: FamilleImpact | null
+  personnes?: PersonneOption[]
   errorMessage?: string
   isSubmitting: boolean
   onOpenChange: (open: boolean) => void
@@ -24,6 +28,7 @@ type FamilleFormDialogProps = {
 export function FamilleFormDialog({
   open,
   famille,
+  personnes = [],
   errorMessage,
   isSubmitting,
   onOpenChange,
@@ -146,6 +151,44 @@ export function FamilleFormDialog({
               {...register('zone')}
             />
           </FormField>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField id="famille-responsable" label="Responsable" error={errors.responsableId?.message}>
+              <Select id="famille-responsable" {...register('responsableId')}>
+                <option value="">Aucun</option>
+                {personnes.map((personne) => (
+                  <option key={personne.idPersonne} value={personne.idPersonne}>
+                    {personne.prenom} {personne.nom}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField id="famille-adjoint" label="Adjoint" error={errors.adjointId?.message}>
+              <Select id="famille-adjoint" hasError={Boolean(errors.adjointId)} {...register('adjointId')}>
+                <option value="">Aucun</option>
+                {personnes.map((personne) => (
+                  <option key={personne.idPersonne} value={personne.idPersonne}>
+                    {personne.prenom} {personne.nom}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField id="famille-capacite" label="Capacité maximale" error={errors.capaciteMax?.message}>
+              <Input id="famille-capacite" inputMode="numeric" placeholder="12" {...register('capaciteMax')} />
+            </FormField>
+            <FormField id="famille-jour" label="Jour de réunion" error={errors.jourReunion?.message}>
+              <Input id="famille-jour" placeholder="Mercredi" {...register('jourReunion')} />
+            </FormField>
+            <FormField id="famille-heure" label="Heure de réunion" error={errors.heureReunion?.message}>
+              <Input id="famille-heure" type="time" {...register('heureReunion')} />
+            </FormField>
+            <FormField id="famille-lieu" label="Lieu de réunion" error={errors.lieuReunion?.message}>
+              <Input id="famille-lieu" placeholder="Salle nord" {...register('lieuReunion')} />
+            </FormField>
+          </div>
 
           <FormField id="famille-mission" label="Mission" error={errors.mission?.message}>
             <textarea

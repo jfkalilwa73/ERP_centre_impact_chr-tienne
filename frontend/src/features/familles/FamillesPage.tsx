@@ -493,6 +493,7 @@ export function FamillesPage() {
         open={formOpen}
         famille={editingFamille}
         errorMessage={formError}
+        personnes={personnes}
         isSubmitting={isSubmitting}
         onOpenChange={setFormOpen}
         onSubmit={handleFormSubmit}

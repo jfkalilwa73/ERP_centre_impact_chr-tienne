@@ -20,6 +20,9 @@ import { EquipePanel } from '@/features/departements/EquipePanel'
 import { DepartementLoading } from '@/features/departements/loading'
 import { personneName } from '@/features/departements/personneName'
 import { tauxPresenceMembres } from '@/features/departements/presence'
+import { FeuillePresence } from '@/features/sprint1/FeuillePresence'
+import { useFeuillePresence } from '@/features/sprint1/hooks'
+import { tauxDepuisPresences } from '@/features/sprint1/presence'
 import { RapportsPanel } from '@/features/departements/RapportsPanel'
 import { StatCard } from '@/features/departements/StatCard'
 import { useAccessScope } from '@/features/auth/accessScope'
@@ -64,6 +67,7 @@ export function FamilleDetailPage() {
   const canManageFamilles = useHasPermission(PERMISSIONS.FAMILLES_UPDATE)
 
   const familleQuery = useFamille(familleId)
+  const feuilleQuery = useFeuillePresence(familleId)
   const destinatairesQuery = useFamilles(
     { page: 1, limit: 100 },
     permissions.includes(PERMISSIONS.RAPPORTS_READ) ||
@@ -129,7 +133,8 @@ export function FamilleDetailPage() {
   const activites = familleId ? listActivitesFamille(familleId) : []
   const evolution = evolutionFamille(allAffectations)
   const evolutionActs = evolutionActivites(activites)
-  const tauxPresence = tauxPresenceMembres(activites)
+  const tauxApi = tauxDepuisPresences(feuilleQuery.data?.presences ?? [])
+  const tauxPresence = tauxApi.length > 0 ? tauxApi : tauxPresenceMembres(activites)
   const chef = membres.find((item) => roleFamille(item.affectation.fonction) === 'Chef')
   const superviseur = membres.find((item) => roleFamille(item.affectation.fonction) === 'Superviseur')
   const hommes = membres.filter((item) => item.personne.sexe === 'M').length
@@ -239,6 +244,8 @@ export function FamilleDetailPage() {
             titre={famille.nom}
             message={[
               famille.description || "Que cette famille serve l'Église avec fidélité.",
+              [famille.jourReunion, famille.heureReunion, famille.lieuReunion].filter(Boolean).join(' · '),
+              famille.capaciteMax ? `Capacité ${famille.capaciteMax}` : '',
               superviseur ? `Superviseur : ${personneName(superviseur.personne)}` : '',
               chef ? `Chef : ${personneName(chef.personne)}` : '',
             ]
@@ -321,13 +328,19 @@ export function FamilleDetailPage() {
             <div className="md:col-span-2">
               <ChartPanel
                 title="Taux de présence des membres"
-                hint="Selon les comptes rendus des activités réalisées."
+                hint={
+                  tauxApi.length > 0
+                    ? 'Selon les feuilles de présence des réunions.'
+                    : 'Selon les comptes rendus des activités réalisées.'
+                }
                 bodyClassName="h-auto min-h-52"
               >
                 <PresenceMembresChart data={tauxPresence} />
               </ChartPanel>
             </div>
           </div>
+
+          {familleId && <FeuillePresence familleId={familleId} canWrite={canAssign || canWriteActivites} />}
         </div>
       )}
 

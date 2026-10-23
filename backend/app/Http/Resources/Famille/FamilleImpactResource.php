@@ -18,6 +18,12 @@ class FamilleImpactResource extends JsonResource
             'longitude' => $this->longitude,
             'description' => $this->description,
             'actif' => (bool) $this->actif,
+            'responsableId' => $this->responsable_id,
+            'adjointId' => $this->adjoint_id,
+            'capaciteMax' => $this->capacite_max,
+            'jourReunion' => $this->jour_reunion,
+            'heureReunion' => $this->heure_reunion ? substr((string) $this->heure_reunion, 0, 5) : null,
+            'lieuReunion' => $this->lieu_reunion,
             'dateCreation' => $this->date_creation?->toIso8601String(),
         ];
     }

@@ -52,6 +52,9 @@ import {
   useUpdatePersonne,
 } from './hooks'
 import { ROLES_DEPARTEMENT, roleDepartement } from '@/features/departements/roles'
+import { MembrePanel } from '@/features/sprint1/MembrePanel'
+import { useEnregistrerLien, useMembre, useRegroupement } from '@/features/sprint1/hooks'
+import { TYPE_RELATION_LABELS } from '@/features/sprint1/types'
 import { formatDate, formatDateLong, STATUT_LABELS, statutBadgeClass } from './labels'
 import { PersonneAvatar } from './PersonneAvatar'
 import { readImageAsDataUrl, setPersonnePhoto, usePersonnePhoto } from './photos'
@@ -305,6 +308,7 @@ export function PersonneDetailPage() {
   const [noteDraft, setNoteDraft] = useState('')
   const [complement, setComplement] = useState(emptyFicheComplement)
   const [lienSearch, setLienSearch] = useState('')
+  const [lienErreur, setLienErreur] = useState<string | null>(null)
   const [historyTick, setHistoryTick] = useState(0)
 
   const canUpdate = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
@@ -316,6 +320,9 @@ export function PersonneDetailPage() {
   const canReadComptes = useHasPermission(PERMISSIONS.COMPTES_READ)
 
   const personneQuery = usePersonne(personneId)
+  const membreQuery = useMembre(personneId)
+  const regroupementQuery = useRegroupement(personneId)
+  const enregistrerLien = useEnregistrerLien(personneId ?? '')
   const catalogQuery = usePersonnes({ page: 1, limit: 100 })
   const affectationsQuery = usePersonneAffectations(personneId)
   const famillesAffectationsQuery = usePersonneFamilles(personneId)
@@ -480,6 +487,10 @@ export function PersonneDetailPage() {
       setComplement(removeLienFamilial(personne.idPersonne, idProche))
       removeLienFamilial(idProche, personne.idPersonne)
       setHistoryTick((current) => current + 1)
+      void enregistrerLien
+        .mutateAsync({ personne, autreId: idProche, lien: '' })
+        .then(() => setLienErreur(null))
+        .catch((error: Error) => setLienErreur(error.message))
       return
     }
     setComplement(upsertLienFamilial(personne.idPersonne, { idPersonne: idProche, lien: typeLien }))
@@ -488,6 +499,10 @@ export function PersonneDetailPage() {
       upsertLienFamilial(idProche, { idPersonne: personne.idPersonne, lien: inverse })
     }
     setHistoryTick((current) => current + 1)
+    void enregistrerLien
+      .mutateAsync({ personne, autreId: idProche, lien: typeLien })
+      .then(() => setLienErreur(null))
+      .catch((error: Error) => setLienErreur(error.message))
   }
 
   if (personneQuery.isLoading) {
@@ -537,9 +552,11 @@ export function PersonneDetailPage() {
                   {personne.prenom} {personne.nom}
                 </h1>
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                  <span>ID: {memberCode(personne)}</span>
+                  <span>ID: {membreQuery.data?.numeroMembre ?? memberCode(personne)}</span>
                   <span aria-hidden="true">·</span>
-                  <span>Membre depuis {formatDateLong(personne.dateCreation)}</span>
+                  <span>
+                    Membre depuis {formatDateLong(membreQuery.data?.dateIntegration ?? personne.dateCreation)}
+                  </span>
                   <span aria-hidden="true">·</span>
                   <span className={statutBadgeClass(statut)}>{STATUT_LABELS[statut]}</span>
                 </p>
@@ -615,6 +632,7 @@ export function PersonneDetailPage() {
         {tab === 'general' && (
           <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(18rem,1fr)]">
             <div className="flex flex-col gap-4">
+              <MembrePanel personneId={personne.idPersonne} canUpdate={canUpdate} />
               <Card title="Coordonnées">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Téléphone" value={personne.telephone ?? '—'} />
@@ -760,6 +778,27 @@ export function PersonneDetailPage() {
 
         {tab === 'famille' && (
           <div className="mt-4 flex flex-col gap-4">
+            {lienErreur && (
+              <Alert variant="error" title="Lien non enregistré">
+                {lienErreur}
+              </Alert>
+            )}
+            {regroupementQuery.data && (
+              <Card title={regroupementQuery.data.nomFamille}>
+                {regroupementQuery.data.relations.length === 0 ? (
+                  <p className="text-sm text-slate-500">Aucune relation enregistrée.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {regroupementQuery.data.relations.map((relation) => (
+                      <li key={relation.idRelation} className="text-sm text-slate-700">
+                        {relation.prenom1} {relation.nom1} · {TYPE_RELATION_LABELS[relation.typeRelation]} ·{' '}
+                        {relation.prenom2} {relation.nom2}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            )}
             <Card title="Personnes existantes">
               <p className="mb-4 text-sm text-slate-500">
                 Choisissez un lien dans la liste pour rattacher une personne déjà enregistrée.

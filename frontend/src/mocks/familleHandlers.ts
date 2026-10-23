@@ -29,6 +29,12 @@ function toFamille(record: FamilleImpact): FamilleImpact {
     longitude: record.longitude ?? null,
     description: record.description,
     actif: record.actif,
+    responsableId: record.responsableId ?? null,
+    adjointId: record.adjointId ?? null,
+    capaciteMax: record.capaciteMax ?? null,
+    jourReunion: record.jourReunion ?? null,
+    heureReunion: record.heureReunion ?? null,
+    lieuReunion: record.lieuReunion ?? null,
     dateCreation: record.dateCreation,
   }
 }
@@ -98,6 +104,12 @@ export const familleHandlers = [
       longitude: payload.longitude ?? null,
       description: payload.description?.trim() || undefined,
       actif: payload.actif ?? true,
+      responsableId: payload.responsableId ?? null,
+      adjointId: payload.adjointId ?? null,
+      capaciteMax: payload.capaciteMax ?? null,
+      jourReunion: payload.jourReunion ?? null,
+      heureReunion: payload.heureReunion ?? null,
+      lieuReunion: payload.lieuReunion ?? null,
       dateCreation: new Date().toISOString(),
     }
 
@@ -155,6 +167,12 @@ export const familleHandlers = [
         ? { description: payload.description.trim() || undefined }
         : {}),
       ...(payload.actif !== undefined ? { actif: payload.actif } : {}),
+      ...(payload.responsableId !== undefined ? { responsableId: payload.responsableId } : {}),
+      ...(payload.adjointId !== undefined ? { adjointId: payload.adjointId } : {}),
+      ...(payload.capaciteMax !== undefined ? { capaciteMax: payload.capaciteMax } : {}),
+      ...(payload.jourReunion !== undefined ? { jourReunion: payload.jourReunion } : {}),
+      ...(payload.heureReunion !== undefined ? { heureReunion: payload.heureReunion } : {}),
+      ...(payload.lieuReunion !== undefined ? { lieuReunion: payload.lieuReunion } : {}),
     })
 
     return HttpResponse.json(toFamille(famille), { status: 200 })

@@ -24,16 +24,15 @@ export default defineConfig({
     watch: {
       usePolling: true,
     },
-    // Proxy vers le backend Laravel pour éviter les erreurs CORS en développement.
-    // Sous Docker, 'backend:8000' est le conteneur Laravel ; en local hors Docker, 'localhost:8000'.
+    // Le frontend tourne sur l'hôte. L'API Docker est publiée sur localhost:8000.
     proxy: {
       '/api': {
-        target: process.env.BACKEND_PROXY_TARGET || (process.platform === 'win32' ? 'http://localhost:8000' : 'http://backend:8000'),
+        target: process.env.BACKEND_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },
       '/sanctum': {
-        target: process.env.BACKEND_PROXY_TARGET || (process.platform === 'win32' ? 'http://localhost:8000' : 'http://backend:8000'),
+        target: process.env.BACKEND_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },

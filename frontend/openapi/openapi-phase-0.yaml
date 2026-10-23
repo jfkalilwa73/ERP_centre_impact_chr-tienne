@@ -598,6 +598,12 @@ components:
         longitude: { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
         description: { type: string }
         actif: { type: boolean, default: true }
+        responsableId: { type: string, format: uuid, nullable: true }
+        adjointId: { type: string, format: uuid, nullable: true }
+        capaciteMax: { type: integer, minimum: 1, nullable: true }
+        jourReunion: { type: string, maxLength: 20, nullable: true }
+        heureReunion: { type: string, example: "18:30", nullable: true }
+        lieuReunion: { type: string, nullable: true }
 
     FamilleImpactUpdate:
       type: object
@@ -611,6 +617,12 @@ components:
         longitude: { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
         description: { type: string }
         actif: { type: boolean }
+        responsableId: { type: string, format: uuid, nullable: true }
+        adjointId: { type: string, format: uuid, nullable: true }
+        capaciteMax: { type: integer, minimum: 1, nullable: true }
+        jourReunion: { type: string, maxLength: 20, nullable: true }
+        heureReunion: { type: string, nullable: true }
+        lieuReunion: { type: string, nullable: true }
 
     FamilleImpact:
       allOf:

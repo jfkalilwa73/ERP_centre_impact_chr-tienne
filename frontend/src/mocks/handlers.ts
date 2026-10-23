@@ -22,6 +22,7 @@ import { compteHandlers } from './compteHandlers'
 import { roleHandlers } from './roleHandlers'
 import { permissionHandlers } from './permissionHandlers'
 import { auditHandlers } from './auditHandlers'
+import { sprint1Handlers } from './sprint1Handlers'
 
 const authHandlers = [
   http.post(apiUrl('auth/login'), async ({ request }) => {
@@ -118,4 +119,5 @@ export const handlers = [
   ...roleHandlers,
   ...permissionHandlers,
   ...auditHandlers,
+  ...sprint1Handlers,
 ]

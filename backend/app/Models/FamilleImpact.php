@@ -13,11 +13,15 @@ class FamilleImpact extends Model
     protected $keyType = 'string';
     const CREATED_AT = 'date_creation';
     const UPDATED_AT = null;
-    protected $fillable = ['id_famille', 'code', 'nom', 'zone', 'description', 'actif', 'latitude', 'longitude'];
+    protected $fillable = [
+        'id_famille', 'code', 'nom', 'zone', 'description', 'actif', 'latitude', 'longitude',
+        'responsable_id', 'adjoint_id', 'capacite_max', 'jour_reunion', 'heure_reunion', 'lieu_reunion',
+    ];
     protected $casts = [
         'actif' => 'boolean',
         'latitude' => 'float',
         'longitude' => 'float',
+        'capacite_max' => 'integer',
     ];
 
     public function affectations(): HasMany

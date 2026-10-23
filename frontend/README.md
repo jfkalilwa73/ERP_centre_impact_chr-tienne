@@ -6,7 +6,7 @@ React 19 + TypeScript + Vite, aligné sur le contrat `openapi/openapi-phase-0.ya
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000
+npm run dev          # http://localhost:3000 — sur l'hôte, pas dans Docker
 ```
 
 | Commande               | Rôle                                                   |
@@ -42,8 +42,8 @@ Laravel tourne sur le port 8000.
 
 ```bash
 # Pour démarrer avec le vrai backend :
-# 1. Lancer les services Docker (PostgreSQL, Redis, Mailpit, Backend)
-docker-compose up -d
+# 1. Depuis la racine du dépôt : API et base de CE projet
+docker compose up -d
 # 2. Démarrer le frontend
 npm run dev
 ```

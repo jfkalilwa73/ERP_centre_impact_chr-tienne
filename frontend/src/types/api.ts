@@ -910,6 +910,15 @@ export interface components {
             description?: string;
             /** @default true */
             actif: boolean;
+            /** Format: uuid */
+            responsableId?: string | null;
+            /** Format: uuid */
+            adjointId?: string | null;
+            capaciteMax?: number | null;
+            jourReunion?: string | null;
+            /** @example 18:30 */
+            heureReunion?: string | null;
+            lieuReunion?: string | null;
         };
         FamilleImpactUpdate: {
             code?: string;
@@ -919,6 +928,12 @@ export interface components {
             longitude?: number | null;
             description?: string;
             actif?: boolean;
+            responsableId?: string | null;
+            adjointId?: string | null;
+            capaciteMax?: number | null;
+            jourReunion?: string | null;
+            heureReunion?: string | null;
+            lieuReunion?: string | null;
         };
         FamilleImpact: components["schemas"]["FamilleImpactCreate"] & {
             /** Format: uuid */
