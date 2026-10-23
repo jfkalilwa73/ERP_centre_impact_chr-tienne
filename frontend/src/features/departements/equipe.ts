@@ -154,6 +154,16 @@ export function deleteCreneauBenevole(departementId: string, creneauId: string) 
   emit()
 }
 
+export function snapshotEquipe() {
+  return structuredClone({ fiches, creneaux })
+}
+
+export function replaceEquipe(next: { fiches?: Record<string, FicheEquipe[]>; creneaux?: Record<string, CreneauBenevole[]> }) {
+  fiches = structuredClone(next.fiches ?? {})
+  creneaux = structuredClone(next.creneaux ?? {})
+  emit()
+}
+
 export function resetEquipe() {
   fiches = cloneFiches()
   creneaux = cloneCreneaux()

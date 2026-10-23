@@ -25,6 +25,8 @@ function toFamille(record: FamilleImpact): FamilleImpact {
     code: record.code,
     nom: record.nom,
     zone: record.zone,
+    latitude: record.latitude ?? null,
+    longitude: record.longitude ?? null,
     description: record.description,
     actif: record.actif,
     dateCreation: record.dateCreation,
@@ -92,6 +94,8 @@ export const familleHandlers = [
       code,
       nom,
       zone: payload.zone?.trim() || undefined,
+      latitude: payload.latitude ?? null,
+      longitude: payload.longitude ?? null,
       description: payload.description?.trim() || undefined,
       actif: payload.actif ?? true,
       dateCreation: new Date().toISOString(),
@@ -145,6 +149,8 @@ export const familleHandlers = [
       ...(payload.code !== undefined ? { code: payload.code.trim() } : {}),
       ...(payload.nom !== undefined ? { nom: payload.nom.trim() } : {}),
       ...(payload.zone !== undefined ? { zone: payload.zone.trim() || undefined } : {}),
+      ...(payload.latitude !== undefined ? { latitude: payload.latitude } : {}),
+      ...(payload.longitude !== undefined ? { longitude: payload.longitude } : {}),
       ...(payload.description !== undefined
         ? { description: payload.description.trim() || undefined }
         : {}),

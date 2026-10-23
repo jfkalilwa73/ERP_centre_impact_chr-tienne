@@ -17,7 +17,7 @@ class RoleMetier extends Model
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'code', 'nom', 'description', 'niveau_confidentialite', 'actif'
+        'id_role', 'code', 'nom', 'description', 'niveau_confidentialite', 'actif'
     ];
 
     protected $casts = [

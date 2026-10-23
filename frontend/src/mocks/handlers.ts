@@ -27,9 +27,10 @@ const authHandlers = [
   http.post(apiUrl('auth/login'), async ({ request }) => {
     await delay(500)
 
-    const payload = (await request.json()) as Partial<LoginRequest>
+    const payload = (await request.json()) as Partial<LoginRequest> & { password?: string }
+    const motDePasse = payload.motDePasse || payload.password
 
-    if (!payload.email || !payload.motDePasse) {
+    if (!payload.email || !motDePasse) {
       return errorResponse(422, 'VALIDATION_ERROR', 'Données non conformes.', [
         { field: !payload.email ? 'email' : 'motDePasse', rule: 'required' },
       ])
@@ -42,7 +43,7 @@ const authHandlers = [
     const account = mockAccounts.find(
       (candidate) =>
         candidate.utilisateur.compte.email.toLowerCase() === payload.email?.toLowerCase() &&
-        candidate.motDePasse === payload.motDePasse,
+        candidate.motDePasse === motDePasse,
     )
 
     if (!account) {

@@ -1,4 +1,5 @@
 import { Outlet, useParams } from 'react-router-dom'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { canSeeAllUnits } from '@/features/auth/orgRoles'
 import { canAccessFamilleUnit } from '@/features/familles/roles'
 import { usePersonneFamilles } from '@/features/personnes/hooks'
@@ -17,7 +18,7 @@ export function FamilleAccessRoute() {
   const affectationsQuery = usePersonneFamilles(user?.personne.idPersonne)
 
   if (!canView && affectationsQuery.isLoading) {
-    return <p className="text-sm text-slate-500">Vérification de l'accès…</p>
+    return <ChargementCentre label="Vérification de l'accès…" page />
   }
 
   const leadsThisFamily = (affectationsQuery.data ?? []).some(

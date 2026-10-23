@@ -1,6 +1,6 @@
-import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { Link, NavLink, Navigate, useLocation } from 'react-router-dom'
-import { CalendarDays, Layers, Pencil, Plus, Search, Shield, Trash2, Crown, Users } from 'lucide-react'
+import { Pencil, Plus, Search, Shield, Trash2, Crown } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
@@ -18,12 +18,9 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Departement, Personne } from '@/types'
 import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
-import { getActivitesVersion, listAllActivites, subscribeActivites } from './activites'
 import { DepartementBanner } from './banner'
-import { ChartPanel, EffectifsDepartementsChart, EvolutionMembresChart } from './charts'
 import { DepartementFormDialog } from './DepartementFormDialog'
 import { defaultSiteId } from './api'
-import { effectifsParDepartement, evolutionDepartement } from './evolution'
 import {
   useAssignPersonneDepartement,
   useCreateDepartement,
@@ -34,15 +31,14 @@ import {
 } from './hooks'
 import { roleDepartement } from './roles'
 import { toDepartementCreate, toDepartementUpdate, type DepartementFormValues } from './schema'
-import { DashboardBodyLoading, TableLoading } from './loading'
+import { TableLoading } from './loading'
 import { DgeRapportsPanel, DgeSuiviPanel } from './DgeSuiviPanel'
 
 const DGE_VUES = [
-  { to: '/departements', label: 'Tableau de bord', end: true },
+  { to: '/departements', label: 'Liste', end: true },
   { to: '/departements/suivi', label: 'Suivi DGE' },
   { to: '/departements/rapports', label: 'Rapports reçus' },
 ] as const
-import { StatCard } from './StatCard'
 
 const PAGE_SIZE = 20
 
@@ -72,8 +68,6 @@ export function DepartementsPage() {
   const [chefSearch, setChefSearch] = useState('')
   const [demandeMessage, setDemandeMessage] = useState<string>()
   const [formSiteError, setFormSiteError] = useState<string>()
-
-  useSyncExternalStore(subscribeActivites, getActivitesVersion, getActivitesVersion)
 
   const canCreate = useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canUpdate = useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE)
@@ -146,25 +140,8 @@ export function DepartementsPage() {
   const departements = (departementsQuery.data?.data ?? []).filter(
     (departement) => !isScoped || scopedIds.has(departement.idDepartement),
   )
-  const catalog = (catalogQuery.data?.data ?? []).filter(
-    (departement) => !isScoped || scopedIds.has(departement.idDepartement),
-  )
   const pagination = departementsQuery.data?.pagination
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.limit)) : 1
-  const activites = listAllActivites()
-  const stats = {
-    total: catalog.length,
-    actifs: catalog.filter((departement) => departement.actif).length,
-    membres: affectationsActives.filter(
-      (affectation) => !isScoped || scopedIds.has(affectation.idDepartement),
-    ).length,
-    activites: isScoped
-      ? activites.filter((activite) => scopedIds.has(activite.idDepartement)).length
-      : activites.length,
-  }
-  const evolutionGlobale = evolutionDepartement(affectations)
-  const effectifs = effectifsParDepartement(catalog, affectations)
-
   const prochesChef = personnes.filter((personne) => {
     const needle = chefSearch.trim().toLowerCase()
     if (!needle) return true
@@ -384,49 +361,6 @@ export function DepartementsPage() {
       {voitPilotage && vue === 'rapports' && (
         <DgeRapportsPanel filtreIds={destDge.map((item) => item.idDepartement)} />
       )}
-
-      {vue === 'tableau' && (catalogQuery.isLoading ? (
-        <DashboardBodyLoading />
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              label="Départements"
-              value={stats.total}
-              hint={`${stats.actifs} actifs`}
-              icon={Layers}
-              accent
-            />
-            <StatCard
-              label="Membres affectés"
-              value={stats.membres}
-              hint="Toutes affectations en cours"
-              icon={Users}
-            />
-            <StatCard
-              label="Activités"
-              value={stats.activites}
-              hint="Planifiées et réalisées"
-              icon={CalendarDays}
-            />
-            <StatCard
-              label="Départements actifs"
-              value={stats.actifs}
-              hint={`${Math.max(0, stats.total - stats.actifs)} inactifs`}
-              icon={Crown}
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <ChartPanel title="Évolution globale" hint="Affectations et retraits sur les 12 derniers mois.">
-              <EvolutionMembresChart data={evolutionGlobale} />
-            </ChartPanel>
-            <ChartPanel title="Effectifs par département" hint="Comparaison des membres actuellement affectés.">
-              <EffectifsDepartementsChart data={effectifs} />
-            </ChartPanel>
-          </div>
-        </>
-      ))}
 
       {vue === 'tableau' && demandeMessage && (
         <Alert variant="success" title="Demande transmise">

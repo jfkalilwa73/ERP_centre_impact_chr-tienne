@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\Audit\AuditLogController;
 use App\Http\Controllers\Api\V1\Acces\VerifierDroitController;
 use App\Http\Controllers\Api\V1\Famille\FamilleImpactController;
 use App\Http\Controllers\Api\V1\Famille\AffectationFamilleController;
+use App\Http\Controllers\Api\V1\Pilotage\PilotageController;
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [SessionController::class, 'login'])
@@ -80,5 +81,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/personnes/{personneId}/familles-impact', [AffectationFamilleController::class, 'store']);
         Route::delete('/personnes/{personneId}/familles-impact/{familleId}', [AffectationFamilleController::class, 'destroy']);
         Route::delete('/personnes/{personneId}/departements/{departementId}', [AffectationDepartementController::class, 'destroy']);
+
+        Route::get('/pilotage', [PilotageController::class, 'show']);
+        Route::put('/pilotage', [PilotageController::class, 'update']);
     });
 });

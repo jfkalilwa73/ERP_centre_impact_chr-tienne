@@ -106,6 +106,8 @@ export const updateActiviteFamille = store.update
 export const marquerActiviteFamilleFaite = store.marquerFaite
 export const enregistrerCompteRenduFamille = store.enregistrerCompteRendu
 export const deleteActiviteFamille = store.remove
+export const snapshotActivitesFamille = store.snapshot
+export const replaceActivitesFamille = store.replace
 export const resetActivitesFamille = store.reset
 
 export const activitesFamilleApi = {

@@ -1,5 +1,5 @@
 import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, CalendarDays, User, UserPlus, UserRound, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
@@ -34,7 +34,7 @@ import { isLeadershipRole, roleDepartement, ROLES_EQUIPE, type RoleDepartement }
 import { StatCard } from './StatCard'
 
 const TABS = [
-  { id: 'tableau', label: 'Tableau de bord' },
+  { id: 'tableau', label: 'Synthèse' },
   { id: 'membres', label: 'Membres' },
   { id: 'activites', label: 'Activités' },
   { id: 'budget', label: 'Budget', permission: PERMISSIONS.BUDGET_READ },
@@ -43,9 +43,17 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
+function ongletInitial(valeur: string | null): TabId {
+  if (valeur === 'membres' || valeur === 'activites' || valeur === 'budget' || valeur === 'rapports') {
+    return valeur
+  }
+  return 'tableau'
+}
+
 export function DepartementDetailPage() {
   const { departementId } = useParams<{ departementId: string }>()
-  const [tab, setTab] = useState<TabId>('tableau')
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState<TabId>(() => ongletInitial(searchParams.get('onglet')))
   const [assignOpen, setAssignOpen] = useState(false)
   const [membreSearch, setMembreSearch] = useState('')
   const [roleDraft, setRoleDraft] = useState<RoleDepartement>('Responsable')

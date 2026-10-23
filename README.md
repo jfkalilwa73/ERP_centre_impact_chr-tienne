@@ -28,4 +28,4 @@ cd ERP_centre_impact_chr-tienne
 cp frontend/.env.example frontend/.env
 cp backend/.env.example backend/.env
 
-| **pgAdmin (DB)** | http://localhost:5050 | `admin@erp-eglise.local` / `admin` |
+| **pgAdmin (DB)** | http://localhost:8088 | `admin@erp-eglise.com` / `admin` |

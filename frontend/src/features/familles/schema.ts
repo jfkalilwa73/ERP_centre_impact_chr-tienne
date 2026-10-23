@@ -17,8 +17,13 @@ export const familleSchema = z.object({
     .trim()
     .min(1, 'La zone est obligatoire.')
     .max(100, 'La zone ne peut pas dépasser 100 caractères.'),
+  latitude: z.number().gte(-90).lte(90).nullable(),
+  longitude: z.number().gte(-180).lte(180).nullable(),
   mission: z.string(),
   actif: z.boolean(),
+}).refine((values) => (values.latitude == null) === (values.longitude == null), {
+  path: ['latitude'],
+  message: 'La position doit avoir une latitude et une longitude.',
 })
 
 export type FamilleFormValues = z.input<typeof familleSchema>
@@ -27,8 +32,15 @@ export const emptyFamilleForm: FamilleFormValues = {
   code: '',
   nom: '',
   zone: '',
+  latitude: null,
+  longitude: null,
   mission: '',
   actif: true,
+}
+
+function arrondirCoordonnee(valeur: number | null) {
+  if (valeur == null) return null
+  return Math.round(valeur * 1e6) / 1e6
 }
 
 function optionalText(value: string): string | undefined {
@@ -41,6 +53,8 @@ export function toFamilleCreate(values: FamilleFormValues): FamilleImpactCreate 
     code: values.code.trim(),
     nom: values.nom.trim(),
     zone: values.zone.trim(),
+    latitude: arrondirCoordonnee(values.latitude),
+    longitude: arrondirCoordonnee(values.longitude),
     description: optionalText(values.mission),
     actif: values.actif,
   }
@@ -55,6 +69,8 @@ export function valuesFromFamille(famille: FamilleImpact): FamilleFormValues {
     code: famille.code,
     nom: famille.nom,
     zone: famille.zone ?? '',
+    latitude: famille.latitude ?? null,
+    longitude: famille.longitude ?? null,
     mission: famille.description ?? '',
     actif: famille.actif,
   }

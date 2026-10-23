@@ -239,6 +239,23 @@ export function transmettreRapport(id: string) {
   emit()
 }
 
+export type RapportsSnapshot = {
+  objectifs: Record<string, Objectif[]>
+  plans: Record<string, PlanAction[]>
+  rapports: Rapport[]
+}
+
+export function snapshotRapports(): RapportsSnapshot {
+  return structuredClone({ objectifs, plans, rapports })
+}
+
+export function replaceRapports(next: RapportsSnapshot) {
+  objectifs = structuredClone(next.objectifs ?? {})
+  plans = structuredClone(next.plans ?? {})
+  rapports = structuredClone(next.rapports ?? [])
+  emit()
+}
+
 export function resetRapports() {
   objectifs = cloneMap(seedObjectifs)
   plans = cloneMap(seedPlans)

@@ -29,7 +29,7 @@ class SessionController extends Controller
             content: new OA\JsonContent(
                 required: ['email', 'password'],
                 properties: [
-                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'jean.nuru@eglise-upn.org'),
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'elieilunga007@gmail.com'),
                     new OA\Property(property: 'password', type: 'string', format: 'password', example: 'password'),
                 ]
             )
@@ -44,8 +44,8 @@ class SessionController extends Controller
                             property: 'data',
                             properties: [
                                 new OA\Property(property: 'id', type: 'integer', example: 1),
-                                new OA\Property(property: 'name', type: 'string', example: 'Jean Nuru'),
-                                new OA\Property(property: 'email', type: 'string', example: 'jean.nuru@eglise-upn.org'),
+                                new OA\Property(property: 'name', type: 'string', example: 'Administrateur fonctionnel'),
+                                new OA\Property(property: 'email', type: 'string', example: 'elieilunga007@gmail.com'),
                                 new OA\Property(property: 'statut', type: 'string', example: 'actif'),
                             ],
                             type: 'object'
@@ -100,8 +100,8 @@ class SessionController extends Controller
                             property: 'data',
                             properties: [
                                 new OA\Property(property: 'id', type: 'integer', example: 1),
-                                new OA\Property(property: 'name', type: 'string', example: 'Jean Nuru'),
-                                new OA\Property(property: 'email', type: 'string', example: 'jean.nuru@eglise-upn.org'),
+                                new OA\Property(property: 'name', type: 'string', example: 'Administrateur fonctionnel'),
+                                new OA\Property(property: 'email', type: 'string', example: 'elieilunga007@gmail.com'),
                                 new OA\Property(property: 'statut', type: 'string', example: 'actif'),
                             ],
                             type: 'object'

@@ -903,6 +903,10 @@ export interface components {
             nom: string;
             /** @example Nord */
             zone?: string;
+            /** @example -4.348 */
+            latitude?: number | null;
+            /** @example 15.246 */
+            longitude?: number | null;
             description?: string;
             /** @default true */
             actif: boolean;
@@ -911,6 +915,8 @@ export interface components {
             code?: string;
             nom?: string;
             zone?: string;
+            latitude?: number | null;
+            longitude?: number | null;
             description?: string;
             actif?: boolean;
         };

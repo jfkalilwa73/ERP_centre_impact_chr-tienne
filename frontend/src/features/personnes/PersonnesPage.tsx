@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, BadgeCheck, ChartColumn, Eye, Plus, Search, UserPlus, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
@@ -332,7 +333,7 @@ export function PersonnesPage() {
         </Alert>
       )}
 
-      {catalogQuery.isLoading && <p className="text-sm text-slate-500">Chargement des personnes…</p>}
+      {catalogQuery.isLoading && <ChargementCentre label="Chargement des personnes…" />}
 
       {catalogQuery.isSuccess && filtered.length === 0 && (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">

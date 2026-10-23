@@ -6,7 +6,7 @@ React 19 + TypeScript + Vite, aligné sur le contrat `openapi/openapi-phase-0.ya
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:3000
 ```
 
 | Commande               | Rôle                                                   |

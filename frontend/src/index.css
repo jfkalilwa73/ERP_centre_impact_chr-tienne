@@ -214,3 +214,20 @@
     animation: none !important;
   }
 }
+
+.carte-osm {
+  z-index: 0;
+  isolation: isolate;
+  background: #f8fafc;
+}
+
+.carte-osm .maplibregl-ctrl-top-left,
+.carte-osm .maplibregl-ctrl-top-right,
+.carte-osm .maplibregl-ctrl-bottom-left,
+.carte-osm .maplibregl-ctrl-bottom-right {
+  z-index: 2;
+}
+
+.carte-osm-choix .maplibregl-canvas {
+  cursor: crosshair;
+}

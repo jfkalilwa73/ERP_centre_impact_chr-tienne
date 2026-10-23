@@ -250,6 +250,15 @@ export function createActivitesStore(initiales: Record<string, Activite[]>) {
       emit()
     },
 
+    snapshot() {
+      return structuredClone(activites)
+    },
+
+    replace(next: Record<string, Activite[]>) {
+      activites = structuredClone(next)
+      emit()
+    },
+
     reset() {
       activites = cloneSeed()
       emit()
@@ -407,6 +416,8 @@ export const updateActivite = store.update
 export const marquerActiviteFaite = store.marquerFaite
 export const enregistrerCompteRendu = store.enregistrerCompteRendu
 export const deleteActivite = store.remove
+export const snapshotActivites = store.snapshot
+export const replaceActivites = store.replace
 export const resetActivites = store.reset
 
 export function listAllActivites() {

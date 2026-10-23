@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertTriangle, ArrowLeft, Camera, FileDown, Heart, Pencil, Plus, StickyNote, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
@@ -490,7 +491,7 @@ export function PersonneDetailPage() {
   }
 
   if (personneQuery.isLoading) {
-    return <p className="text-sm text-slate-500">Chargement de la fiche…</p>
+    return <ChargementCentre label="Chargement de la fiche…" page />
   }
 
   if (personneQuery.isError || !personne || !qualite) {

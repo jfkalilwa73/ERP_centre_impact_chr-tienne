@@ -293,6 +293,15 @@ export function replaceAlertes(next: Circulation[]) {
   emit()
 }
 
+export function snapshotCirculations() {
+  return structuredClone(circulations)
+}
+
+export function replaceCirculations(next: Circulation[]) {
+  circulations = structuredClone(next)
+  emit()
+}
+
 export function resetCirculations() {
   circulations = []
   dismissedKeys = new Set()

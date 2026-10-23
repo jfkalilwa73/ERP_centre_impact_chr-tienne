@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { ChevronDown, FileText, Heart, LayoutDashboard, Layers, List } from 'lucide-react'
+import { ChevronDown, FileText, Heart, Layers, List } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { canSeePilotageDge } from '@/features/auth/orgRoles'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -185,8 +185,8 @@ function DepartementsNav({
     ? [
         {
           to: '/departements',
-          label: 'Tableau de bord',
-          icon: LayoutDashboard,
+          label: 'Tous les départements',
+          icon: List,
           permission: PERMISSIONS.DEPARTEMENTS_READ,
           end: true,
         },
@@ -277,8 +277,8 @@ function FamillesNav({
     ? [
         {
           to: '/familles',
-          label: 'Tableau de bord',
-          icon: LayoutDashboard,
+          label: "Toutes les familles d'impact",
+          icon: List,
           permission: PERMISSIONS.FAMILLES_READ,
           end: true,
         },

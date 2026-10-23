@@ -10,7 +10,7 @@ class SessionService
 {
     public function login(string $email, string $password): User
     {
-        if (! Auth::attempt(['email' => $email, 'password' => $password])) {
+        if (! Auth::guard('web')->attempt(['email' => $email, 'password' => $password])) {
             throw ValidationException::withMessages([
                 'email' => ['Identifiants incorrects.'],
             ]);
@@ -18,7 +18,7 @@ class SessionService
 
         session()->regenerate();
 
-        return Auth::user();
+        return Auth::guard('web')->user();
     }
 
     public function logout(): void

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import type { CurrentUser } from '@/types'
+import type { CurrentUser, LoginResponse } from '@/types'
 
 type SessionProfil = {
   id: number
@@ -12,17 +12,31 @@ type SessionProfil = {
 
 type AuthState = {
   authenticated: boolean
+  accessToken: string | null
   profil: SessionProfil | null
   user: CurrentUser | null
-  openSession: (profil: SessionProfil) => void
+  openSession: (response: LoginResponse) => void
   setUser: (user: CurrentUser) => void
   closeSession: () => void
 }
 
 const emptySession = {
   authenticated: false,
+  accessToken: null,
   profil: null,
   user: null,
+}
+
+function profilFromUser(user: CurrentUser): SessionProfil {
+  const prenom = user.personne.prenom?.trim() ?? ''
+  const nom = user.personne.nom?.trim() ?? ''
+  return {
+    id: Number(user.compte.idCompte) || 0,
+    name: `${prenom} ${nom}`.trim() || user.compte.email,
+    email: user.compte.email,
+    statut: user.compte.statut,
+    permissions: [...user.permissions],
+  }
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -30,13 +44,28 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       ...emptySession,
 
-      openSession: (profil) =>
+      openSession: (response) =>
         set({
           authenticated: true,
-          profil,
+          accessToken: response.accessToken || null,
+          user: response.utilisateur,
+          profil: profilFromUser(response.utilisateur),
         }),
 
-      setUser: (user) => set({ user, authenticated: true }),
+      setUser: (user) =>
+        set((state) => ({
+          user,
+          authenticated: true,
+          profil: state.profil
+            ? {
+                ...state.profil,
+                email: user.compte.email,
+                statut: user.compte.statut,
+                permissions: [...user.permissions],
+                name: profilFromUser(user).name,
+              }
+            : profilFromUser(user),
+        })),
 
       closeSession: () => set(emptySession),
     }),
@@ -46,6 +75,7 @@ export const useAuthStore = create<AuthState>()(
       skipHydration: import.meta.env.MODE === 'test',
       partialize: (state) => ({
         authenticated: state.authenticated,
+        accessToken: state.accessToken,
         profil: state.profil,
         user: state.user,
       }),

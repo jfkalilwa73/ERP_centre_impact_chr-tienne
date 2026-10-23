@@ -157,6 +157,15 @@ export function deleteDemande(id: string) {
   emit()
 }
 
+export function snapshotDemandes() {
+  return structuredClone(demandes)
+}
+
+export function replaceDemandes(next: DemandeSuperviseur[]) {
+  demandes = structuredClone(next)
+  emit()
+}
+
 export function resetDemandes() {
   demandes = []
   emit()

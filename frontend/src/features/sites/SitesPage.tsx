@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
@@ -121,7 +122,7 @@ export function SitesPage() {
         </Alert>
       )}
 
-      {sitesQuery.isLoading && <p className="text-sm text-slate-500">Chargement des sites…</p>}
+      {sitesQuery.isLoading && <ChargementCentre label="Chargement des sites…" />}
 
       {sitesQuery.isSuccess && sites.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">

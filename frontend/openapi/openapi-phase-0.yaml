@@ -594,6 +594,8 @@ components:
           example: BATISSEURS
         nom: { type: string, maxLength: 100, example: Bâtisseurs }
         zone: { type: string, maxLength: 100, example: Nord }
+        latitude: { type: number, format: double, minimum: -90, maximum: 90, nullable: true }
+        longitude: { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
         description: { type: string }
         actif: { type: boolean, default: true }
 
@@ -605,6 +607,8 @@ components:
         code: { type: string, maxLength: 20 }
         nom: { type: string, maxLength: 100 }
         zone: { type: string, maxLength: 100 }
+        latitude: { type: number, format: double, minimum: -90, maximum: 90, nullable: true }
+        longitude: { type: number, format: double, minimum: -180, maximum: 180, nullable: true }
         description: { type: string }
         actif: { type: boolean }
 

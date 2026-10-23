@@ -11,7 +11,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Appel du seeder de test de la Phase 0
         $this->call([
             Phase0ScenarioSeeder::class,
         ]);

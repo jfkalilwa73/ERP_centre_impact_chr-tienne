@@ -39,7 +39,7 @@ import { useAssignPersonneFamille, useFamille, useFamilles, useUnassignPersonneF
 import { isLeadershipRole, roleFamille, ROLES_EQUIPE_FAMILLE, type RoleFamille } from './roles'
 
 const TABS = [
-  { id: 'tableau', label: 'Tableau de bord' },
+  { id: 'tableau', label: 'Synthèse' },
   { id: 'membres', label: 'Membres' },
   { id: 'activites', label: 'Activités' },
   { id: 'budget', label: 'Budget', permission: PERMISSIONS.BUDGET_READ },

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
@@ -209,7 +210,7 @@ export function CompteFormDialog({
               </Alert>
             )}
             {isEditing && assignedQuery.isLoading && (
-              <p className="text-sm text-slate-500">Chargement des rôles actuels…</p>
+              <ChargementCentre label="Chargement des rôles actuels…" compact />
             )}
             {isEditing && assignedQuery.isError && (
               <Alert variant="error" title="Impossible de charger les rôles du compte">

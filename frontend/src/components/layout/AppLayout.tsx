@@ -81,7 +81,9 @@ export function AppLayout() {
 
   useSyncCurrentUser()
 
-  const fullName = user ? `${user.personne.prenom} ${user.personne.nom}` : (profil?.name ?? '')
+  const fullName = user
+    ? [user.personne.prenom, user.personne.nom].filter(Boolean).join(' ')
+    : (profil?.name ?? '')
   const email = user?.compte.email ?? profil?.email ?? ''
   const session = (
     <SessionFooter

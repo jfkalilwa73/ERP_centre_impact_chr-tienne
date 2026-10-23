@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
@@ -161,7 +162,7 @@ export function ComptesPage() {
         </Alert>
       )}
 
-      {comptesQuery.isLoading && <p className="text-sm text-slate-500">Chargement des comptes…</p>}
+      {comptesQuery.isLoading && <ChargementCentre label="Chargement des comptes…" />}
 
       {comptesQuery.isSuccess && comptes.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">

@@ -15,14 +15,25 @@ export default defineConfig({
       '@': path.resolve(projectRoot, './src'),
     },
   },
+  optimizeDeps: {
+    exclude: ['maplibre-gl'],
+  },
   server: {
-    port: 5173,
+    port: 3000,
     host: true,
+    watch: {
+      usePolling: true,
+    },
     // Proxy vers le backend Laravel pour éviter les erreurs CORS en développement.
-    // Le navigateur envoie les requêtes au serveur Vite qui les retransmet à Laravel.
+    // Sous Docker, 'backend:8000' est le conteneur Laravel ; en local hors Docker, 'localhost:8000'.
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.BACKEND_PROXY_TARGET || (process.platform === 'win32' ? 'http://localhost:8000' : 'http://backend:8000'),
+        changeOrigin: true,
+        secure: false,
+      },
+      '/sanctum': {
+        target: process.env.BACKEND_PROXY_TARGET || (process.platform === 'win32' ? 'http://localhost:8000' : 'http://backend:8000'),
         changeOrigin: true,
         secure: false,
       },

@@ -375,7 +375,7 @@
                                     "email": {
                                         "type": "string",
                                         "format": "email",
-                                        "example": "jean.nuru@eglise-upn.org"
+                                        "example": "elieilunga007@gmail.com"
                                     },
                                     "password": {
                                         "type": "string",
@@ -403,11 +403,11 @@
                                                 },
                                                 "name": {
                                                     "type": "string",
-                                                    "example": "Jean Nuru"
+                                                    "example": "Administrateur fonctionnel"
                                                 },
                                                 "email": {
                                                     "type": "string",
-                                                    "example": "jean.nuru@eglise-upn.org"
+                                                    "example": "elieilunga007@gmail.com"
                                                 },
                                                 "statut": {
                                                     "type": "string",
@@ -474,11 +474,11 @@
                                                 },
                                                 "name": {
                                                     "type": "string",
-                                                    "example": "Jean Nuru"
+                                                    "example": "Administrateur fonctionnel"
                                                 },
                                                 "email": {
                                                     "type": "string",
-                                                    "example": "jean.nuru@eglise-upn.org"
+                                                    "example": "elieilunga007@gmail.com"
                                                 },
                                                 "statut": {
                                                     "type": "string",
