@@ -1,6 +1,6 @@
 # ERP Église - Centre Impact Chrétien
 
-Plateforme d'administration de l'Église. Le frontend React reste sur la machine hôte. L'API Laravel, PostgreSQL, Redis, MinIO et Mailpit tournent dans un Compose réservé à ce dépôt.
+Plateforme d'administration de l'Église. L'API Laravel, le frontend Vite, PostgreSQL, Redis, MinIO et Mailpit tournent dans un Compose réservé à ce dépôt.
 
 ## Équipe
 
@@ -17,7 +17,7 @@ Plateforme d'administration de l'Église. Le frontend React reste sur la machine
 | Conteneurs | préfixe `erp_centre_impact_chr-tienne-` |
 | Volumes | préfixe `erp_centre_impact_chr-tienne_` |
 
-Le schéma (triggers, UUID, `plpgsql`) est PostgreSQL. Il n'y a pas de service MySQL : le port hôte **3306** n'est pas ouvert par ce projet. Le port **5432** de l'hôte est déjà occupé par un autre PostgreSQL, donc la base de ce projet n'est pas publiée sur l'hôte. Le backend la joint par le nom de service `postgres` sur le port interne **5432**. Le port **8081** est déjà pris par un processus Node : le frontend Vite reste sur **3000**.
+Le schéma (triggers, UUID, `plpgsql`) est PostgreSQL. Il n'y a pas de service MySQL : le port hôte **3306** n'est pas ouvert par ce projet. Le port **5432** de l'hôte est déjà occupé par un autre PostgreSQL, donc la base de ce projet n'est pas publiée sur l'hôte. Le backend la joint par le nom de service `postgres` sur le port interne **5432**. Le port **8081** est déjà pris par un autre processus Node : le frontend Vite est publié sur **3000**.
 
 ## Ports
 
@@ -31,7 +31,7 @@ Le schéma (triggers, UUID, `plpgsql`) est PostgreSQL. Il n'y a pas de service M
 | Mailpit web | 8025 | 8025 | http://localhost:8025 |
 | pgAdmin | 8088 | 80 | http://localhost:8088 |
 | PostgreSQL | non publié | 5432 | hôte Docker : `postgres` |
-| Frontend Vite | 3000, hors Docker | — | http://localhost:3000 |
+| Frontend Vite | 3000 | 3000 | http://localhost:3000 |
 
 ## Variables
 
@@ -62,7 +62,7 @@ VITE_API_URL=/api/v1
 VITE_USE_MOCKS=false
 ```
 
-Vite proxifie `/api` et `/sanctum` vers `http://localhost:8000`.
+Dans le conteneur frontend, Vite proxifie `/api` et `/sanctum` vers `http://backend:80`.
 
 pgAdmin : `admin@erp-eglise.com` / `admin`. Dans pgAdmin, l'hôte du serveur est `postgres`, port `5432`, base `erp_eglise`, utilisateur `erp_user`.
 
@@ -75,13 +75,7 @@ docker compose up -d --build
 docker compose exec backend php artisan migrate
 ```
 
-Puis le frontend, sur l'hôte :
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
+Le frontend est le service `frontend` du même Compose : http://localhost:3000. Le premier démarrage installe les dépendances npm dans le conteneur.
 
 Arrêt de ce projet seulement, sans supprimer les volumes :
 

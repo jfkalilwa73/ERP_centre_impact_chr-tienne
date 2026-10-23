@@ -35,6 +35,7 @@ import {
   listDemandes,
   subscribeDemandes,
 } from '@/features/notifications/store'
+import { ApparitionScroll } from '@/components/ui/ApparitionScroll'
 import { cn } from '@/lib/cn'
 import {
   getActivitesFamilleVersion,
@@ -170,6 +171,7 @@ export function AccueilTableaux({
       <div className="grid gap-4 lg:grid-cols-3">
         <Panneau
           className="lg:col-span-2"
+          decalage={0}
           titre="Cartographie des familles d'impact"
           sousTitre="Répartition géographique des foyers par zone d'influence."
         >
@@ -180,7 +182,7 @@ export function AccueilTableaux({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panneau titre="Contributions mensuelles" sousTitre="Offrandes et cotisations enregistrées.">
+        <Panneau decalage={0} titre="Contributions mensuelles" sousTitre="Offrandes et cotisations enregistrées.">
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={contributions} barCategoryGap="30%">
@@ -209,7 +211,7 @@ export function AccueilTableaux({
           </div>
         </Panneau>
 
-        <Panneau titre="Croissance de l'église" sousTitre="Effectif cumulé sur les douze derniers mois.">
+        <Panneau decalage={90} titre="Croissance de l'église" sousTitre="Effectif cumulé sur les douze derniers mois.">
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={croissance}>
@@ -225,7 +227,7 @@ export function AccueilTableaux({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Panneau titre="Répartition des membres" sousTitre="Hommes, femmes et enfants de moins de 18 ans.">
+        <Panneau decalage={0} titre="Répartition des membres" sousTitre="Hommes, femmes et enfants de moins de 18 ans.">
           <div className="flex flex-1 flex-col items-center justify-center gap-8">
             <div className="relative h-44 w-44 shrink-0">
               {totalMembres === 0 ? (
@@ -286,6 +288,7 @@ export function AccueilTableaux({
 
         <Panneau
           className="lg:col-span-2"
+          decalage={90}
           titre={`Calendrier des activités — ${calendrier.libelle}`}
           sousTitre="Vue mensuelle des programmes et événements."
           action={
@@ -394,6 +397,7 @@ function VueNotifications() {
 
   return (
     <Panneau
+      decalage={90}
       titre="Notifications"
       sousTitre="Messages et alertes de l'église."
       action={
@@ -434,16 +438,21 @@ function Panneau({
   sousTitre,
   action,
   className,
+  decalage = 0,
   children,
 }: {
   titre: string
   sousTitre?: string
   action?: ReactNode
   className?: string
+  decalage?: number
   children: ReactNode
 }) {
   return (
-    <section className={cn('flex min-w-0 flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]', className)}>
+    <ApparitionScroll
+      decalage={decalage}
+      className={cn('flex min-w-0 flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]', className)}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900">{titre}</h2>
@@ -452,7 +461,7 @@ function Panneau({
         {action}
       </div>
       <div className="mt-4 flex flex-1 flex-col">{children}</div>
-    </section>
+    </ApparitionScroll>
   )
 }
 

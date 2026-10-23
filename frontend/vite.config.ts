@@ -24,7 +24,7 @@ export default defineConfig({
     watch: {
       usePolling: true,
     },
-    // Le frontend tourne sur l'hôte. L'API Docker est publiée sur localhost:8000.
+    // Dans Compose, BACKEND_PROXY_TARGET vaut http://backend:80.
     proxy: {
       '/api': {
         target: process.env.BACKEND_PROXY_TARGET || 'http://localhost:8000',

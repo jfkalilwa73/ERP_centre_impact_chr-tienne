@@ -4,10 +4,13 @@ React 19 + TypeScript + Vite, aligné sur le contrat `openapi/openapi-phase-0.ya
 
 ## Démarrer
 
+Depuis la racine du dépôt :
+
 ```bash
-npm install
-npm run dev          # http://localhost:3000 — sur l'hôte, pas dans Docker
+docker compose up -d
 ```
+
+L'interface est servie par le conteneur `erp_centre_impact_chr-tienne-frontend` sur http://localhost:3000.
 
 | Commande               | Rôle                                                   |
 | ---------------------- | ------------------------------------------------------ |
@@ -36,16 +39,12 @@ corrige les erreurs de compilation qui en découlent.
 Le frontend est prêt à consommer le backend Laravel. La variable `VITE_USE_MOCKS`
 est positionnée à `false` dans `.env` : toutes les requêtes partent vers le vrai serveur.
 
-**Proxy Vite (développement)** : `vite.config.ts` redirige `/api/*` vers `http://localhost:8000`.
-Il n'y a donc **aucun problème CORS** en développement local — il suffit que le serveur
-Laravel tourne sur le port 8000.
+**Proxy Vite (développement)** : dans Docker, `vite.config.ts` redirige `/api/*` vers `http://backend:80`.
+Le navigateur appelle http://localhost:3000, donc il n'y a pas d'appel direct vers un autre port.
 
 ```bash
-# Pour démarrer avec le vrai backend :
-# 1. Depuis la racine du dépôt : API et base de CE projet
+# Depuis la racine du dépôt
 docker compose up -d
-# 2. Démarrer le frontend
-npm run dev
 ```
 
 **Réactiver les mocks** (backend indisponible) :

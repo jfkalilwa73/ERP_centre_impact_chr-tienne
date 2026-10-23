@@ -19,7 +19,7 @@ describe('pilotage local', () => {
     expect(
       contientJeuDemonstration({
         activites: { louange: [{ id: 'act-louange-culte' }] },
-      } as PilotageSnapshot),
+      } as unknown as PilotageSnapshot),
     ).toBe(true)
     expect(contientJeuDemonstration({ circulations: [], meta: { seeded: true } })).toBe(false)
   })

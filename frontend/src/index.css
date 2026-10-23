@@ -92,18 +92,44 @@
 @keyframes dialog-in {
   from {
     opacity: 0;
+    transform: translateY(18px) scale(0.98);
   }
   to {
     opacity: 1;
+    transform: none;
   }
 }
 
 @keyframes dialog-out {
   from {
     opacity: 1;
+    transform: none;
   }
   to {
     opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+@keyframes form-field-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes form-error-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -160,6 +186,54 @@
     grid-template-rows: 0fr;
     opacity: 0;
   }
+
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(1.75rem);
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  .scroll-reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  form > :where(*) {
+    animation: form-field-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  form > :where(*):nth-child(2) { animation-delay: 60ms; }
+  form > :where(*):nth-child(3) { animation-delay: 110ms; }
+  form > :where(*):nth-child(4) { animation-delay: 160ms; }
+  form > :where(*):nth-child(5) { animation-delay: 210ms; }
+  form > :where(*):nth-child(6) { animation-delay: 260ms; }
+  form > :where(*):nth-child(7) { animation-delay: 310ms; }
+  form > :where(*):nth-child(8) { animation-delay: 360ms; }
+  form > :where(*):nth-child(n + 9) { animation-delay: 400ms; }
+
+  .form-error {
+    animation: form-error-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  form :where(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']) {
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background-color 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  form :where(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']):focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(60, 1, 115, 0.1);
+  }
+
+  form :where(button):not(:disabled):active {
+    transform: scale(0.98);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -167,12 +241,23 @@
   .nav-overlay,
   .nav-drawer,
   .dialog-overlay,
-  .dialog-panel {
+  .dialog-panel,
+  form > :where(*),
+  .form-error {
     animation: none !important;
   }
 
-  .nav-accordion {
-    transition: none;
+  .nav-accordion,
+  .scroll-reveal,
+  form :where(input, select, textarea, button) {
+    transition: none !important;
+  }
+
+  .scroll-reveal,
+  form > :where(*) {
+    opacity: 1 !important;
+    transform: none !important;
+    translate: none !important;
   }
 }
 

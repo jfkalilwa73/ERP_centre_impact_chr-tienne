@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { Coins, Crown, HandCoins, Heart, Layers, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ApparitionScroll } from '@/components/ui/ApparitionScroll'
 import { ChargementCentre } from '@/components/ui/Chargement'
 import { useAccessScope } from '@/features/auth/accessScope'
 import { canSeePilotageDge } from '@/features/auth/orgRoles'
@@ -98,35 +99,38 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <DepartementBanner
-        prenom={
-          [user?.personne.prenom, user?.personne.nom].filter(Boolean).join(' ') ||
-          profil?.name ||
-          ''
-        }
-        message="Le tableau de bord de l'église."
-        compact
-        progressions={[
-          {
-            id: 'cultes',
-            label: 'Préparation des cultes',
-            valeur: cultes.valeur,
-            detail:
-              cultes.total === 0
-                ? 'Aucun point à cocher pour le moment.'
-                : cultes.faits === cultes.total
-                  ? 'Toutes les préparations sont cochées.'
-                  : undefined,
-            points: pointsCultes,
-            action: premierePreparation
-              ? { label: 'Compléter la préparation', to: premierePreparation.vers }
-              : undefined,
-          },
-        ]}
-      />
+      <ApparitionScroll>
+        <DepartementBanner
+          prenom={
+            [user?.personne.prenom, user?.personne.nom].filter(Boolean).join(' ') ||
+            profil?.name ||
+            ''
+          }
+          message="Le tableau de bord de l'église."
+          compact
+          progressions={[
+            {
+              id: 'cultes',
+              label: 'Préparation des cultes',
+              valeur: cultes.valeur,
+              detail:
+                cultes.total === 0
+                  ? 'Aucun point à cocher pour le moment.'
+                  : cultes.faits === cultes.total
+                    ? 'Toutes les préparations sont cochées.'
+                    : undefined,
+              points: pointsCultes,
+              action: premierePreparation
+                ? { label: 'Compléter la préparation', to: premierePreparation.vers }
+                : undefined,
+            },
+          ]}
+        />
+      </ApparitionScroll>
 
       {sansDroit && (
-        <Alert variant="warning" title="Vous n'avez aucun accès à l'application">
+        <ApparitionScroll>
+          <Alert variant="warning" title="Vous n'avez aucun accès à l'application">
           {sansRole ? (
             <p>
               Aucun rôle n'est rattaché à votre compte. Sans rôle, vous ne pouvez rien consulter
@@ -139,7 +143,8 @@ export function DashboardPage() {
               ou de lui ajouter des droits.
             </p>
           )}
-        </Alert>
+          </Alert>
+        </ApparitionScroll>
       )}
 
       {voitPilotage && pilotageEnChargement && (
@@ -148,40 +153,48 @@ export function DashboardPage() {
 
       {voitPilotage && !pilotageEnChargement && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <IndicateurCarte
-            label="Offrandes"
-            valeur={formatMontant(contributions.offrandes)}
-            indication={`+${formatMontant(contributions.offrandesMois)} ce mois`}
-            icon={HandCoins}
-            accent
-          />
-          <IndicateurCarte
-            label="Dîmes"
-            valeur={formatMontant(contributions.dimes)}
-            indication={`${
-              contributions.total === 0 ? 0 : Math.round((contributions.dimes / contributions.total) * 100)
-            }% des rentrées`}
-            icon={Coins}
-          />
-          {canMembres && (
+          <ApparitionScroll decalage={0}>
             <IndicateurCarte
-              label="Membres de l'église"
-              valeur={String(membresEglise)}
-              indication={indicationMois(nouvellesPersonnes)}
-              icon={Users}
+              label="Offrandes"
+              valeur={formatMontant(contributions.offrandes)}
+              indication={`+${formatMontant(contributions.offrandesMois)} ce mois`}
+              icon={HandCoins}
+              accent
             />
+          </ApparitionScroll>
+          <ApparitionScroll decalage={80}>
+            <IndicateurCarte
+              label="Dîmes"
+              valeur={formatMontant(contributions.dimes)}
+              indication={`${
+                contributions.total === 0 ? 0 : Math.round((contributions.dimes / contributions.total) * 100)
+              }% des rentrées`}
+              icon={Coins}
+            />
+          </ApparitionScroll>
+          {canMembres && (
+            <ApparitionScroll decalage={160}>
+              <IndicateurCarte
+                label="Membres de l'église"
+                valeur={String(membresEglise)}
+                indication={indicationMois(nouvellesPersonnes)}
+                icon={Users}
+              />
+            </ApparitionScroll>
           )}
           {canMembres && (
-            <IndicateurCarte
-              label="Responsables"
-              valeur={String(responsables)}
-              indication={
-                membresEglise === 0
-                  ? indicationMois(nouveauxResponsables)
-                  : `${partResponsables}% des membres`
-              }
-              icon={Crown}
-            />
+            <ApparitionScroll decalage={240}>
+              <IndicateurCarte
+                label="Responsables"
+                valeur={String(responsables)}
+                indication={
+                  membresEglise === 0
+                    ? indicationMois(nouveauxResponsables)
+                    : `${partResponsables}% des membres`
+                }
+                icon={Crown}
+              />
+            </ApparitionScroll>
           )}
         </div>
       )}
@@ -278,7 +291,9 @@ export function DashboardPage() {
       )}
 
       {voitPilotage && !pilotageEnChargement && unites.length > 0 && (
-        <PilotageConsolide unites={unites} entete={false} />
+        <ApparitionScroll>
+          <PilotageConsolide unites={unites} entete={false} />
+        </ApparitionScroll>
       )}
     </div>
   )
@@ -327,10 +342,10 @@ function IndicateurCarte({
 
 function UniteSection({ titre, children }: { titre: string; children: ReactNode }) {
   return (
-    <section>
+    <ApparitionScroll>
       <h2 className="text-sm font-semibold text-slate-900">{titre}</h2>
       <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{children}</div>
-    </section>
+    </ApparitionScroll>
   )
 }
 
