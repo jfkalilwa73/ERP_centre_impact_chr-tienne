@@ -26,10 +26,13 @@ import { tauxDepuisPresences } from '@/features/sprint1/presence'
 import { RapportsPanel } from '@/features/departements/RapportsPanel'
 import { StatCard } from '@/features/departements/StatCard'
 import { useAccessScope } from '@/features/auth/accessScope'
+import { UnitPageAccessDialog } from '@/features/auth/UnitPageAccessDialog'
+import { useUnitPageAccess } from '@/features/auth/unitPageAccess'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationFamille, Personne } from '@/types'
+import { ForbiddenPage } from '@/pages/ForbiddenPage'
 import { usePersonnes, usePersonnesFamilles } from '@/features/personnes/hooks'
 import {
   activitesFamilleApi,
@@ -58,12 +61,14 @@ export function FamilleDetailPage() {
   const [membreSearch, setMembreSearch] = useState('')
   const [roleDraft, setRoleDraft] = useState<RoleFamille>('Responsable')
   const [selectedPersonneId, setSelectedPersonneId] = useState('')
+  const [pageAccessPersonne, setPageAccessPersonne] = useState<Personne | null>(null)
 
   useSyncExternalStore(subscribeActivitesFamille, getActivitesFamilleVersion, getActivitesFamilleVersion)
 
   const user = useCurrentUser()
   const permissions = user?.permissions ?? []
   const { isScoped, ledFamilleIds } = useAccessScope()
+  const pageAccess = useUnitPageAccess('famille', familleId, user?.personne.idPersonne)
   const canManageFamilles = useHasPermission(PERMISSIONS.FAMILLES_UPDATE)
 
   const familleQuery = useFamille(familleId)
@@ -129,7 +134,10 @@ export function FamilleDetailPage() {
     useHasPermission(PERMISSIONS.RAPPORTS_CREATE) ||
     useHasPermission(PERMISSIONS.OBJECTIFS_MANAGE) ||
     leadsHere
-  const visibleTabs = TABS.filter((item) => !('permission' in item) || permissions.includes(item.permission))
+  const visibleTabs = TABS.filter((item) =>
+    pageAccess.canView(item.id, !('permission' in item) || permissions.includes(item.permission)),
+  )
+  const activeTab = visibleTabs.some((item) => item.id === tab) ? tab : visibleTabs[0]?.id
   const activites = familleId ? listActivitesFamille(familleId) : []
   const evolution = evolutionFamille(allAffectations)
   const evolutionActs = evolutionActivites(activites)
@@ -190,6 +198,8 @@ export function FamilleDetailPage() {
     if (!selectedPersonneId) return
     void applyRole(selectedPersonneId, roleDraft)
   }
+
+  if (!activeTab) return <ForbiddenPage />
 
   if (familleQuery.isLoading) {
     return (
@@ -275,10 +285,10 @@ export function FamilleDetailPage() {
             key={item.id}
             type="button"
             role="tab"
-            aria-selected={tab === item.id}
+            aria-selected={activeTab === item.id}
             className={cn(
               '-mb-px border-b-2 pb-3 text-sm font-medium',
-              tab === item.id
+              activeTab === item.id
                 ? 'border-gerbe-or text-slate-900'
                 : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
@@ -289,7 +299,7 @@ export function FamilleDetailPage() {
         ))}
       </div>
 
-      {tab === 'tableau' && (
+      {activeTab === 'tableau' && (
         <div className="flex flex-col gap-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
@@ -344,7 +354,7 @@ export function FamilleDetailPage() {
         </div>
       )}
 
-      {tab === 'membres' && familleId && (
+      {activeTab === 'membres' && familleId && (
         <EquipePanel
           departementId={familleId}
           membres={membres}
@@ -356,6 +366,7 @@ export function FamilleDetailPage() {
             unassignMutation.isPending ? unassignMutation.variables?.personneId : undefined
           }
           onApplyRole={(personneId, role) => void applyRole(personneId, role as RoleFamille)}
+          onManagePageAccess={canAssign ? setPageAccessPersonne : undefined}
           onUnassign={(personneId) =>
             unassignMutation.mutate({
               personneId,
@@ -365,7 +376,7 @@ export function FamilleDetailPage() {
         />
       )}
 
-      {tab === 'activites' && familleId && (
+      {activeTab === 'activites' && familleId && (
         <ActivitesPanel
           departementId={familleId}
           nomDepartement={famille.nom}
@@ -378,7 +389,7 @@ export function FamilleDetailPage() {
         />
       )}
 
-      {tab === 'budget' && familleId && (
+      {activeTab === 'budget' && familleId && (
         <BudgetPanel
           departementId={familleId}
           nomDepartement={famille.nom}
@@ -388,7 +399,7 @@ export function FamilleDetailPage() {
         />
       )}
 
-      {tab === 'rapports' && familleId && (
+      {activeTab === 'rapports' && familleId && (
         <RapportsPanel
           departementId={familleId}
           nomDepartement={famille.nom}
@@ -404,6 +415,20 @@ export function FamilleDetailPage() {
         <Alert variant="error" title="Mise à jour impossible">
           {assignMutation.error?.message ?? unassignMutation.error?.message}
         </Alert>
+      )}
+
+      {pageAccessPersonne && (
+        <UnitPageAccessDialog
+          open
+          kind="famille"
+          unitId={famille.idFamille}
+          unitName={famille.nom}
+          personneId={pageAccessPersonne.idPersonne}
+          personneName={personneName(pageAccessPersonne)}
+          onOpenChange={(open) => {
+            if (!open) setPageAccessPersonne(null)
+          }}
+        />
       )}
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>

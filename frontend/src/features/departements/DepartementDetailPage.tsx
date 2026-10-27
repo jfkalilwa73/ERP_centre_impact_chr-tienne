@@ -7,6 +7,8 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useAccessScope } from '@/features/auth/accessScope'
+import { UnitPageAccessDialog } from '@/features/auth/UnitPageAccessDialog'
+import { useUnitPageAccess } from '@/features/auth/unitPageAccess'
 import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -32,6 +34,7 @@ import { personneName } from './personneName'
 import { RapportsPanel } from './RapportsPanel'
 import { isLeadershipRole, roleDepartement, ROLES_EQUIPE, type RoleDepartement } from './roles'
 import { StatCard } from './StatCard'
+import { ForbiddenPage } from '@/pages/ForbiddenPage'
 
 const TABS = [
   { id: 'tableau', label: 'Synthèse' },
@@ -58,12 +61,14 @@ export function DepartementDetailPage() {
   const [membreSearch, setMembreSearch] = useState('')
   const [roleDraft, setRoleDraft] = useState<RoleDepartement>('Responsable')
   const [selectedPersonneId, setSelectedPersonneId] = useState('')
+  const [pageAccessPersonne, setPageAccessPersonne] = useState<Personne | null>(null)
 
   useSyncExternalStore(subscribeActivites, getActivitesVersion, getActivitesVersion)
 
   const user = useCurrentUser()
   const permissions = user?.permissions ?? []
   const { isScoped, ledDepartementIds } = useAccessScope()
+  const pageAccess = useUnitPageAccess('departement', departementId, user?.personne.idPersonne)
   const canManageDepartements = useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE)
 
   const departementQuery = useDepartement(departementId)
@@ -128,7 +133,10 @@ export function DepartementDetailPage() {
     useHasPermission(PERMISSIONS.RAPPORTS_CREATE) ||
     useHasPermission(PERMISSIONS.OBJECTIFS_MANAGE) ||
     leadsHere
-  const visibleTabs = TABS.filter((item) => !('permission' in item) || permissions.includes(item.permission))
+  const visibleTabs = TABS.filter((item) =>
+    pageAccess.canView(item.id, !('permission' in item) || permissions.includes(item.permission)),
+  )
+  const activeTab = visibleTabs.some((item) => item.id === tab) ? tab : visibleTabs[0]?.id
   const activites = departementId ? listActivites(departementId) : []
   const evolution = evolutionDepartement(allAffectations)
   const evolutionActs = evolutionActivites(activites)
@@ -173,6 +181,8 @@ export function DepartementDetailPage() {
     if (!selectedPersonneId) return
     void applyRole(selectedPersonneId, roleDraft)
   }
+
+  if (!activeTab) return <ForbiddenPage />
 
   if (departementQuery.isLoading) {
     return (
@@ -256,10 +266,10 @@ export function DepartementDetailPage() {
             key={item.id}
             type="button"
             role="tab"
-            aria-selected={tab === item.id}
+            aria-selected={activeTab === item.id}
             className={cn(
               '-mb-px border-b-2 pb-3 text-sm font-medium',
-              tab === item.id
+              activeTab === item.id
                 ? 'border-gerbe-or text-slate-900'
                 : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
@@ -270,7 +280,7 @@ export function DepartementDetailPage() {
         ))}
       </div>
 
-      {tab === 'tableau' && (
+      {activeTab === 'tableau' && (
         <div className="flex flex-col gap-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
@@ -324,7 +334,7 @@ export function DepartementDetailPage() {
         </div>
       )}
 
-      {tab === 'membres' && departementId && (
+      {activeTab === 'membres' && departementId && (
         <EquipePanel
           departementId={departementId}
           membres={membres}
@@ -336,6 +346,7 @@ export function DepartementDetailPage() {
             unassignMutation.isPending ? unassignMutation.variables?.personneId : undefined
           }
           onApplyRole={(personneId, role) => void applyRole(personneId, role)}
+          onManagePageAccess={canAssign ? setPageAccessPersonne : undefined}
           onUnassign={(personneId) =>
             unassignMutation.mutate({
               personneId,
@@ -345,7 +356,7 @@ export function DepartementDetailPage() {
         />
       )}
 
-      {tab === 'activites' && departementId && (
+      {activeTab === 'activites' && departementId && (
         <ActivitesPanel
           departementId={departementId}
           nomDepartement={departement.nom}
@@ -356,7 +367,7 @@ export function DepartementDetailPage() {
         />
       )}
 
-      {tab === 'budget' && departementId && (
+      {activeTab === 'budget' && departementId && (
         <BudgetPanel
           departementId={departementId}
           nomDepartement={departement.nom}
@@ -365,7 +376,7 @@ export function DepartementDetailPage() {
         />
       )}
 
-      {tab === 'rapports' && departementId && (
+      {activeTab === 'rapports' && departementId && (
         <RapportsPanel
           departementId={departementId}
           nomDepartement={departement.nom}
@@ -381,6 +392,20 @@ export function DepartementDetailPage() {
         <Alert variant="error" title="Mise à jour impossible">
           {assignMutation.error?.message ?? unassignMutation.error?.message}
         </Alert>
+      )}
+
+      {pageAccessPersonne && (
+        <UnitPageAccessDialog
+          open
+          kind="departement"
+          unitId={departement.idDepartement}
+          unitName={departement.nom}
+          personneId={pageAccessPersonne.idPersonne}
+          personneName={personneName(pageAccessPersonne)}
+          onOpenChange={(open) => {
+            if (!open) setPageAccessPersonne(null)
+          }}
+        />
       )}
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>

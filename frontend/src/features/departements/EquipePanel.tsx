@@ -28,6 +28,7 @@ type EquipePanelProps = {
   unassigningId?: string
   onApplyRole: (personneId: string, role: RoleDepartement) => void
   onUnassign: (personneId: string) => void
+  onManagePageAccess?: (personne: Personne) => void
 }
 
 const DISPONIBILITES: Disponibilite[] = ['disponible', 'partiel', 'indisponible']
@@ -42,6 +43,7 @@ export function EquipePanel({
   unassigningId,
   onApplyRole,
   onUnassign,
+  onManagePageAccess,
 }: EquipePanelProps) {
   useSyncExternalStore(subscribeEquipe, getEquipeVersion, getEquipeVersion)
 
@@ -58,7 +60,9 @@ export function EquipePanel({
                 <th className="px-4 py-3 font-medium">Rôle</th>
                 <th className="px-4 py-3 font-medium">Responsabilité</th>
                 <th className="px-4 py-3 font-medium">Disponibilité</th>
-                {canAssign && <th className="px-4 py-3 text-right font-medium">Actions</th>}
+                {(canAssign || onManagePageAccess) && (
+                  <th className="px-4 py-3 text-right font-medium">Accès et actions</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -149,17 +153,31 @@ export function EquipePanel({
                         disponibiliteLabel(fiche?.disponibilite ?? 'disponible')
                       )}
                     </td>
-                    {canAssign && (
+                    {(canAssign || onManagePageAccess) && (
                       <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                          isLoading={unassigningId === personne.idPersonne}
-                          onClick={() => onUnassign(personne.idPersonne)}
-                        >
-                          Retirer
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {onManagePageAccess && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              aria-label={`Gérer les pages visibles pour ${personneName(personne)}`}
+                              onClick={() => onManagePageAccess(personne)}
+                            >
+                              Pages
+                            </Button>
+                          )}
+                          {canAssign && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                              isLoading={unassigningId === personne.idPersonne}
+                              onClick={() => onUnassign(personne.idPersonne)}
+                            >
+                              Retirer
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
