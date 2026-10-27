@@ -7,7 +7,6 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useAccessScope } from '@/features/auth/accessScope'
-import { UnitPageAccessDialog } from '@/features/auth/UnitPageAccessDialog'
 import { useUnitPageAccess } from '@/features/auth/unitPageAccess'
 import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
 import { cn } from '@/lib/cn'
@@ -61,7 +60,6 @@ export function DepartementDetailPage() {
   const [membreSearch, setMembreSearch] = useState('')
   const [roleDraft, setRoleDraft] = useState<RoleDepartement>('Responsable')
   const [selectedPersonneId, setSelectedPersonneId] = useState('')
-  const [pageAccessPersonne, setPageAccessPersonne] = useState<Personne | null>(null)
 
   useSyncExternalStore(subscribeActivites, getActivitesVersion, getActivitesVersion)
 
@@ -346,7 +344,6 @@ export function DepartementDetailPage() {
             unassignMutation.isPending ? unassignMutation.variables?.personneId : undefined
           }
           onApplyRole={(personneId, role) => void applyRole(personneId, role)}
-          onManagePageAccess={canAssign ? setPageAccessPersonne : undefined}
           onUnassign={(personneId) =>
             unassignMutation.mutate({
               personneId,
@@ -392,20 +389,6 @@ export function DepartementDetailPage() {
         <Alert variant="error" title="Mise à jour impossible">
           {assignMutation.error?.message ?? unassignMutation.error?.message}
         </Alert>
-      )}
-
-      {pageAccessPersonne && (
-        <UnitPageAccessDialog
-          open
-          kind="departement"
-          unitId={departement.idDepartement}
-          unitName={departement.nom}
-          personneId={pageAccessPersonne.idPersonne}
-          personneName={personneName(pageAccessPersonne)}
-          onOpenChange={(open) => {
-            if (!open) setPageAccessPersonne(null)
-          }}
-        />
       )}
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>

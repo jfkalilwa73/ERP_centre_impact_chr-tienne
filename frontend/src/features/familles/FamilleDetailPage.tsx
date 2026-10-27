@@ -26,7 +26,6 @@ import { tauxDepuisPresences } from '@/features/sprint1/presence'
 import { RapportsPanel } from '@/features/departements/RapportsPanel'
 import { StatCard } from '@/features/departements/StatCard'
 import { useAccessScope } from '@/features/auth/accessScope'
-import { UnitPageAccessDialog } from '@/features/auth/UnitPageAccessDialog'
 import { useUnitPageAccess } from '@/features/auth/unitPageAccess'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -61,7 +60,6 @@ export function FamilleDetailPage() {
   const [membreSearch, setMembreSearch] = useState('')
   const [roleDraft, setRoleDraft] = useState<RoleFamille>('Responsable')
   const [selectedPersonneId, setSelectedPersonneId] = useState('')
-  const [pageAccessPersonne, setPageAccessPersonne] = useState<Personne | null>(null)
 
   useSyncExternalStore(subscribeActivitesFamille, getActivitesFamilleVersion, getActivitesFamilleVersion)
 
@@ -366,7 +364,6 @@ export function FamilleDetailPage() {
             unassignMutation.isPending ? unassignMutation.variables?.personneId : undefined
           }
           onApplyRole={(personneId, role) => void applyRole(personneId, role as RoleFamille)}
-          onManagePageAccess={canAssign ? setPageAccessPersonne : undefined}
           onUnassign={(personneId) =>
             unassignMutation.mutate({
               personneId,
@@ -415,20 +412,6 @@ export function FamilleDetailPage() {
         <Alert variant="error" title="Mise à jour impossible">
           {assignMutation.error?.message ?? unassignMutation.error?.message}
         </Alert>
-      )}
-
-      {pageAccessPersonne && (
-        <UnitPageAccessDialog
-          open
-          kind="famille"
-          unitId={famille.idFamille}
-          unitName={famille.nom}
-          personneId={pageAccessPersonne.idPersonne}
-          personneName={personneName(pageAccessPersonne)}
-          onOpenChange={(open) => {
-            if (!open) setPageAccessPersonne(null)
-          }}
-        />
       )}
 
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>

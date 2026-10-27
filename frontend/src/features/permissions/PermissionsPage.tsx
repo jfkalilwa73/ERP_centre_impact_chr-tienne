@@ -11,6 +11,7 @@ import { useHasPermission } from '@/stores/authStore'
 import type { Permission } from '@/types'
 import { PermissionAccesDialog } from './PermissionAccesDialog'
 import { PermissionFormDialog } from './PermissionFormDialog'
+import { UnitPageAccessManager } from './UnitPageAccessManager'
 import {
   useCreatePermission,
   useDeletePermission,
@@ -116,6 +117,8 @@ export function PermissionsPage() {
           </Button>
         )}
       </div>
+
+      {canManage && <UnitPageAccessManager />}
 
       <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
         <div className="relative max-w-sm flex-1">
