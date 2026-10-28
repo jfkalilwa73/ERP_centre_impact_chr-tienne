@@ -7,6 +7,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useSessionProfil } from '@/stores/authStore'
 import { useAccessScope } from '@/features/auth/accessScope'
 import { useUnreadDemandes } from '@/features/notifications/useUnreadDemandes'
+import { useDepartements, useDepartementsByIds } from '@/features/departements/hooks'
 import { canAccessDepartementUnit } from '@/features/departements/roles'
 import { useFamilles, useFamillesByIds } from '@/features/familles/hooks'
 import { canAccessFamilleUnit } from '@/features/familles/roles'
@@ -149,16 +150,23 @@ function DepartementsNav({
   catalogItems,
   onNavigate,
   collapsed,
+  open,
+  onToggle,
 }: {
   catalogItems: NavItem[]
   onNavigate?: () => void
   collapsed?: boolean
+  open: boolean
+  onToggle: (id: string) => void
 }) {
   const user = useCurrentUser()
   const userPermissions = useCurrentUser()?.permissions ?? []
   const sessionPermissions =
     (useSessionProfil() as { permissions?: string[] } | null)?.permissions ?? []
   const permissions = userPermissions.length > 0 ? userPermissions : sessionPermissions  
+  const canManageAll =
+    permissions.includes(PERMISSIONS.DEPARTEMENTS_UPDATE) ||
+    permissions.includes(PERMISSIONS.DEPARTEMENTS_CREATE)
   const canSeeCatalog = permissions.includes(PERMISSIONS.DEPARTEMENTS_READ)
   const affectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
   const ledIds = useMemo(
@@ -170,20 +178,89 @@ function DepartementsNav({
       ),
     [affectationsQuery.data],
   )
-  const loadingLeadership = !canSeeCatalog && affectationsQuery.isLoading
+  const departementsQuery = useDepartements({ page: 1, limit: 100 }, canSeeCatalog)
+  const ledDepartementQueries = useDepartementsByIds(canSeeCatalog ? [] : [...ledIds])
+  const catalog = canSeeCatalog
+    ? (departementsQuery.data?.data ?? [])
+    : ledDepartementQueries.flatMap((query) => (query.data ? [query.data] : []))
+  const departmentLinks: NavItem[] = catalog
+    .filter((departement) => departement.actif)
+    .filter((departement) => canManageAll || ledIds.has(departement.idDepartement))
+    .map((departement) => ({
+      to: `/departements/${departement.idDepartement}`,
+      label: departement.nom,
+      icon: Layers,
+    }))
+  const loadingDepartments = canSeeCatalog
+    ? departementsQuery.isLoading
+    : affectationsQuery.isLoading || ledDepartementQueries.some((query) => query.isLoading)
   const canOpenPage =
     catalogItems.length > 0 ||
     canSeePilotageDge(user) ||
     ledIds.size > 0 ||
-    loadingLeadership
+    loadingDepartments
   if (!canOpenPage) return null
 
+  const parentItem: NavItem = { to: '/departements', label: 'Départements', icon: Layers }
+  const panelId = 'departements-nav-list'
+
+  if (collapsed) {
+    return (
+      <>
+        <NavItemLink item={parentItem} onNavigate={onNavigate} collapsed />
+        {departmentLinks.map((item) => (
+          <NavItemLink key={item.to} item={item} onNavigate={onNavigate} collapsed />
+        ))}
+      </>
+    )
+  }
+
   return (
-    <NavItemLink
-      item={{ to: '/departements', label: 'Départements', icon: Layers }}
-      onNavigate={onNavigate}
-      collapsed={collapsed}
-    />
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-0.5">
+        <NavLink
+          to={parentItem.to}
+          onClick={onNavigate}
+          className={({ isActive }) => cn(linkClassName(isActive), 'min-w-0 flex-1')}
+        >
+          <Layers className="size-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1">Départements</span>
+        </NavLink>
+        {(departmentLinks.length > 0 || loadingDepartments) && (
+          <button
+            type="button"
+            aria-label={open ? 'Masquer les départements créés' : 'Afficher les départements créés'}
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={() => onToggle('departements')}
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/8 hover:text-white"
+          >
+            <ChevronDown
+              className={cn(
+                'size-4 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+                open && 'rotate-180',
+              )}
+              aria-hidden="true"
+            />
+          </button>
+        )}
+      </div>
+      <div
+        id={panelId}
+        className="nav-accordion"
+        data-open={open}
+        aria-hidden={!open}
+        inert={!open || undefined}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="flex flex-col gap-0.5">
+            {departmentLinks.map((item) => (
+              <NavItemLink key={item.to} item={item} onNavigate={onNavigate} nested />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -313,6 +390,8 @@ export function SidebarNav({ onNavigate, collapsed = false }: SidebarNavProps) {
               catalogItems={entry.children.filter(canSee)}
               onNavigate={onNavigate}
               collapsed={collapsed}
+              open={openGroupId === entry.id}
+              onToggle={toggleGroup}
             />
           )
         }
