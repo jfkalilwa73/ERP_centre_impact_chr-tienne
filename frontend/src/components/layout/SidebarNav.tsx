@@ -3,7 +3,9 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { ChevronDown, Heart, Layers } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { canSeePilotageDge } from '@/features/auth/orgRoles'
+import { applicationPageFromPath, useApplicationPageAccess } from '@/features/auth/applicationPageAccess'
 import { PERMISSIONS } from '@/lib/permissions'
+import type { ApplicationPageId } from '@/features/auth/unitPageAccess'
 import { useCurrentUser, useSessionProfil } from '@/stores/authStore'
 import { useAccessScope } from '@/features/auth/accessScope'
 import { useUnreadDemandes } from '@/features/notifications/useUnreadDemandes'
@@ -147,17 +149,21 @@ function CollapsibleNavGroup({
 }
 
 function DepartementsNav({
-  catalogItems,
   onNavigate,
   collapsed,
   open,
   onToggle,
+  canAccessList,
+  canAccessSuivi,
+  canAccessReports,
 }: {
-  catalogItems: NavItem[]
   onNavigate?: () => void
   collapsed?: boolean
   open: boolean
   onToggle: (id: string) => void
+  canAccessList: boolean
+  canAccessSuivi: boolean
+  canAccessReports: boolean
 }) {
   const user = useCurrentUser()
   const userPermissions = useCurrentUser()?.permissions ?? []
@@ -194,14 +200,20 @@ function DepartementsNav({
   const loadingDepartments = canSeeCatalog
     ? departementsQuery.isLoading
     : affectationsQuery.isLoading || ledDepartementQueries.some((query) => query.isLoading)
+  const canOpenDgePage =
+    canSeePilotageDge(user) && (canAccessSuivi || canAccessReports)
   const canOpenPage =
-    catalogItems.length > 0 ||
-    canSeePilotageDge(user) ||
-    ledIds.size > 0 ||
-    loadingDepartments
+    canAccessList || canOpenDgePage || departmentLinks.length > 0 || loadingDepartments
   if (!canOpenPage) return null
 
-  const parentItem: NavItem = { to: '/departements', label: 'Départements', icon: Layers }
+  const parentTarget = canAccessList
+    ? '/departements'
+    : canSeePilotageDge(user) && canAccessSuivi
+      ? '/departements/suivi'
+      : canSeePilotageDge(user) && canAccessReports
+        ? '/departements/rapports'
+        : departmentLinks[0]?.to ?? '/departements'
+  const parentItem: NavItem = { to: parentTarget, label: 'Départements', icon: Layers }
   const panelId = 'departements-nav-list'
 
   if (collapsed) {
@@ -265,17 +277,21 @@ function DepartementsNav({
 }
 
 function FamillesNav({
-  catalogItems,
   onNavigate,
   collapsed,
   open,
   onToggle,
+  canAccessList,
+  canAccessSuivi,
+  canAccessReports,
 }: {
-  catalogItems: NavItem[]
   onNavigate?: () => void
   collapsed?: boolean
   open: boolean
   onToggle: (id: string) => void
+  canAccessList: boolean
+  canAccessSuivi: boolean
+  canAccessReports: boolean
 }) {
   const user = useCurrentUser()
   const userPermissions = useCurrentUser()?.permissions ?? []
@@ -312,15 +328,21 @@ function FamillesNav({
   const loadingFamilies = canSeeCatalog
     ? famillesQuery.isLoading
     : affectationsQuery.isLoading || ledFamilleQueries.some((query) => query.isLoading)
+  const canOpenDgePage =
+    canSeePilotageDge(user) && (canAccessSuivi || canAccessReports)
   const canOpenPage =
-    catalogItems.length > 0 ||
-    canSeePilotageDge(user) ||
-    ledIds.size > 0 ||
-    loadingFamilies
+    canAccessList || canOpenDgePage || familleLinks.length > 0 || loadingFamilies
   if (!canOpenPage) return null
 
+  const parentTarget = canAccessList
+    ? '/familles'
+    : canSeePilotageDge(user) && canAccessSuivi
+      ? '/familles/suivi'
+      : canSeePilotageDge(user) && canAccessReports
+        ? '/familles/rapports'
+        : familleLinks[0]?.to ?? '/familles'
   const parentItem: NavItem = {
-    to: '/familles',
+    to: parentTarget,
     label: "Familles d'impact",
     icon: Heart,
   }
@@ -393,6 +415,7 @@ export function SidebarNav({ onNavigate, collapsed = false }: SidebarNavProps) {
     (useSessionProfil() as { permissions?: string[] } | null)?.permissions ?? []
   const permissions = userPermissions.length > 0 ? userPermissions : sessionPermissions  
   const { isScoped } = useAccessScope()
+  const applicationPageAccess = useApplicationPageAccess()
   const routeGroupId = groupIdFromPath(location.pathname)
   const [manualOpen, setManualOpen] = useState<{ path: string; id: string | null } | null>(null)
   const openGroupId =
@@ -407,21 +430,28 @@ export function SidebarNav({ onNavigate, collapsed = false }: SidebarNavProps) {
 
   const canSee = (item: NavItem) => {
     if (isScoped && (item.to === '/' || item.to === '/personnes')) return false
-    return !item.permission || permissions.includes(item.permission)
+    if (item.permission && !permissions.includes(item.permission)) return false
+    const page = applicationPageFromPath(item.to)
+    return page === null || applicationPageAccess.canView(page as ApplicationPageId)
   }
 
   return (
     <nav aria-label="Navigation principale" className="flex flex-col gap-1">
       {navigation.map((entry) => {
         if (isNavGroup(entry) && entry.id === 'departements') {
+          const canAccessDepartmentRoutes =
+            permissions.includes(PERMISSIONS.DEPARTEMENTS_READ) ||
+            permissions.includes(PERMISSIONS.ROLES_MANAGE)
           return (
             <DepartementsNav
               key={entry.id}
-              catalogItems={entry.children.filter(canSee)}
               onNavigate={onNavigate}
               collapsed={collapsed}
               open={openGroupId === entry.id}
               onToggle={toggleGroup}
+              canAccessList={canAccessDepartmentRoutes && applicationPageAccess.canView('departements')}
+              canAccessSuivi={canAccessDepartmentRoutes && applicationPageAccess.canView('departements-suivi')}
+              canAccessReports={canAccessDepartmentRoutes && applicationPageAccess.canView('departements-rapports')}
             />
           )
         }
@@ -430,11 +460,13 @@ export function SidebarNav({ onNavigate, collapsed = false }: SidebarNavProps) {
           return (
             <FamillesNav
               key={entry.id}
-              catalogItems={entry.children.filter(canSee)}
               onNavigate={onNavigate}
               collapsed={collapsed}
               open={openGroupId === entry.id}
               onToggle={toggleGroup}
+              canAccessList={permissions.includes(PERMISSIONS.FAMILLES_READ) && applicationPageAccess.canView('familles')}
+              canAccessSuivi={permissions.includes(PERMISSIONS.FAMILLES_READ) && applicationPageAccess.canView('familles-suivi')}
+              canAccessReports={permissions.includes(PERMISSIONS.FAMILLES_READ) && applicationPageAccess.canView('familles-rapports')}
             />
           )
         }

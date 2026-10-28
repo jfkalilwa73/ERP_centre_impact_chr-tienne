@@ -2,6 +2,23 @@ import { useMemo, useSyncExternalStore } from 'react'
 
 export type UnitAccessKind = 'departement' | 'famille'
 
+export const APPLICATION_PAGES = [
+  { id: 'accueil', label: 'Accueil', path: '/' },
+  { id: 'notifications', label: 'Notifications', path: '/notifications' },
+  { id: 'personnes', label: 'Personnes', path: '/personnes' },
+  { id: 'departements', label: 'Départements', path: '/departements' },
+  { id: 'departements-suivi', label: 'Suivi DGE des départements', path: '/departements/suivi' },
+  { id: 'departements-rapports', label: 'Rapports reçus des départements', path: '/departements/rapports' },
+  { id: 'familles', label: "Familles d’impact", path: '/familles' },
+  { id: 'familles-suivi', label: 'Suivi DGE des familles', path: '/familles/suivi' },
+  { id: 'familles-rapports', label: 'Rapports reçus des familles', path: '/familles/rapports' },
+  { id: 'comptes', label: 'Comptes', path: '/comptes' },
+  { id: 'sites', label: 'Sites', path: '/sites' },
+  { id: 'roles', label: 'Rôles', path: '/roles' },
+  { id: 'permissions', label: 'Permissions', path: '/permissions' },
+  { id: 'audit', label: 'Audit', path: '/audit' },
+] as const
+
 export const UNIT_DETAIL_PAGES = [
   { id: 'tableau', label: 'Synthèse' },
   { id: 'membres', label: 'Membres' },
@@ -11,12 +28,15 @@ export const UNIT_DETAIL_PAGES = [
 ] as const
 
 export type UnitDetailPageId = (typeof UNIT_DETAIL_PAGES)[number]['id']
+export type ApplicationPageId = (typeof APPLICATION_PAGES)[number]['id']
+export type UnitPageId = UnitDetailPageId | ApplicationPageId
 
-type SavedPageRule = { pages: string[] }
+type SavedPageRule = { pages: string[]; applicationPagesConfigured?: boolean }
 type SavedPageRules = Record<string, SavedPageRule>
 
 const STORAGE_KEY = 'erp-icc:unit-page-access:v1'
 const listeners = new Set<() => void>()
+const EMPTY_SNAPSHOT = '{}'
 
 function readSnapshot(): string {
   try {
@@ -58,26 +78,66 @@ function isPageId(value: string): value is UnitDetailPageId {
   return UNIT_DETAIL_PAGES.some((page) => page.id === value)
 }
 
+function isApplicationPageId(value: string): value is ApplicationPageId {
+  return APPLICATION_PAGES.some((page) => page.id === value)
+}
+
+function isUnitPageId(value: string): value is UnitPageId {
+  return isPageId(value) || isApplicationPageId(value)
+}
+
 export function getUnitPageRule(
   kind: UnitAccessKind,
   unitId: string,
   personneId: string,
-): UnitDetailPageId[] | null {
+): UnitPageId[] | null {
   const rule = parseRules(readSnapshot())[ruleKey(kind, unitId, personneId)]
   if (!rule || !Array.isArray(rule.pages)) return null
 
-  return [...new Set(rule.pages.filter((page): page is string => typeof page === 'string').filter(isPageId))]
+  return [
+    ...new Set(
+      rule.pages
+        .filter((page): page is string => typeof page === 'string')
+        .filter(isUnitPageId),
+    ),
+  ]
+}
+
+export function getUnitApplicationPageRule(
+  kind: UnitAccessKind,
+  unitId: string,
+  personneId: string,
+  snapshot = readSnapshot(),
+): ApplicationPageId[] | null {
+  const rule = parseRules(snapshot)[ruleKey(kind, unitId, personneId)]
+  if (!rule || rule.applicationPagesConfigured !== true || !Array.isArray(rule.pages)) return null
+
+  return [
+    ...new Set(
+      rule.pages
+        .filter((page): page is string => typeof page === 'string')
+        .filter(isApplicationPageId),
+    ),
+  ]
+}
+
+export function useUnitPageRulesSnapshot() {
+  return useSyncExternalStore(subscribe, readSnapshot, () => EMPTY_SNAPSHOT)
 }
 
 export function saveUnitPageRule(
   kind: UnitAccessKind,
   unitId: string,
   personneId: string,
-  pages: readonly UnitDetailPageId[],
+  pages: readonly UnitPageId[],
+  applicationPagesConfigured = true,
 ): boolean {
   try {
     const current = parseRules(readSnapshot())
-    current[ruleKey(kind, unitId, personneId)] = { pages: [...new Set(pages)] }
+    current[ruleKey(kind, unitId, personneId)] = {
+      pages: [...new Set(pages)],
+      applicationPagesConfigured,
+    }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
     listeners.forEach((listener) => listener())
     return true
@@ -99,7 +159,7 @@ export function clearUnitPageRule(kind: UnitAccessKind, unitId: string, personne
 }
 
 export function useUnitPageAccess(kind: UnitAccessKind, unitId?: string, personneId?: string) {
-  const snapshot = useSyncExternalStore(subscribe, readSnapshot, () => '{}')
+  const snapshot = useUnitPageRulesSnapshot()
   const pages = useMemo(() => {
     if (!unitId || !personneId) return null
     const rule = parseRules(snapshot)[ruleKey(kind, unitId, personneId)]

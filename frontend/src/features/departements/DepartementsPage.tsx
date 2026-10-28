@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { useAccessScope } from '@/features/auth/accessScope'
+import { applicationPageFromPath, useApplicationPageAccess } from '@/features/auth/applicationPageAccess'
 import { canSeePilotageDge, isMembreDge } from '@/features/auth/orgRoles'
 import { useComptes } from '@/features/comptes/hooks'
 import {
@@ -52,6 +53,7 @@ function personneName(personne: Personne) {
 
 export function DepartementsPage() {
   const location = useLocation()
+  const applicationPageAccess = useApplicationPageAccess()
   const vue = location.pathname.endsWith('/suivi')
     ? 'suivi'
     : location.pathname.endsWith('/rapports')
@@ -324,7 +326,10 @@ export function DepartementsPage() {
       {voitPilotage && (
         <div>
           <div role="tablist" aria-label="Sections DGE" className="flex flex-wrap gap-6 border-b border-slate-200">
-            {DGE_VUES.map((item) => (
+            {DGE_VUES.filter((item) => {
+              const page = applicationPageFromPath(item.to)
+              return page !== null && applicationPageAccess.canView(page)
+            }).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}

@@ -68,7 +68,7 @@ export function UnitPageAccessManager() {
         <h2 className="text-lg font-semibold text-slate-900">Accès aux pages par unité</h2>
         <p className="mt-1 text-sm text-slate-500">
           Choisissez une personne affectée à un département ou à une famille, puis définissez les pages
-          de son tableau de bord qu’elle peut voir.
+          de son unité et les pages générales de l’application qu’elle peut ouvrir.
         </p>
       </div>
 

@@ -24,6 +24,7 @@ import { DepartementAccessRoute } from './DepartementAccessRoute'
 import { FamilleAccessRoute } from './FamilleAccessRoute'
 import { PilotageDgeRoute } from './PilotageDgeRoute'
 import { SitesPage } from '@/features/sites/SitesPage'  
+import { AppPageAccessRoute } from './AppPageAccessRoute'
 
 export function AppRoutes() {
   return (
@@ -34,64 +35,66 @@ export function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route index element={<DashboardPage />} />
+          <Route element={<AppPageAccessRoute />}>
+            <Route index element={<DashboardPage />} />
 
-          <Route element={<PermissionRoute permission={PERMISSIONS.DEMANDES_READ} />}>
-            <Route path="notifications" element={<NotificationsPage />} />
-          </Route>
-
-          <Route element={<PermissionRoute permission={PERMISSIONS.MEMBRES_READ} />}>
-            <Route path="personnes" element={<PersonnesPage />} />
-            <Route path="personnes/:personneId" element={<PersonneDetailPage />} />
-          </Route>
-
-          <Route element={<PermissionRoute permission={PERMISSIONS.COMPTES_READ} />}>
-            <Route path="comptes" element={<ComptesPage />} />
-            <Route path="comptes/:compteId" element={<CompteDetailPage />} />
-          </Route>
-
-          <Route element={<PermissionRoute permission={[PERMISSIONS.DEPARTEMENTS_READ, PERMISSIONS.ROLES_MANAGE]} />}>
-            <Route path="departements" element={<DepartementsPage />} />
-            <Route element={<PilotageDgeRoute />}>
-              <Route path="departements/suivi" element={<DepartementsPage />} />
-              <Route path="departements/rapports" element={<DepartementsPage />} />
+            <Route element={<PermissionRoute permission={PERMISSIONS.DEMANDES_READ} />}>
+              <Route path="notifications" element={<NotificationsPage />} />
             </Route>
-          </Route>
-          <Route element={<DepartementAccessRoute />}>
-            <Route path="departements/:departementId" element={<DepartementDetailPage />} />
-          </Route>
 
-          <Route element={<PermissionRoute permission={PERMISSIONS.FAMILLES_READ} />}>
-            <Route path="familles" element={<FamillesPage />} />
-            <Route element={<PilotageDgeRoute />}>
-              <Route path="familles/suivi" element={<FamillesPage />} />
-              <Route path="familles/rapports" element={<FamillesPage />} />
+            <Route element={<PermissionRoute permission={PERMISSIONS.MEMBRES_READ} />}>
+              <Route path="personnes" element={<PersonnesPage />} />
+              <Route path="personnes/:personneId" element={<PersonneDetailPage />} />
             </Route>
-          </Route>
-          <Route element={<FamilleAccessRoute />}>
-            <Route path="familles/:familleId" element={<FamilleDetailPage />} />
-          </Route>
 
-          <Route element={<PermissionRoute permission={PERMISSIONS.ROLES_MANAGE} />}>
-            <Route path="sites" element={<SitesPage />} />
-          </Route>
+            <Route element={<PermissionRoute permission={PERMISSIONS.COMPTES_READ} />}>
+              <Route path="comptes" element={<ComptesPage />} />
+              <Route path="comptes/:compteId" element={<CompteDetailPage />} />
+            </Route>
 
-          <Route
-            element={
-              <PermissionRoute permission={[PERMISSIONS.ROLES_READ, PERMISSIONS.ROLES_MANAGE]} />
-            }
-          >
-            <Route path="roles" element={<RolesPage />} />
-            <Route path="roles/:roleId" element={<RoleDetailPage />} />
-            <Route path="permissions" element={<PermissionsPage />} />
-          </Route>
+            <Route element={<PermissionRoute permission={[PERMISSIONS.DEPARTEMENTS_READ, PERMISSIONS.ROLES_MANAGE]} />}>
+              <Route path="departements" element={<DepartementsPage />} />
+              <Route element={<PilotageDgeRoute />}>
+                <Route path="departements/suivi" element={<DepartementsPage />} />
+                <Route path="departements/rapports" element={<DepartementsPage />} />
+              </Route>
+            </Route>
+            <Route element={<DepartementAccessRoute />}>
+              <Route path="departements/:departementId" element={<DepartementDetailPage />} />
+            </Route>
 
-          <Route element={<PermissionRoute permission={[PERMISSIONS.AUDIT_READ, PERMISSIONS.ROLES_MANAGE]} />}>
-            <Route path="audit" element={<AuditPage />} />
-            <Route path="audit/:auditId" element={<AuditDetailPage />} />
-          </Route>
+            <Route element={<PermissionRoute permission={PERMISSIONS.FAMILLES_READ} />}>
+              <Route path="familles" element={<FamillesPage />} />
+              <Route element={<PilotageDgeRoute />}>
+                <Route path="familles/suivi" element={<FamillesPage />} />
+                <Route path="familles/rapports" element={<FamillesPage />} />
+              </Route>
+            </Route>
+            <Route element={<FamilleAccessRoute />}>
+              <Route path="familles/:familleId" element={<FamilleDetailPage />} />
+            </Route>
 
-          <Route path="*" element={<NotFoundPage />} />
+            <Route element={<PermissionRoute permission={PERMISSIONS.ROLES_MANAGE} />}>
+              <Route path="sites" element={<SitesPage />} />
+            </Route>
+
+            <Route
+              element={
+                <PermissionRoute permission={[PERMISSIONS.ROLES_READ, PERMISSIONS.ROLES_MANAGE]} />
+              }
+            >
+              <Route path="roles" element={<RolesPage />} />
+              <Route path="roles/:roleId" element={<RoleDetailPage />} />
+              <Route path="permissions" element={<PermissionsPage />} />
+            </Route>
+
+            <Route element={<PermissionRoute permission={[PERMISSIONS.AUDIT_READ, PERMISSIONS.ROLES_MANAGE]} />}>
+              <Route path="audit" element={<AuditPage />} />
+              <Route path="audit/:auditId" element={<AuditDetailPage />} />
+            </Route>
+
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
         </Route>
       </Route>
     </Routes>

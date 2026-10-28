@@ -5,11 +5,13 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { showSuccessFeedback } from '@/lib/successFeedback'
 import {
   clearUnitPageRule,
+  getUnitApplicationPageRule,
   getUnitPageRule,
+  APPLICATION_PAGES,
   saveUnitPageRule,
   UNIT_DETAIL_PAGES,
   type UnitAccessKind,
-  type UnitDetailPageId,
+  type UnitPageId,
 } from './unitPageAccess'
 
 type UnitPageAccessDialogProps = {
@@ -31,8 +33,9 @@ export function UnitPageAccessDialog({
   personneName,
   onOpenChange,
 }: UnitPageAccessDialogProps) {
-  const [selectedPages, setSelectedPages] = useState<UnitDetailPageId[]>([])
+  const [selectedPages, setSelectedPages] = useState<UnitPageId[]>([])
   const [configured, setConfigured] = useState(false)
+  const [applicationPagesEnabled, setApplicationPagesEnabled] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,17 +43,20 @@ export function UnitPageAccessDialog({
     const current = getUnitPageRule(kind, unitId, personneId)
     setConfigured(current !== null)
     setSelectedPages(current ?? [])
+    setApplicationPagesEnabled(
+      current === null || getUnitApplicationPageRule(kind, unitId, personneId) !== null,
+    )
     setError(null)
   }, [kind, open, personneId, unitId])
 
-  const togglePage = (page: UnitDetailPageId) => {
+  const togglePage = (page: UnitPageId) => {
     setSelectedPages((current) =>
       current.includes(page) ? current.filter((item) => item !== page) : [...current, page],
     )
   }
 
   const save = () => {
-    if (!saveUnitPageRule(kind, unitId, personneId, selectedPages)) {
+    if (!saveUnitPageRule(kind, unitId, personneId, selectedPages, applicationPagesEnabled)) {
       setError('Le navigateur n’a pas pu enregistrer ces réglages locaux.')
       return
     }
@@ -80,14 +86,16 @@ export function UnitPageAccessDialog({
           </Alert>
 
           <p className="text-sm text-slate-600">
-            Cochez les pages que cette personne peut ouvrir pour cette unité. Une fois enregistré,
-            seules les pages cochées seront affichées.
+            Cochez les pages du tableau de bord de cette unité que cette personne peut ouvrir. Vous pouvez aussi
+            appliquer une liste aux pages générales de l’application.
           </p>
 
           {error && <Alert variant="error" title="Enregistrement impossible">{error}</Alert>}
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-sm font-semibold text-slate-900">Pages du tableau de bord</legend>
+            <legend className="mb-1 text-sm font-semibold text-slate-900">
+              Pages du tableau de bord de l’unité
+            </legend>
             {UNIT_DETAIL_PAGES.map((page) => (
               <label
                 key={page.id}
@@ -103,6 +111,46 @@ export function UnitPageAccessDialog({
               </label>
             ))}
           </fieldset>
+
+          <label className="flex items-start gap-3 rounded-lg border border-slate-200 px-3 py-3 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={applicationPagesEnabled}
+              onChange={(event) => setApplicationPagesEnabled(event.target.checked)}
+              className="mt-0.5 size-4 rounded border-slate-300 text-brand-600"
+            />
+            <span>
+              Appliquer aussi une règle aux pages générales de l’application
+              <span className="mt-1 block text-xs text-slate-500">
+                Si plusieurs unités ont une règle, une page générale est affichée lorsqu’au moins une règle active
+                l’autorise.
+              </span>
+            </span>
+          </label>
+
+          {applicationPagesEnabled && (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-sm font-semibold text-slate-900">Pages de l’application</legend>
+              {APPLICATION_PAGES.map((page) => (
+                <label
+                  key={page.id}
+                  className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPages.includes(page.id)}
+                    onChange={() => togglePage(page.id)}
+                    className="size-4 rounded border-slate-300 text-brand-600"
+                  />
+                  {page.label}
+                </label>
+              ))}
+              <p className="text-xs text-slate-500">
+                Seules les pages cochées seront affichées. Cette règle peut retirer un accès accordé par le rôle,
+                mais ne peut pas accorder un droit absent du rôle.
+              </p>
+            </fieldset>
+          )}
 
           {!configured && (
             <p className="text-xs text-slate-500">
