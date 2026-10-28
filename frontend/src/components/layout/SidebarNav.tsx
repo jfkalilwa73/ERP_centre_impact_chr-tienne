@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { ChevronDown, FileText, Heart, Layers, List } from 'lucide-react'
+import { ChevronDown, Heart, Layers } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { canSeePilotageDge } from '@/features/auth/orgRoles'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -282,7 +282,9 @@ function FamillesNav({
   const sessionPermissions =
     (useSessionProfil() as { permissions?: string[] } | null)?.permissions ?? []
   const permissions = userPermissions.length > 0 ? userPermissions : sessionPermissions  
-  const canManageAll =permissions.includes(PERMISSIONS.FAMILLES_UPDATE) ||permissions.includes(PERMISSIONS.FAMILLES_CREATE)
+  const canManageAll =
+    permissions.includes(PERMISSIONS.FAMILLES_UPDATE) ||
+    permissions.includes(PERMISSIONS.FAMILLES_CREATE)
   const canSeeCatalog = permissions.includes(PERMISSIONS.FAMILLES_READ)
   const affectationsQuery = usePersonneFamilles(user?.personne.idPersonne)
   const ledIds = useMemo(
@@ -299,29 +301,6 @@ function FamillesNav({
   const catalog = canSeeCatalog
     ? (famillesQuery.data?.data ?? [])
     : ledFamilleQueries.flatMap((query) => (query.data ? [query.data] : []))
-  const catalogLinks: NavItem[] = canSeePilotageDge(user)
-    ? [
-        {
-          to: '/familles',
-          label: "Toutes les familles d'impact",
-          icon: List,
-          permission: PERMISSIONS.FAMILLES_READ,
-          end: true,
-        },
-        {
-          to: '/familles/suivi',
-          label: 'Suivi DGE',
-          icon: List,
-          permission: PERMISSIONS.FAMILLES_READ,
-        },
-        {
-          to: '/familles/rapports',
-          label: 'Rapports reçus',
-          icon: FileText,
-          permission: PERMISSIONS.FAMILLES_READ,
-        },
-      ]
-    : catalogItems
   const familleLinks: NavItem[] = catalog
     .filter((famille) => famille.actif)
     .filter((famille) => canManageAll || ledIds.has(famille.idFamille))
@@ -330,29 +309,80 @@ function FamillesNav({
       label: famille.nom,
       icon: Heart,
     }))
-  const children = [...catalogLinks, ...familleLinks]
-  const loadingLeadership =
-    !canSeeCatalog &&
-    (affectationsQuery.isLoading || ledFamilleQueries.some((query) => query.isLoading))
-  if (children.length === 0 && !loadingLeadership) return null
+  const loadingFamilies = canSeeCatalog
+    ? famillesQuery.isLoading
+    : affectationsQuery.isLoading || ledFamilleQueries.some((query) => query.isLoading)
+  const canOpenPage =
+    catalogItems.length > 0 ||
+    canSeePilotageDge(user) ||
+    ledIds.size > 0 ||
+    loadingFamilies
+  if (!canOpenPage) return null
+
+  const parentItem: NavItem = {
+    to: '/familles',
+    label: "Familles d'impact",
+    icon: Heart,
+  }
+  const panelId = 'familles-nav-list'
 
   if (collapsed) {
-    return children.map((item) => (
-      <NavItemLink key={item.to} item={item} onNavigate={onNavigate} collapsed />
-    ))
+    return (
+      <>
+        <NavItemLink item={parentItem} onNavigate={onNavigate} collapsed />
+        {familleLinks.map((item) => (
+          <NavItemLink key={item.to} item={item} onNavigate={onNavigate} collapsed />
+        ))}
+      </>
+    )
   }
 
   return (
-    <CollapsibleNavGroup
-      id="familles"
-      label="Familles d'impact"
-      icon={Heart}
-      open={open}
-      onToggle={onToggle}
-      onNavigate={onNavigate}
-    >
-      {children}
-    </CollapsibleNavGroup>
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-0.5">
+        <NavLink
+          to={parentItem.to}
+          onClick={onNavigate}
+          className={({ isActive }) => cn(linkClassName(isActive), 'min-w-0 flex-1')}
+        >
+          <Heart className="size-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1">Familles d'impact</span>
+        </NavLink>
+        {(familleLinks.length > 0 || loadingFamilies) && (
+          <button
+            type="button"
+            aria-label={open ? 'Masquer les familles créées' : 'Afficher les familles créées'}
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={() => onToggle('familles')}
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/8 hover:text-white"
+          >
+            <ChevronDown
+              className={cn(
+                'size-4 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+                open && 'rotate-180',
+              )}
+              aria-hidden="true"
+            />
+          </button>
+        )}
+      </div>
+      <div
+        id={panelId}
+        className="nav-accordion"
+        data-open={open}
+        aria-hidden={!open}
+        inert={!open || undefined}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="flex flex-col gap-0.5">
+            {familleLinks.map((item) => (
+              <NavItemLink key={item.to} item={item} onNavigate={onNavigate} nested />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

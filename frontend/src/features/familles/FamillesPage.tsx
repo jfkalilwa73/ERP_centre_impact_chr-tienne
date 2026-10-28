@@ -28,7 +28,7 @@ import { roleFamille } from './roles'
 import { toFamilleCreate, toFamilleUpdate, type FamilleFormValues } from './schema'
 
 const DGE_VUES = [
-  { to: '/familles', label: 'Liste', end: true },
+  { to: '/familles', label: "Toutes les familles d'impact", end: true },
   { to: '/familles/suivi', label: 'Suivi DGE' },
   { to: '/familles/rapports', label: 'Rapports reçus' },
 ] as const
