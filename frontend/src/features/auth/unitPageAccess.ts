@@ -86,6 +86,19 @@ function isUnitPageId(value: string): value is UnitPageId {
   return isPageId(value) || isApplicationPageId(value)
 }
 
+export function hasUnitApplicationPageRuleForPerson(
+  personneId: string,
+  snapshot = readSnapshot(),
+): boolean {
+  const suffix = `:${encodeURIComponent(personneId)}`
+  return Object.entries(parseRules(snapshot)).some(
+    ([key, rule]) =>
+      (key.startsWith('departement:') || key.startsWith('famille:')) &&
+      key.endsWith(suffix) &&
+      rule.applicationPagesConfigured === true,
+  )
+}
+
 export function getUnitPageRule(
   kind: UnitAccessKind,
   unitId: string,

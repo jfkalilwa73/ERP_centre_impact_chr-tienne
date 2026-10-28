@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import {
   getUnitApplicationPageRule,
+  hasUnitApplicationPageRuleForPerson,
   useUnitPageRulesSnapshot,
   type ApplicationPageId,
 } from './unitPageAccess'
@@ -63,7 +64,8 @@ export function useApplicationPageAccess() {
     )
   }, [departementsQuery.data, famillesQuery.data, personneId, snapshot])
 
-  const isLoading = Boolean(personneId) && (departementsQuery.isLoading || famillesQuery.isLoading)
+  const needsUnitRules = Boolean(personneId) && hasUnitApplicationPageRuleForPerson(personneId!, snapshot)
+  const isLoading = needsUnitRules && (departementsQuery.isLoading || famillesQuery.isLoading)
 
   return {
     isLoading,

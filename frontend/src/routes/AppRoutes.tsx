@@ -22,6 +22,7 @@ import { GuestRoute, ProtectedRoute } from './ProtectedRoute'
 import { PermissionRoute } from './PermissionRoute'
 import { DepartementAccessRoute } from './DepartementAccessRoute'
 import { FamilleAccessRoute } from './FamilleAccessRoute'
+import { FamilleListAccessRoute } from './FamilleListAccessRoute'
 import { PilotageDgeRoute } from './PilotageDgeRoute'
 import { SitesPage } from '@/features/sites/SitesPage'  
 import { AppPageAccessRoute } from './AppPageAccessRoute'
@@ -64,7 +65,9 @@ export function AppRoutes() {
             </Route>
 
             <Route element={<PermissionRoute permission={PERMISSIONS.FAMILLES_READ} />}>
-              <Route path="familles" element={<FamillesPage />} />
+              <Route element={<FamilleListAccessRoute />}>
+                <Route path="familles" element={<FamillesPage />} />
+              </Route>
               <Route element={<PilotageDgeRoute />}>
                 <Route path="familles/suivi" element={<FamillesPage />} />
                 <Route path="familles/rapports" element={<FamillesPage />} />

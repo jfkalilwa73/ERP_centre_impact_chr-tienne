@@ -2,7 +2,7 @@ import { useId, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { ChevronDown, Heart, Layers } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { canSeePilotageDge } from '@/features/auth/orgRoles'
+import { canSeeAllUnits, canSeePilotageDge } from '@/features/auth/orgRoles'
 import { applicationPageFromPath, useApplicationPageAccess } from '@/features/auth/applicationPageAccess'
 import { PERMISSIONS } from '@/lib/permissions'
 import type { ApplicationPageId } from '@/features/auth/unitPageAccess'
@@ -301,7 +301,9 @@ function FamillesNav({
   const canManageAll =
     permissions.includes(PERMISSIONS.FAMILLES_UPDATE) ||
     permissions.includes(PERMISSIONS.FAMILLES_CREATE)
-  const canSeeCatalog = permissions.includes(PERMISSIONS.FAMILLES_READ)
+  const canSeeCatalog =
+    permissions.includes(PERMISSIONS.FAMILLES_READ) &&
+    (canSeeAllUnits(user) || canManageAll)
   const affectationsQuery = usePersonneFamilles(user?.personne.idPersonne)
   const ledIds = useMemo(
     () =>
@@ -328,13 +330,15 @@ function FamillesNav({
   const loadingFamilies = canSeeCatalog
     ? famillesQuery.isLoading
     : affectationsQuery.isLoading || ledFamilleQueries.some((query) => query.isLoading)
+  const canAccessFamilyList =
+    canAccessList && (canSeeAllUnits(user) || canManageAll || ledIds.size > 0)
   const canOpenDgePage =
     canSeePilotageDge(user) && (canAccessSuivi || canAccessReports)
   const canOpenPage =
-    canAccessList || canOpenDgePage || familleLinks.length > 0 || loadingFamilies
+    canAccessFamilyList || canOpenDgePage || familleLinks.length > 0
   if (!canOpenPage) return null
 
-  const parentTarget = canAccessList
+  const parentTarget = canAccessFamilyList
     ? '/familles'
     : canSeePilotageDge(user) && canAccessSuivi
       ? '/familles/suivi'
