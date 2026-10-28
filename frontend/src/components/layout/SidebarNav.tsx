@@ -173,7 +173,8 @@ function DepartementsNav({
   const canManageAll =
     permissions.includes(PERMISSIONS.DEPARTEMENTS_UPDATE) ||
     permissions.includes(PERMISSIONS.DEPARTEMENTS_CREATE)
-  const canSeeCatalog = permissions.includes(PERMISSIONS.DEPARTEMENTS_READ)
+  const canSeeCatalog =
+    permissions.includes(PERMISSIONS.DEPARTEMENTS_READ) && canAccessList
   const affectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
   const ledIds = useMemo(
     () =>

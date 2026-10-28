@@ -7,6 +7,8 @@ import {
 } from './unitPageAccess'
 import { usePersonneAffectations, usePersonneFamilles } from '@/features/personnes/hooks'
 import { useCurrentUser } from '@/stores/authStore'
+import { canSeeAllUnits } from './orgRoles'
+import { canonicalRoleCode, ROLE_CODES } from '@/lib/roleCodes'
 
 function matchesPath(pathname: string, basePath: string) {
   return pathname === basePath || pathname.startsWith(`${basePath}/`)
@@ -66,12 +68,23 @@ export function useApplicationPageAccess() {
 
   const needsUnitRules = Boolean(personneId) && hasUnitApplicationPageRuleForPerson(personneId!, snapshot)
   const isLoading = needsUnitRules && (departementsQuery.isLoading || famillesQuery.isLoading)
+  const needsExplicitDepartmentListGrant = Boolean(
+    user &&
+      !canSeeAllUnits(user) &&
+      user.roles.some((role) => {
+        const code = canonicalRoleCode(role)
+        return code === ROLE_CODES.CHEF_DEPARTEMENT || code === ROLE_CODES.SUPERVISEUR
+      }),
+  )
 
   return {
     isLoading,
     hasConfiguredRules: unitRules.length > 0,
     canView(page: ApplicationPageId, roleAllows = true) {
       if (!roleAllows) return false
+      if (page === 'departements' && needsExplicitDepartmentListGrant) {
+        return !isLoading && unitRules.some((rule) => rule.includes(page))
+      }
       if (isLoading || unitRules.length === 0) return roleAllows
       return unitRules.some((rule) => rule.includes(page))
     },
