@@ -24,7 +24,7 @@ import { toPermissionCreate, toPermissionUpdate, type PermissionFormValues } fro
 const PAGE_SIZE = 20
 const PAGE_SECTIONS = [
   { id: 'liste', label: 'Liste' },
-  { id: 'acces-unite', label: 'Accès par unité' },
+  { id: 'acces-unite', label: 'Accès pages' },
 ] as const
 
 export function PermissionsPage() {
