@@ -35,7 +35,7 @@ import { TableLoading } from './loading'
 import { DgeRapportsPanel, DgeSuiviPanel } from './DgeSuiviPanel'
 
 const DGE_VUES = [
-  { to: '/departements', label: 'Liste', end: true },
+  { to: '/departements', label: 'Tous les départements', end: true },
   { to: '/departements/suivi', label: 'Suivi DGE' },
   { to: '/departements/rapports', label: 'Rapports reçus' },
 ] as const

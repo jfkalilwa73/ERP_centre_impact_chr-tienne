@@ -7,7 +7,6 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useSessionProfil } from '@/stores/authStore'
 import { useAccessScope } from '@/features/auth/accessScope'
 import { useUnreadDemandes } from '@/features/notifications/useUnreadDemandes'
-import { useDepartements, useDepartementsByIds } from '@/features/departements/hooks'
 import { canAccessDepartementUnit } from '@/features/departements/roles'
 import { useFamilles, useFamillesByIds } from '@/features/familles/hooks'
 import { canAccessFamilleUnit } from '@/features/familles/roles'
@@ -150,21 +149,16 @@ function DepartementsNav({
   catalogItems,
   onNavigate,
   collapsed,
-  open,
-  onToggle,
 }: {
   catalogItems: NavItem[]
   onNavigate?: () => void
   collapsed?: boolean
-  open: boolean
-  onToggle: (id: string) => void
 }) {
   const user = useCurrentUser()
   const userPermissions = useCurrentUser()?.permissions ?? []
   const sessionPermissions =
     (useSessionProfil() as { permissions?: string[] } | null)?.permissions ?? []
   const permissions = userPermissions.length > 0 ? userPermissions : sessionPermissions  
-  const canManageAll =permissions.includes(PERMISSIONS.DEPARTEMENTS_UPDATE) ||permissions.includes(PERMISSIONS.DEPARTEMENTS_CREATE)
   const canSeeCatalog = permissions.includes(PERMISSIONS.DEPARTEMENTS_READ)
   const affectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
   const ledIds = useMemo(
@@ -176,65 +170,20 @@ function DepartementsNav({
       ),
     [affectationsQuery.data],
   )
-  const departementsQuery = useDepartements({ page: 1, limit: 100 }, canSeeCatalog)
-  const ledDepartementQueries = useDepartementsByIds(canSeeCatalog ? [] : [...ledIds])
-  const catalog = canSeeCatalog
-    ? (departementsQuery.data?.data ?? [])
-    : ledDepartementQueries.flatMap((query) => (query.data ? [query.data] : []))
-  const catalogLinks: NavItem[] = canSeePilotageDge(user)
-    ? [
-        {
-          to: '/departements',
-          label: 'Tous les départements',
-          icon: List,
-          permission: PERMISSIONS.DEPARTEMENTS_READ,
-          end: true,
-        },
-        {
-          to: '/departements/suivi',
-          label: 'Suivi DGE',
-          icon: List,
-          permission: PERMISSIONS.DEPARTEMENTS_READ,
-        },
-        {
-          to: '/departements/rapports',
-          label: 'Rapports reçus',
-          icon: FileText,
-          permission: PERMISSIONS.DEPARTEMENTS_READ,
-        },
-      ]
-    : catalogItems
-  const departmentLinks: NavItem[] = catalog
-    .filter((departement) => departement.actif)
-    .filter((departement) => canManageAll || ledIds.has(departement.idDepartement))
-    .map((departement) => ({
-      to: `/departements/${departement.idDepartement}`,
-      label: departement.nom,
-      icon: Layers,
-    }))
-  const children = [...catalogLinks, ...departmentLinks]
-  const loadingLeadership =
-    !canSeeCatalog &&
-    (affectationsQuery.isLoading || ledDepartementQueries.some((query) => query.isLoading))
-  if (children.length === 0 && !loadingLeadership) return null
-
-  if (collapsed) {
-    return children.map((item) => (
-      <NavItemLink key={item.to} item={item} onNavigate={onNavigate} collapsed />
-    ))
-  }
+  const loadingLeadership = !canSeeCatalog && affectationsQuery.isLoading
+  const canOpenPage =
+    catalogItems.length > 0 ||
+    canSeePilotageDge(user) ||
+    ledIds.size > 0 ||
+    loadingLeadership
+  if (!canOpenPage) return null
 
   return (
-    <CollapsibleNavGroup
-      id="departements"
-      label="Départements"
-      icon={Layers}
-      open={open}
-      onToggle={onToggle}
+    <NavItemLink
+      item={{ to: '/departements', label: 'Départements', icon: Layers }}
       onNavigate={onNavigate}
-    >
-      {children}
-    </CollapsibleNavGroup>
+      collapsed={collapsed}
+    />
   )
 }
 
@@ -364,8 +313,6 @@ export function SidebarNav({ onNavigate, collapsed = false }: SidebarNavProps) {
               catalogItems={entry.children.filter(canSee)}
               onNavigate={onNavigate}
               collapsed={collapsed}
-              open={openGroupId === entry.id}
-              onToggle={toggleGroup}
             />
           )
         }
