@@ -18,7 +18,11 @@ import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Departement, Personne } from '@/types'
-import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
+import {
+  usePersonneAffectations,
+  usePersonnes,
+  usePersonnesAffectations,
+} from '@/features/personnes/hooks'
 import { DepartementBanner } from './banner'
 import { DepartementFormDialog } from './DepartementFormDialog'
 import { defaultSiteId } from './api'
@@ -27,6 +31,7 @@ import {
   useCreateDepartement,
   useDeleteDepartement,
   useDepartements,
+  useDepartementsByIds,
   useUnassignPersonneDepartement,
   useUpdateDepartement,
 } from './hooks'
@@ -75,7 +80,8 @@ export function DepartementsPage() {
   const canUpdate = useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE)
   const canDelete = useHasPermission(PERMISSIONS.DEPARTEMENTS_DELETE)
   const user = useCurrentUser()
-  const { isScoped, isLoading: scopeLoading, ledDepartementIds } = useAccessScope()
+  const { isScoped, ledDepartementIds } = useAccessScope()
+  const departementAffectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
   const isDge = isMembreDge(user)
   const voitPilotage = canSeePilotageDge(user)
   const canAssignSuperviseur = isDge || canUpdate
@@ -92,8 +98,9 @@ export function DepartementsPage() {
     }),
     [page, submittedSearch],
   )
-  const catalogQuery = useDepartements({ page: 1, limit: 100 })
-  const departementsQuery = useDepartements(listParams)
+  const catalogQuery = useDepartements({ page: 1, limit: 100 }, !isScoped)
+  const departementsQuery = useDepartements(listParams, !isScoped)
+  const scopedDepartementQueries = useDepartementsByIds(isScoped ? ledDepartementIds : [])
   const personnesQuery = usePersonnes({ page: 1, limit: 100 })
   const comptesQuery = useComptes(
     { page: 1, limit: 100 },
@@ -138,12 +145,37 @@ export function DepartementsPage() {
     return map
   }, [affectationsActives, personnes])
 
-  const scopedIds = useMemo(() => new Set(ledDepartementIds), [ledDepartementIds])
-  const departements = (departementsQuery.data?.data ?? []).filter(
-    (departement) => !isScoped || scopedIds.has(departement.idDepartement),
+  const scopedDepartements = useMemo(() => {
+    const search = submittedSearch.trim().toLowerCase()
+    return scopedDepartementQueries
+      .flatMap((query) => (query.data ? [query.data] : []))
+      .filter((departement) => departement.actif)
+      .filter((departement) =>
+        !search ||
+        [departement.code, departement.nom, departement.mission]
+          .filter(Boolean)
+          .some((value) => value!.toLowerCase().includes(search)),
+      )
+  }, [scopedDepartementQueries, submittedSearch])
+  const scopedStart = (page - 1) * PAGE_SIZE
+  const departements = isScoped
+    ? scopedDepartements.slice(scopedStart, scopedStart + PAGE_SIZE)
+    : (departementsQuery.data?.data ?? [])
+  const pagination = isScoped ? undefined : departementsQuery.data?.pagination
+  const totalCount = isScoped ? scopedDepartements.length : pagination?.total ?? 0
+  const currentPage = isScoped ? page : pagination?.page ?? page
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalCount / (isScoped ? PAGE_SIZE : pagination?.limit ?? PAGE_SIZE)),
   )
-  const pagination = departementsQuery.data?.pagination
-  const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.limit)) : 1
+  const scopedListLoading =
+    isScoped &&
+    (departementAffectationsQuery.isLoading || scopedDepartementQueries.some((query) => query.isLoading))
+  const listLoading = isScoped ? scopedListLoading : departementsQuery.isLoading
+  const scopedListError =
+    departementAffectationsQuery.error?.message ??
+    scopedDepartementQueries.find((query) => query.error)?.error?.message
+  const listError = isScoped ? scopedListError : departementsQuery.error?.message
   const prochesChef = personnes.filter((personne) => {
     const needle = chefSearch.trim().toLowerCase()
     if (!needle) return true
@@ -396,21 +428,25 @@ export function DepartementsPage() {
         </Button>
       </form>
 
-      {departementsQuery.isError && (
+      {listError && (
         <Alert variant="error" title="Impossible de charger les départements">
-          {departementsQuery.error.message}
+          {listError}
         </Alert>
       )}
 
-      {(departementsQuery.isLoading || (isScoped && scopeLoading)) && (
+      {listLoading && (
         <TableLoading label="Chargement des départements…" />
       )}
 
-      {departementsQuery.isSuccess && !(isScoped && scopeLoading) && departements.length === 0 && (
+      {!listLoading && !listError && departements.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
           <p className="font-medium text-slate-900">Aucun département</p>
           <p className="mt-1 text-sm text-slate-500">
-            {submittedSearch ? 'Aucun résultat pour ces critères.' : "Aucun département n'est encore enregistré."}
+            {submittedSearch
+              ? 'Aucun résultat pour ces critères.'
+              : isScoped
+                ? "Aucun département actif ne vous est affecté."
+                : "Aucun département n'est encore enregistré."}
           </p>
         </div>
       )}
@@ -535,11 +571,10 @@ export function DepartementsPage() {
             </table>
           </div>
 
-          {pagination && pagination.total > PAGE_SIZE && (
+          {totalCount > PAGE_SIZE && (
             <div className="flex items-center justify-between text-sm text-slate-500">
               <p>
-                {pagination.total} département{pagination.total > 1 ? 's' : ''} · page{' '}
-                {pagination.page} / {totalPages}
+                {totalCount} département{totalCount > 1 ? 's' : ''} · page {currentPage} / {totalPages}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -553,7 +588,7 @@ export function DepartementsPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={page >= totalPages}
+                  disabled={currentPage >= totalPages}
                   onClick={() => setPage((current) => current + 1)}
                 >
                   Suivant
