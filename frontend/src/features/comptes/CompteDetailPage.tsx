@@ -15,7 +15,7 @@ import { usePersonne } from '@/features/personnes/hooks'
 import { useRoles } from '@/features/roles/hooks'
 import { errorId } from '@/lib/form'
 import { PERMISSIONS } from '@/lib/permissions'
-import { ROLE_CODES } from '@/lib/roleCodes'
+import { canonicalRoleCode, ROLE_CODES } from '@/lib/roleCodes'
 import { useHasPermission } from '@/stores/authStore'
 import {
   useAssignRole,
@@ -66,7 +66,6 @@ export function CompteDetailPage() {
   const affectations = affectationsQuery.data ?? []
   const roles = rolesQuery.data?.data ?? []
   const roleNames = new Map(roles.map((role) => [role.idRole, `${role.nom} (${role.code})`]))
-  const roleCodesById = new Map(roles.map((role) => [role.idRole, role.code]))
   const rolesDejaActifs = new Set(
     affectations.filter((affectation) => affectation.actif).map((affectation) => affectation.idRole),
   )
@@ -74,9 +73,10 @@ export function CompteDetailPage() {
     (role) =>
       role.actif &&
       !rolesDejaActifs.has(role.idRole) &&
-      role.code !== ROLE_CODES.CHEF_DEPARTEMENT &&
-      role.code !== ROLE_CODES.SUPERVISEUR,
+      canonicalRoleCode(role) !== ROLE_CODES.CHEF_DEPARTEMENT &&
+      canonicalRoleCode(role) !== ROLE_CODES.SUPERVISEUR,
   )
+  const roleCodesById = new Map(roles.map((role) => [role.idRole, canonicalRoleCode(role)]))
 
   const onAssign = handleSubmit((values) => {
     assignMutation.mutate(

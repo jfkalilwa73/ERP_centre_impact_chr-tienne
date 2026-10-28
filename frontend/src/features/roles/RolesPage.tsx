@@ -121,6 +121,7 @@ export function RolesPage() {
           ) : (
             <>
               {installDefaultsMutation.data.rolesCreated} rôle(s) créé(s),{' '}
+              {installDefaultsMutation.data.rolesReused} rôle(s) existant(s) réutilisé(s),{' '}
               {installDefaultsMutation.data.permissionsCreated} permission(s) de catalogue créée(s) et{' '}
               {installDefaultsMutation.data.rolePermissionsAdded} droit(s) associé(s). Les droits
               déjà configurés et les droits personnalisés ont été conservés.

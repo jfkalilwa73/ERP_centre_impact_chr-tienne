@@ -11,7 +11,7 @@ import { Select } from '@/components/ui/Select'
 import { useDepartements } from '@/features/departements/hooks'
 import { usePersonneAffectations } from '@/features/personnes/hooks'
 import { errorId } from '@/lib/form'
-import { ROLE_CODES } from '@/lib/roleCodes'
+import { canonicalRoleCode, ROLE_CODES } from '@/lib/roleCodes'
 import { useCurrentUser } from '@/stores/authStore'
 import type { Compte, Personne, Role } from '@/types'
 import { useCompteRoles } from './hooks'
@@ -48,8 +48,8 @@ export function CompteFormDialog({
   const isEditing = Boolean(compte)
   const user = useCurrentUser()
   const assignedQuery = useCompteRoles(open && isEditing ? compte?.idCompte : undefined)
-  const chefRoleId = roles.find((role) => role.code === ROLE_CODES.CHEF_DEPARTEMENT)?.idRole
-  const superviseurRoleId = roles.find((role) => role.code === ROLE_CODES.SUPERVISEUR)?.idRole
+  const chefRoleId = roles.find((role) => canonicalRoleCode(role) === ROLE_CODES.CHEF_DEPARTEMENT)?.idRole
+  const superviseurRoleId = roles.find((role) => canonicalRoleCode(role) === ROLE_CODES.SUPERVISEUR)?.idRole
   const scopedRoleIds = useMemo(
     () => ({ chefDepartement: chefRoleId, superviseur: superviseurRoleId }),
     [chefRoleId, superviseurRoleId],

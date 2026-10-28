@@ -15,7 +15,7 @@ import { listPersonneDepartements } from '@/features/personnes/api'
 import { usePersonnes } from '@/features/personnes/hooks'
 import { useRoles } from '@/features/roles/hooks'
 import { PERMISSIONS } from '@/lib/permissions'
-import { ROLE_CODES } from '@/lib/roleCodes'
+import { canonicalRoleCode, ROLE_CODES } from '@/lib/roleCodes'
 import { useHasPermission } from '@/stores/authStore'
 import type { Compte, CompteStatut } from '@/types'
 import { CompteFormDialog } from './CompteFormDialog'
@@ -112,7 +112,10 @@ export function ComptesPage() {
     const rolesById = new Map(roles.map((role) => [role.idRole, role]))
     const selectedCodes = new Set(
       values.idRoles
-        .map((roleId) => rolesById.get(roleId)?.code)
+        .map((roleId) => {
+          const role = rolesById.get(roleId)
+          return role ? canonicalRoleCode(role) : undefined
+        })
         .filter((code): code is string => Boolean(code)),
     )
     let previousCodes = new Set<string>()
@@ -125,7 +128,10 @@ export function ComptesPage() {
         )
         previousCodes = new Set(
           previousAssignments
-            .map((assignment) => rolesById.get(assignment.idRole)?.code)
+            .map((assignment) => {
+              const role = rolesById.get(assignment.idRole)
+              return role ? canonicalRoleCode(role) : undefined
+            })
             .filter((code): code is string => Boolean(code)),
         )
       }
