@@ -16,6 +16,7 @@ import { usePersonnes } from '@/features/personnes/hooks'
 import { useRoles } from '@/features/roles/hooks'
 import { PERMISSIONS } from '@/lib/permissions'
 import { canonicalRoleCode, ROLE_CODES } from '@/lib/roleCodes'
+import { showSuccessFeedback } from '@/lib/successFeedback'
 import { useHasPermission } from '@/stores/authStore'
 import type { Compte, CompteStatut } from '@/types'
 import { CompteFormDialog } from './CompteFormDialog'
@@ -62,11 +63,13 @@ export function ComptesPage() {
   const comptesQuery = useComptes(listParams)
   const personnesQuery = usePersonnes({ page: 1, limit: 100 }, canReadPersonnes)
   const rolesQuery = useRoles({ page: 1, limit: 100 }, canManageRoles && (canCreate || canUpdate))
-  const createMutation = useCreateCompte()
-  const updateMutation = useUpdateCompte()
+  // Le formulaire enregistre aussi les affectations de département : le succès
+  // doit être annoncé une seule fois, après la fin de toute la séquence.
+  const createMutation = useCreateCompte(false)
+  const updateMutation = useUpdateCompte(false)
   const deleteMutation = useDeleteCompte()
-  const assignDepartmentMutation = useAssignPersonneDepartement()
-  const unassignDepartmentMutation = useUnassignPersonneDepartement()
+  const assignDepartmentMutation = useAssignPersonneDepartement(false)
+  const unassignDepartmentMutation = useUnassignPersonneDepartement(false)
 
   const comptes = comptesQuery.data?.data ?? []
   const pagination = comptesQuery.data?.pagination
@@ -206,6 +209,9 @@ export function ComptesPage() {
 
     setSavingScopes(false)
     setFormOpen(false)
+    showSuccessFeedback(
+      editingCompte ? 'Le compte a bien été modifié.' : 'Le compte a bien été créé.',
+    )
   }
 
   const formError =
