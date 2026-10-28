@@ -10,7 +10,13 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { useHasPermission } from '@/stores/authStore'
 import type { Role } from '@/types'
 import { RoleFormDialog } from './RoleFormDialog'
-import { useCreateRole, useDeleteRole, useRoles, useUpdateRole } from './hooks'
+import {
+  useCreateRole,
+  useDeleteRole,
+  useInstallDefaultRoles,
+  useRoles,
+  useUpdateRole,
+} from './hooks'
 import { toRoleCreate, toRoleUpdate, type RoleFormValues } from './schema'
 
 const PAGE_SIZE = 20
@@ -37,6 +43,7 @@ export function RolesPage() {
   const createMutation = useCreateRole()
   const updateMutation = useUpdateRole()
   const deleteMutation = useDeleteRole()
+  const installDefaultsMutation = useInstallDefaultRoles()
 
   const roles = rolesQuery.data?.data ?? []
   const pagination = rolesQuery.data?.pagination
@@ -89,12 +96,43 @@ export function RolesPage() {
           </p>
         </div>
         {canManage && (
-          <Button onClick={openCreate}>
-            <Plus className="size-4" aria-hidden="true" />
-            Nouveau rôle
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              isLoading={installDefaultsMutation.isPending}
+              onClick={() => installDefaultsMutation.mutate()}
+            >
+              Installer les rôles prédéfinis
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="size-4" aria-hidden="true" />
+              Nouveau rôle
+            </Button>
+          </div>
         )}
       </div>
+
+      {installDefaultsMutation.isSuccess && (
+        <Alert variant="success" title="Rôles prédéfinis prêts">
+          {installDefaultsMutation.data.rolesCreated === 0 &&
+          installDefaultsMutation.data.permissionsCreated === 0 &&
+          installDefaultsMutation.data.rolePermissionsAdded === 0 ? (
+            'Les rôles et leurs droits de base sont déjà présents.'
+          ) : (
+            <>
+              {installDefaultsMutation.data.rolesCreated} rôle(s) créé(s),{' '}
+              {installDefaultsMutation.data.permissionsCreated} permission(s) de catalogue créée(s) et{' '}
+              {installDefaultsMutation.data.rolePermissionsAdded} droit(s) associé(s). Les droits
+              déjà configurés et les droits personnalisés ont été conservés.
+            </>
+          )}
+        </Alert>
+      )}
+      {installDefaultsMutation.isError && (
+        <Alert variant="error" title="Installation des rôles impossible">
+          {installDefaultsMutation.error.message}
+        </Alert>
+      )}
 
       <form onSubmit={handleSearch} className="flex gap-2" role="search">
         <div className="relative max-w-sm flex-1">

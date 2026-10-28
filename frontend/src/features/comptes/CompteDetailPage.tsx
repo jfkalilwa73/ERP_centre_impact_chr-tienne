@@ -15,6 +15,7 @@ import { usePersonne } from '@/features/personnes/hooks'
 import { useRoles } from '@/features/roles/hooks'
 import { errorId } from '@/lib/form'
 import { PERMISSIONS } from '@/lib/permissions'
+import { ROLE_CODES } from '@/lib/roleCodes'
 import { useHasPermission } from '@/stores/authStore'
 import {
   useAssignRole,
@@ -65,11 +66,16 @@ export function CompteDetailPage() {
   const affectations = affectationsQuery.data ?? []
   const roles = rolesQuery.data?.data ?? []
   const roleNames = new Map(roles.map((role) => [role.idRole, `${role.nom} (${role.code})`]))
+  const roleCodesById = new Map(roles.map((role) => [role.idRole, role.code]))
   const rolesDejaActifs = new Set(
     affectations.filter((affectation) => affectation.actif).map((affectation) => affectation.idRole),
   )
   const rolesDisponibles = roles.filter(
-    (role) => role.actif && !rolesDejaActifs.has(role.idRole),
+    (role) =>
+      role.actif &&
+      !rolesDejaActifs.has(role.idRole) &&
+      role.code !== ROLE_CODES.CHEF_DEPARTEMENT &&
+      role.code !== ROLE_CODES.SUPERVISEUR,
   )
 
   const onAssign = handleSubmit((values) => {
@@ -195,6 +201,13 @@ export function CompteDetailPage() {
           )}
         </div>
 
+        {canManageRoles && (
+          <Alert variant="info" title="Rôles liés à un département">
+            Pour attribuer ou retirer Chef de département ou Superviseur, utilisez Modifier le compte
+            dans la liste des comptes : cette action demande aussi les départements concernés.
+          </Alert>
+        )}
+
         {affectationsQuery.isError && (
           <Alert variant="error" title="Impossible de charger les rôles">
             {affectationsQuery.error.message}
@@ -240,13 +253,26 @@ export function CompteDetailPage() {
                             variant="ghost"
                             size="sm"
                             className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                            disabled={
+                              roleCodesById.get(affectation.idRole) === ROLE_CODES.CHEF_DEPARTEMENT ||
+                              roleCodesById.get(affectation.idRole) === ROLE_CODES.SUPERVISEUR
+                            }
+                            title={
+                              roleCodesById.get(affectation.idRole) === ROLE_CODES.CHEF_DEPARTEMENT ||
+                              roleCodesById.get(affectation.idRole) === ROLE_CODES.SUPERVISEUR
+                                ? 'Retirez ce rôle depuis Modifier le compte pour mettre à jour aussi ses départements.'
+                                : undefined
+                            }
                             isLoading={
                               unassignMutation.isPending &&
                               unassignMutation.variables === affectation.idRole
                             }
                             onClick={() => unassignMutation.mutate(affectation.idRole)}
                           >
-                            Retirer
+                            {roleCodesById.get(affectation.idRole) === ROLE_CODES.CHEF_DEPARTEMENT ||
+                            roleCodesById.get(affectation.idRole) === ROLE_CODES.SUPERVISEUR
+                              ? 'Modifier dans Comptes'
+                              : 'Retirer'}
                           </Button>
                         ) : (
                           <span className="text-xs text-slate-400">Clôturé</span>
@@ -350,6 +376,12 @@ export function CompteDetailPage() {
                 ))}
               </Select>
             </FormField>
+            {rolesDisponibles.length === 0 && (
+              <p className="text-sm text-slate-500">
+                Aucun autre rôle n’est disponible ici. Les rôles Chef de département et Superviseur
+                se configurent depuis Modifier le compte avec leurs départements.
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setAssignOpen(false)}>
                 Annuler

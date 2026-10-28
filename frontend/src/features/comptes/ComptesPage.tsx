@@ -7,17 +7,31 @@ import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import {
+  useAssignPersonneDepartement,
+  useUnassignPersonneDepartement,
+} from '@/features/departements/hooks'
+import { listPersonneDepartements } from '@/features/personnes/api'
 import { usePersonnes } from '@/features/personnes/hooks'
 import { useRoles } from '@/features/roles/hooks'
 import { PERMISSIONS } from '@/lib/permissions'
+import { ROLE_CODES } from '@/lib/roleCodes'
 import { useHasPermission } from '@/stores/authStore'
 import type { Compte, CompteStatut } from '@/types'
 import { CompteFormDialog } from './CompteFormDialog'
+import { listCompteRoles } from './api'
 import { useComptes, useCreateCompte, useDeleteCompte, useUpdateCompte } from './hooks'
 import { toCompteCreate, toCompteUpdate, type CompteFormValues } from './schema'
 import { statutCompteBadgeClass, statutCompteLabels } from './statut'
 
 const PAGE_SIZE = 20
+
+function departmentAssignmentKind(fonction?: string): 'chef' | 'superviseur' | null {
+  const normalized = (fonction ?? '').trim().toLowerCase()
+  if (normalized.includes('superviseur')) return 'superviseur'
+  if (normalized.includes('chef') || normalized.includes('adjoint')) return 'chef'
+  return null
+}
 
 export function ComptesPage() {
   const [searchInput, setSearchInput] = useState('')
@@ -27,6 +41,8 @@ export function ComptesPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingCompte, setEditingCompte] = useState<Compte | null>(null)
   const [compteToDelete, setCompteToDelete] = useState<Compte | null>(null)
+  const [scopeSaveError, setScopeSaveError] = useState<string | null>(null)
+  const [savingScopes, setSavingScopes] = useState(false)
 
   const canCreate = useHasPermission(PERMISSIONS.COMPTES_CREATE)
   const canUpdate = useHasPermission(PERMISSIONS.COMPTES_UPDATE)
@@ -49,6 +65,8 @@ export function ComptesPage() {
   const createMutation = useCreateCompte()
   const updateMutation = useUpdateCompte()
   const deleteMutation = useDeleteCompte()
+  const assignDepartmentMutation = useAssignPersonneDepartement()
+  const unassignDepartmentMutation = useUnassignPersonneDepartement()
 
   const comptes = comptesQuery.data?.data ?? []
   const pagination = comptesQuery.data?.pagination
@@ -63,9 +81,11 @@ export function ComptesPage() {
   const personnesDisponibles = personnes.filter(
     (personne) => !idsDejaLiees.has(personne.idPersonne),
   )
+  const roles = rolesQuery.data?.data ?? []
 
   const openCreate = () => {
     setEditingCompte(null)
+    setScopeSaveError(null)
     createMutation.reset()
     updateMutation.reset()
     setFormOpen(true)
@@ -73,6 +93,7 @@ export function ComptesPage() {
 
   const openEdit = (compte: Compte) => {
     setEditingCompte(compte)
+    setScopeSaveError(null)
     createMutation.reset()
     updateMutation.reset()
     setFormOpen(true)
@@ -84,27 +105,106 @@ export function ComptesPage() {
     setSubmittedSearch(searchInput.trim())
   }
 
-  const handleFormSubmit = (values: CompteFormValues) => {
-    if (editingCompte) {
-      updateMutation.mutate(
-        {
-          compteId: editingCompte.idCompte,
-          payload: toCompteUpdate(values),
-          idRoles: values.idRoles,
-        },
-        { onSuccess: () => setFormOpen(false) },
-      )
+  const handleFormSubmit = async (values: CompteFormValues) => {
+    setScopeSaveError(null)
+    setSavingScopes(true)
+
+    const rolesById = new Map(roles.map((role) => [role.idRole, role]))
+    const selectedCodes = new Set(
+      values.idRoles
+        .map((roleId) => rolesById.get(roleId)?.code)
+        .filter((code): code is string => Boolean(code)),
+    )
+    let previousCodes = new Set<string>()
+    let savedCompte: Compte
+
+    try {
+      if (editingCompte) {
+        const previousAssignments = (await listCompteRoles(editingCompte.idCompte)).filter(
+          (assignment) => assignment.actif,
+        )
+        previousCodes = new Set(
+          previousAssignments
+            .map((assignment) => rolesById.get(assignment.idRole)?.code)
+            .filter((code): code is string => Boolean(code)),
+        )
+      }
+
+      savedCompte = editingCompte
+        ? await updateMutation.mutateAsync({
+            compteId: editingCompte.idCompte,
+            payload: toCompteUpdate(values),
+            idRoles: values.idRoles,
+          })
+        : await createMutation.mutateAsync({ payload: toCompteCreate(values), idRoles: values.idRoles })
+    } catch (error) {
+      if (editingCompte && !updateMutation.error) {
+        setScopeSaveError(error instanceof Error ? error.message : 'Impossible de charger les rôles actuels.')
+      }
+      setSavingScopes(false)
       return
     }
 
-    createMutation.mutate(
-      { payload: toCompteCreate(values), idRoles: values.idRoles },
-      { onSuccess: () => setFormOpen(false) },
+    const personneId = editingCompte?.idPersonne ?? values.idPersonne
+    const desiredFunctions = new Map<string, 'Chef' | 'Superviseur'>()
+    if (selectedCodes.has(ROLE_CODES.CHEF_DEPARTEMENT)) {
+      values.roleDepartments.chefDepartement.forEach((id) => desiredFunctions.set(id, 'Chef'))
+    }
+    if (selectedCodes.has(ROLE_CODES.SUPERVISEUR)) {
+      values.roleDepartments.superviseur.forEach((id) => desiredFunctions.set(id, 'Superviseur'))
+    }
+    const managesDepartmentScope = [ROLE_CODES.CHEF_DEPARTEMENT, ROLE_CODES.SUPERVISEUR].some(
+      (code) => selectedCodes.has(code) || previousCodes.has(code),
     )
+
+    try {
+      const currentAssignments = (await listPersonneDepartements(personneId)).filter(
+        (assignment) => assignment.actif,
+      )
+      const toRemove = new Set<string>()
+
+      for (const assignment of currentAssignments) {
+        const kind = departmentAssignmentKind(assignment.fonction)
+        const desired = desiredFunctions.get(assignment.idDepartement)
+        if (desired && desired !== assignment.fonction) toRemove.add(assignment.idDepartement)
+        if (managesDepartmentScope && kind && !desired) toRemove.add(assignment.idDepartement)
+      }
+
+      for (const departementId of toRemove) {
+        await unassignDepartmentMutation.mutateAsync({ personneId, departementId })
+      }
+
+      const stillActive = new Map(
+        currentAssignments
+          .filter((assignment) => !toRemove.has(assignment.idDepartement))
+          .map((assignment) => [assignment.idDepartement, assignment]),
+      )
+      for (const [departementId, fonction] of desiredFunctions) {
+        if (stillActive.get(departementId)?.fonction === fonction) continue
+        await assignDepartmentMutation.mutateAsync({
+          personneId,
+          payload: { idDepartement: departementId, fonction },
+        })
+      }
+    } catch (error) {
+      if (!editingCompte) {
+        setEditingCompte(savedCompte)
+        createMutation.reset()
+      }
+      setScopeSaveError(
+        `Le compte est enregistré, mais l’affectation des départements a échoué : ${error instanceof Error ? error.message : 'erreur inconnue'}. Vérifiez les affectations de la personne avant de réessayer.`,
+      )
+      setSavingScopes(false)
+      return
+    }
+
+    setSavingScopes(false)
+    setFormOpen(false)
   }
 
-  const formError = editingCompte ? updateMutation.error?.message : createMutation.error?.message
-  const isSubmitting = createMutation.isPending || updateMutation.isPending
+  const formError =
+    scopeSaveError ?? (editingCompte ? updateMutation.error?.message : createMutation.error?.message)
+  const isSubmitting = createMutation.isPending || updateMutation.isPending || savingScopes
 
   return (
     <div className="flex flex-col gap-6">

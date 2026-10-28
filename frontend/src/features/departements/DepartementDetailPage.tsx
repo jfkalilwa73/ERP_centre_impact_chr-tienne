@@ -120,17 +120,14 @@ export function DepartementDetailPage() {
     : departementId && departementQuery.data
       ? [{ idDepartement: departementId, nom: departementQuery.data.nom }]
       : []
-  const canAssign = leadsHere || (canManageDepartements && !isScoped)
   const canManageEquipe = useHasPermission(PERMISSIONS.EQUIPES_MANAGE) || leadsHere
+  const canAssign = canManageEquipe || (canManageDepartements && !isScoped)
   const canWriteActivites =
     useHasPermission(PERMISSIONS.ACTIVITES_CREATE) ||
     useHasPermission(PERMISSIONS.ACTIVITES_UPDATE) ||
     leadsHere
   const canRequestBudget = useHasPermission(PERMISSIONS.BUDGET_REQUEST)
-  const canWriteRapports =
-    useHasPermission(PERMISSIONS.RAPPORTS_CREATE) ||
-    useHasPermission(PERMISSIONS.OBJECTIFS_MANAGE) ||
-    leadsHere
+  const canWriteRapports = useHasPermission(PERMISSIONS.RAPPORTS_CREATE)
   const visibleTabs = TABS.filter((item) =>
     pageAccess.canView(item.id, !('permission' in item) || permissions.includes(item.permission)),
   )
