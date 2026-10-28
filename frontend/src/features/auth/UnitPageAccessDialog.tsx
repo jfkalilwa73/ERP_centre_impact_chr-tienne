@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
+import { showSuccessFeedback } from '@/lib/successFeedback'
 import {
   clearUnitPageRule,
   getUnitPageRule,
@@ -53,6 +54,7 @@ export function UnitPageAccessDialog({
       setError('Le navigateur n’a pas pu enregistrer ces réglages locaux.')
       return
     }
+    showSuccessFeedback('Les pages accessibles ont bien été enregistrées.')
     onOpenChange(false)
   }
 
@@ -61,6 +63,7 @@ export function UnitPageAccessDialog({
       setError('Le navigateur n’a pas pu rétablir les droits habituels du rôle.')
       return
     }
+    showSuccessFeedback('Les droits du rôle ont bien été rétablis.')
     onOpenChange(false)
   }
 

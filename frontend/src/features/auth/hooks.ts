@@ -19,6 +19,7 @@ export function useLogin() {
 
   return useMutation<LoginResponse, ApiError, LoginRequest>({
     mutationFn: login,
+    meta: { successMessage: false },
     onSuccess: openSession,
   })
 }
@@ -29,6 +30,7 @@ export function useLogout() {
 
   return useMutation<void, ApiError, void>({
     mutationFn: logout,
+    meta: { successMessage: false },
     onSettled: () => {
       closeSession()
       queryClient.clear()

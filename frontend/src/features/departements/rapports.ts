@@ -176,11 +176,13 @@ export function addPlanAction(departementId: string, input: Omit<PlanAction, 'id
 
 export function marquerPlanFait(departementId: string, id: string) {
   if (!canMutateUnite(departementId, [PERMISSIONS.OBJECTIFS_MANAGE, PERMISSIONS.RAPPORTS_CREATE])) {
-    return
+    return false
   }
   const found = (plans[departementId] ?? []).find((item) => item.id === id)
-  if (found) found.statut = 'fait'
+  if (!found || found.statut === 'fait') return false
+  found.statut = 'fait'
   emit()
+  return true
 }
 
 export function listRapports(departementId: string) {

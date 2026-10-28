@@ -16,6 +16,7 @@ import { useFamille, useFamilles } from '@/features/familles/hooks'
 import { cn } from '@/lib/cn'
 import { errorId } from '@/lib/form'
 import { PERMISSIONS } from '@/lib/permissions'
+import { showSuccessFeedback } from '@/lib/successFeedback'
 import { useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Personne } from '@/types'
 import { PersonneFormDialog } from './PersonneFormDialog'
@@ -479,6 +480,7 @@ export function PersonneDetailPage() {
       libelle: 'Photo de profil mise à jour',
     })
     setHistoryTick((current) => current + 1)
+    showSuccessFeedback('La photo de profil a bien été mise à jour.')
   }
 
   const onChangeLien = (idProche: string, typeLien: string) => {
@@ -756,7 +758,10 @@ export function PersonneDetailPage() {
                             size="sm"
                             className="shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                             aria-label="Supprimer la note"
-                            onClick={() => setComplement(deleteNotePastorale(personne.idPersonne, note.id))}
+                            onClick={() => {
+                              setComplement(deleteNotePastorale(personne.idPersonne, note.id))
+                              showSuccessFeedback('La note pastorale a bien été supprimée.')
+                            }}
                           >
                             <Trash2 className="size-4" aria-hidden="true" />
                           </Button>
@@ -1102,6 +1107,7 @@ export function PersonneDetailPage() {
               setComplement(addNotePastorale(personne.idPersonne, texte))
               setNoteDraft('')
               setNoteOpen(false)
+              showSuccessFeedback('La note pastorale a bien été enregistrée.')
             }}
           >
             <label className="flex flex-col gap-1.5 text-sm">

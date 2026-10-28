@@ -123,5 +123,6 @@ export function useUnassignRole(compteId: string) {
 export function useCheckComptePermission(compteId: string) {
   return useMutation<PermissionCheck, ApiError, string>({
     mutationFn: (permissionCode) => checkComptePermission(compteId, permissionCode),
+    meta: { successMessage: false },
   })
 }
