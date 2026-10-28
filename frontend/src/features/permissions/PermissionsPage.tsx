@@ -22,8 +22,13 @@ import { actionLabel, moduleLabel, permissionLabel } from './labels'
 import { toPermissionCreate, toPermissionUpdate, type PermissionFormValues } from './schema'
 
 const PAGE_SIZE = 20
+const PAGE_SECTIONS = [
+  { id: 'liste', label: 'Liste' },
+  { id: 'acces-unite', label: 'Accès par unité' },
+] as const
 
 export function PermissionsPage() {
+  const [section, setSection] = useState<(typeof PAGE_SECTIONS)[number]['id']>('liste')
   const [searchInput, setSearchInput] = useState('')
   const [submittedSearch, setSubmittedSearch] = useState('')
   const [moduleFilter, setModuleFilter] = useState('')
@@ -36,6 +41,7 @@ export function PermissionsPage() {
   const canManage = useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canReadCatalog = useHasPermission(PERMISSIONS.ROLES_READ)
   const canRead = canManage || canReadCatalog
+  const activeSection = canManage ? section : 'liste'
 
   const catalogQuery = usePermissions({ page: 1, limit: 100 }, canRead)
   const modules = useMemo(() => {
@@ -110,7 +116,7 @@ export function PermissionsPage() {
             retirer.
           </p>
         </div>
-        {canManage && (
+        {canManage && activeSection === 'liste' && (
           <Button onClick={openCreate}>
             <Plus className="size-4" aria-hidden="true" />
             Nouvelle permission
@@ -118,8 +124,33 @@ export function PermissionsPage() {
         )}
       </div>
 
-      {canManage && <UnitPageAccessManager />}
+      <div
+        role="tablist"
+        aria-label="Sections des permissions"
+        className="flex flex-wrap gap-6 border-b border-slate-200"
+      >
+        {(canManage ? PAGE_SECTIONS : PAGE_SECTIONS.slice(0, 1)).map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={activeSection === item.id}
+            className={`-mb-px border-b-2 pb-3 text-sm font-medium ${
+              activeSection === item.id
+                ? 'border-gerbe-or text-slate-900'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+            onClick={() => setSection(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
+      {activeSection === 'acces-unite' ? (
+        canManage && <UnitPageAccessManager />
+      ) : (
+        <>
       <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
         <div className="relative max-w-sm flex-1">
           <Search
@@ -333,6 +364,8 @@ export function PermissionsPage() {
           </div>
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   )
 }
