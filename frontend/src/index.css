@@ -61,19 +61,20 @@ html[data-theme='dark'] {
 }
 
 html[data-theme='dark'] body {
-  background-color: #08080a;
+  background-color: #130025;
   background-image:
-    radial-gradient(ellipse at 58% 72%, rgb(180 74 18 / 24%), transparent 42%),
-    radial-gradient(ellipse at 12% 8%, rgb(80 16 128 / 26%), transparent 36%),
-    radial-gradient(ellipse at 90% 12%, rgb(76 38 16 / 12%), transparent 34%);
+    radial-gradient(ellipse at 58% 72%, rgb(80 16 128 / 30%), transparent 42%),
+    radial-gradient(ellipse at 12% 8%, rgb(60 1 115 / 30%), transparent 36%),
+    radial-gradient(ellipse at 90% 12%, rgb(4 123 202 / 14%), transparent 34%),
+    radial-gradient(ellipse at 78% 82%, rgb(236 183 8 / 8%), transparent 32%);
   background-attachment: fixed;
 }
 
 html[data-theme='dark'] .bg-white:not(.rounded-full) {
-  background-color: rgb(25 23 25 / 68%);
-  backdrop-filter: blur(24px) saturate(155%);
-  -webkit-backdrop-filter: blur(24px) saturate(155%);
-  border-color: rgb(255 255 255 / 13%);
+  background-color: rgb(40 1 77 / 68%);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-color: rgb(217 193 240 / 18%);
 }
 
 html[data-theme='dark'] .bg-white.text-brand-700 {
@@ -85,63 +86,49 @@ html[data-theme='dark'] .bg-white.rounded-full {
 }
 
 html[data-theme='dark'] .bg-slate-50 {
-  background-color: rgb(8 8 10 / 38%);
+  background-color: rgb(19 0 37 / 38%);
   backdrop-filter: blur(18px) saturate(145%);
   -webkit-backdrop-filter: blur(18px) saturate(145%);
 }
 
 html[data-theme='dark'] .bg-slate-100 {
-  background-color: rgb(46 41 39 / 56%);
+  background-color: rgb(40 1 77 / 56%);
 }
 
 html[data-theme='dark'] .bg-brand-900 {
-  background-color: rgb(8 8 10 / 84%);
+  background-color: rgb(30 1 57 / 86%);
   backdrop-filter: blur(24px) saturate(145%);
   -webkit-backdrop-filter: blur(24px) saturate(145%);
-  border-right: 1px solid rgb(255 255 255 / 9%);
-  box-shadow: 12px 0 42px rgb(0 0 0 / 24%);
+  border-right: 1px solid rgb(217 193 240 / 12%);
+  box-shadow: 12px 0 42px rgb(19 0 37 / 35%);
 }
 
 html[data-theme='dark'] .app-topbar {
-  background-color: rgb(12 11 13 / 76%);
-  border-color: rgb(255 255 255 / 12%);
-  box-shadow: 0 16px 42px rgb(0 0 0 / 22%);
+  background-color: rgb(19 0 37 / 78%);
+  border-color: rgb(217 193 240 / 16%);
+  box-shadow: 0 16px 42px rgb(19 0 37 / 32%);
   backdrop-filter: blur(26px) saturate(165%);
   -webkit-backdrop-filter: blur(26px) saturate(165%);
 }
 
-html[data-theme='dark'] main .bg-brand-500 {
-  background-color: #e96e1e;
-}
-
-html[data-theme='dark'] main button.bg-brand-600,
-html[data-theme='dark'] main a.bg-brand-600 {
-  background-color: #e96e1e;
-}
-
-html[data-theme='dark'] main button.bg-brand-600:hover,
-html[data-theme='dark'] main a.bg-brand-600:hover {
-  background-color: #c75b17;
-}
-
 html[data-theme='dark'] main a.text-brand-600:not(.bg-white),
 html[data-theme='dark'] main a.text-brand-700:not(.bg-white) {
-  color: #fb923c;
+  color: #d9c1f0;
 }
 
 html[data-theme='dark'] main a.text-brand-600:not(.bg-white):hover,
 html[data-theme='dark'] main a.text-brand-700:not(.bg-white):hover {
-  color: #fdba74;
+  color: #ede0f8;
 }
 
 html[data-theme='dark'] aside nav a[aria-current='page'] {
-  border: 1px solid rgb(249 115 22 / 30%);
-  background-color: rgb(249 115 22 / 13%);
+  border: 1px solid rgb(236 183 8 / 24%);
+  background-color: rgb(236 183 8 / 12%);
   color: #ffffff;
 }
 
 html[data-theme='dark'] aside nav a[aria-current='page'] svg {
-  color: #fb923c;
+  color: #ecb708;
 }
 
 html[data-theme='dark'] :is(.bg-brand-50, .bg-amber-50, .bg-red-50, .bg-emerald-50),

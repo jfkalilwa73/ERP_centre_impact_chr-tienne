@@ -43,7 +43,7 @@ export function AppLayout() {
   const [isNavOpen, setIsNavOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light'
-    return window.localStorage.getItem('icc-theme-v2') === 'light' ? 'light' : 'dark'
+    return window.localStorage.getItem('icc-theme') === 'dark' ? 'dark' : 'light'
   })
   const user = useCurrentUser()
   const profil = useSessionProfil()
@@ -62,7 +62,7 @@ export function AppLayout() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    window.localStorage.setItem('icc-theme-v2', theme)
+    window.localStorage.setItem('icc-theme', theme)
   }, [theme])
 
   const toggleTheme = () => setTheme((current) => (current === 'light' ? 'dark' : 'light'))
