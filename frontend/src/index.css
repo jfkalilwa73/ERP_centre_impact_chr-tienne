@@ -189,18 +189,19 @@ html:not([data-theme='dark']) :is(.bg-brand-50, .bg-amber-50, .bg-red-50, .bg-em
 html:not([data-theme='dark']) body {
   background-color: #f4effa;
   background-image:
-    radial-gradient(ellipse at 12% 8%, rgb(110 45 174 / 20%), transparent 35%),
-    radial-gradient(ellipse at 88% 32%, rgb(4 123 202 / 13%), transparent 38%),
-    radial-gradient(ellipse at 58% 94%, rgb(236 183 8 / 11%), transparent 34%);
+    radial-gradient(ellipse 54% 42% at 10% 8%, rgb(110 45 174 / 28%), transparent 72%),
+    radial-gradient(ellipse 50% 42% at 92% 30%, rgb(4 123 202 / 18%), transparent 74%),
+    radial-gradient(ellipse 62% 40% at 58% 96%, rgb(236 183 8 / 15%), transparent 72%),
+    radial-gradient(ellipse 42% 36% at 42% 58%, rgb(217 193 240 / 38%), transparent 76%);
   background-attachment: fixed;
 }
 
 html:not([data-theme='dark']) .bg-white:not(.rounded-full) {
-  background-color: rgb(255 255 255 / 12%);
-  background-image: linear-gradient(135deg, rgb(255 255 255 / 36%), rgb(255 255 255 / 8%));
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border-color: rgb(255 255 255 / 68%);
+  background-color: rgb(255 255 255 / 8%);
+  background-image: linear-gradient(135deg, rgb(255 255 255 / 28%), rgb(255 255 255 / 4%));
+  backdrop-filter: blur(32px) saturate(175%);
+  -webkit-backdrop-filter: blur(32px) saturate(175%);
+  border-color: rgb(255 255 255 / 76%);
 }
 
 html:not([data-theme='dark']) .bg-white:not(.rounded-full):not(button):not(input):not(select):not(textarea) {
@@ -229,21 +230,21 @@ html:not([data-theme='dark']) .bg-slate-100 {
 }
 
 html:not([data-theme='dark']) .app-topbar {
-  background-color: rgb(255 255 255 / 30%);
-  background-image: linear-gradient(135deg, rgb(255 255 255 / 58%), rgb(255 255 255 / 20%));
+  background-color: rgb(255 255 255 / 16%);
+  background-image: linear-gradient(135deg, rgb(255 255 255 / 38%), rgb(255 255 255 / 10%));
   color: #334155;
   border-color: rgb(255 255 255 / 72%);
   box-shadow: 0 16px 42px rgb(60 1 115 / 12%);
-  backdrop-filter: blur(28px) saturate(165%);
-  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
 }
 
 html:not([data-theme='dark']) .bg-brand-900 {
-  background-color: rgb(255 255 255 / 25%);
-  background-image: linear-gradient(160deg, rgb(255 255 255 / 52%), rgb(255 255 255 / 16%));
+  background-color: rgb(255 255 255 / 12%);
+  background-image: linear-gradient(160deg, rgb(255 255 255 / 34%), rgb(255 255 255 / 7%));
   color: #334155;
-  backdrop-filter: blur(28px) saturate(165%);
-  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
   border-right: 1px solid rgb(255 255 255 / 65%);
   box-shadow: 12px 0 42px rgb(60 1 115 / 9%);
 }
