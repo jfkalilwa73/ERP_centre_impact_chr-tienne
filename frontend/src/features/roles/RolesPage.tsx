@@ -175,8 +175,16 @@ export function RolesPage() {
 
       {roles.length > 0 && (
         <>
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
+          <p className="text-xs text-slate-500 sm:hidden">
+            Faites glisser le tableau horizontalement pour voir toutes les colonnes.
+          </p>
+          <div
+            className="overflow-x-auto overscroll-x-contain rounded-xl border border-slate-200 bg-white"
+            role="region"
+            aria-label="Liste des rôles, défilement horizontal possible"
+            tabIndex={0}
+          >
+            <table className="w-full min-w-[38rem] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
                 <tr>
                   <th className="px-4 py-3 font-medium">Code</th>

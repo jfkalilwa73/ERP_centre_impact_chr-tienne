@@ -226,7 +226,7 @@ export function AppLayout() {
           </div>
         </header>
 
-        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-hidden px-4 py-8 sm:px-6 print:max-w-none print:overflow-visible print:px-0 print:py-0">
+        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-clip px-4 py-8 sm:px-6 print:max-w-none print:overflow-visible print:px-0 print:py-0">
           <PageTransition />
         </main>
       </div>

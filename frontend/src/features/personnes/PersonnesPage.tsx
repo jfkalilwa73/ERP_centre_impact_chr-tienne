@@ -237,7 +237,7 @@ export function PersonnesPage() {
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard
           label="Total Personnes"
           value={stats.total}
@@ -365,7 +365,7 @@ export function PersonnesPage() {
                 <button
                   type="button"
                   onClick={() => setDuplicatesOpen(true)}
-                  className="shrink-0 text-sm font-medium text-slate-600 hover:text-slate-900"
+                  className="shrink-0 text-sm font-semibold text-amber-950 hover:text-brand-800"
                 >
                   Voir les doublons
                 </button>
