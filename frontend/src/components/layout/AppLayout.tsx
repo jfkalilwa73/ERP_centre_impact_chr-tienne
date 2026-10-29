@@ -65,6 +65,14 @@ export function AppLayout() {
     ? [user.personne.prenom, user.personne.nom].filter(Boolean).join(' ')
     : (profil?.name ?? '')
   const email = user?.compte.email ?? profil?.email ?? ''
+  const avatarInitials =
+    fullName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() || 'ICC'
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -145,12 +153,12 @@ export function AppLayout() {
             />
           </div>
 
-          <div className="ml-auto flex min-w-0 items-center justify-end gap-0.5 sm:gap-2">
+          <div className="ml-auto flex min-w-0 items-center justify-end gap-1.5 sm:gap-2.5">
             {canSeeNotifications && (
               <Link
                 to="/notifications"
                 className={cn(
-                  'relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors sm:size-10',
+                  'topbar-control relative inline-flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors sm:size-10',
                   theme === 'dark' ? 'text-white hover:bg-white/10' : 'text-slate-700 hover:bg-white/70',
                 )}
                 aria-label="Notifications"
@@ -168,7 +176,7 @@ export function AppLayout() {
               type="button"
               onClick={toggleTheme}
               className={cn(
-                'inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors sm:size-10',
+                'topbar-control inline-flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors sm:size-10',
                 theme === 'dark' ? 'text-white hover:bg-white/10' : 'text-slate-700 hover:bg-white/70',
               )}
               aria-label={theme === 'light' ? 'Activer le mode nuit' : 'Activer le mode jour'}
@@ -181,18 +189,22 @@ export function AppLayout() {
               )}
             </button>
             <div
-              className={cn('mx-1 hidden h-8 w-px sm:block', theme === 'dark' ? 'bg-white/20' : 'bg-brand-200')}
-              aria-hidden="true"
-            />
-            <div className="min-w-0 max-w-20 leading-tight sm:max-w-56">
-              {fullName && (
-                <p className={cn('truncate text-xs font-semibold sm:text-sm', theme === 'dark' ? 'text-white' : 'text-slate-800')}>
-                  {fullName}
-                </p>
+              className={cn(
+                'topbar-profile flex min-w-0 max-w-24 items-center gap-1.5 rounded-full border px-2 py-1 sm:max-w-56 sm:gap-2 sm:px-3 sm:py-1.5',
+                theme === 'dark' ? 'text-white' : 'text-slate-800',
               )}
-              <p className={cn('hidden truncate text-xs sm:block', theme === 'dark' ? 'text-white/65' : 'text-slate-600')}>
-                {email}
-              </p>
+            >
+              <span className="topbar-avatar inline-flex size-6 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold sm:size-8 sm:text-[10px]" aria-hidden="true">
+                {avatarInitials}
+              </span>
+              <span className="flex min-w-0 flex-col leading-tight">
+                {fullName && (
+                  <span className="truncate text-[10px] font-semibold sm:text-xs">{fullName}</span>
+                )}
+                <span className={cn('hidden truncate text-[10px] sm:block', theme === 'dark' ? 'text-white/65' : 'text-slate-600')}>
+                  {email}
+                </span>
+              </span>
             </div>
             <Button
               variant="ghost"
@@ -201,7 +213,7 @@ export function AppLayout() {
               isLoading={logoutMutation.isPending}
               aria-label="Déconnexion"
               className={cn(
-                'size-9 shrink-0 px-0 sm:size-10',
+                'topbar-control size-8 shrink-0 rounded-full border px-0 sm:size-10',
                 theme === 'dark'
                   ? 'text-white hover:bg-white/10 hover:text-white'
                   : 'text-slate-700 hover:bg-white/70 hover:text-brand-700',
