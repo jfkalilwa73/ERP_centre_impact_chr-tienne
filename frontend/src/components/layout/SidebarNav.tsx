@@ -206,6 +206,7 @@ function DepartementsNav({
   const canOpenPage =
     canAccessList || canOpenDgePage || departmentLinks.length > 0 || loadingDepartments
   if (!canOpenPage) return null
+  const showParent = canAccessList || canOpenDgePage
 
   const parentTarget = canAccessList
     ? '/departements'
@@ -216,6 +217,16 @@ function DepartementsNav({
         : departmentLinks[0]?.to ?? '/departements'
   const parentItem: NavItem = { to: parentTarget, label: 'Départements', icon: Layers }
   const panelId = 'departements-nav-list'
+
+  if (!showParent) {
+    return (
+      <>
+        {departmentLinks.map((item) => (
+          <NavItemLink key={item.to} item={item} onNavigate={onNavigate} collapsed={collapsed} />
+        ))}
+      </>
+    )
+  }
 
   if (collapsed) {
     return (
