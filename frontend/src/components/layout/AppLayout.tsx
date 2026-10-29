@@ -96,13 +96,13 @@ export function AppLayout() {
       </aside>
 
       <div className="flex min-w-0 min-h-screen flex-col">
-        <header className="app-topbar sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 shadow-sm sm:h-16 sm:gap-3 sm:px-6 print:hidden">
+        <header className="app-topbar sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-white/20 bg-brand-950/75 px-3 text-white shadow-lg shadow-brand-950/20 backdrop-blur-xl sm:h-16 sm:gap-3 sm:px-6 print:hidden">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <DialogPrimitive.Root open={isNavOpen} onOpenChange={setIsNavOpen}>
               <DialogPrimitive.Trigger asChild>
                 <button
                   type="button"
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-slate-700 transition-colors duration-200 hover:bg-slate-100 lg:hidden"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-white transition-colors duration-200 hover:bg-white/10 lg:hidden"
                   aria-label="Ouvrir le menu"
                 >
                   <Menu className="size-5" aria-hidden="true" />
@@ -140,7 +140,7 @@ export function AppLayout() {
             {canSeeNotifications && (
               <Link
                 to="/notifications"
-                className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-700 transition-colors hover:bg-slate-100 sm:size-10"
+                className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 sm:size-10"
                 aria-label="Notifications"
                 title="Notifications"
               >
@@ -155,7 +155,7 @@ export function AppLayout() {
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-700 transition-colors hover:bg-slate-100 sm:size-10"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 sm:size-10"
               aria-label={theme === 'light' ? 'Activer le mode nuit' : 'Activer le mode jour'}
               title={theme === 'light' ? 'Activer le mode nuit' : 'Activer le mode jour'}
             >
@@ -165,12 +165,12 @@ export function AppLayout() {
                 <Sun className="size-5" aria-hidden="true" />
               )}
             </button>
-            <div className="mx-1 hidden h-8 w-px bg-slate-200 sm:block" aria-hidden="true" />
+            <div className="mx-1 hidden h-8 w-px bg-white/20 sm:block" aria-hidden="true" />
             <div className="min-w-0 max-w-20 leading-tight sm:max-w-56">
               {fullName && (
-                <p className="truncate text-xs font-semibold text-slate-900 sm:text-sm">{fullName}</p>
+                <p className="truncate text-xs font-semibold text-white sm:text-sm">{fullName}</p>
               )}
-              <p className="hidden truncate text-xs text-slate-500 sm:block">{email}</p>
+              <p className="hidden truncate text-xs text-white/65 sm:block">{email}</p>
             </div>
             <Button
               variant="ghost"
@@ -178,7 +178,7 @@ export function AppLayout() {
               onClick={() => logoutMutation.mutate()}
               isLoading={logoutMutation.isPending}
               aria-label="Déconnexion"
-              className="size-9 shrink-0 px-0 sm:size-10"
+              className="size-9 shrink-0 px-0 text-white hover:bg-white/10 hover:text-white sm:size-10"
               title="Déconnexion"
             >
               <LogOut className="size-4" aria-hidden="true" />

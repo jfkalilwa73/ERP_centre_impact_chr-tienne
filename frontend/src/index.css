@@ -72,10 +72,6 @@ html[data-theme='dark'] .bg-white.text-brand-700 {
   background-color: #ffffff;
 }
 
-html[data-theme='dark'] .app-topbar {
-  background-color: #111827;
-}
-
 html[data-theme='dark'] .bg-white.rounded-full {
   background-color: #ffffff;
 }
