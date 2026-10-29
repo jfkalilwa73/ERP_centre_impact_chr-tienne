@@ -12,11 +12,17 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useHasPermission, useSessionProfil } from '@/stores/authStore'
 import { cn } from '@/lib/cn'
 
-function BrandMark({ collapsed = false }: { collapsed?: boolean }) {
+function BrandMark({ collapsed = false, theme }: { collapsed?: boolean; theme: 'light' | 'dark' }) {
   return (
-    <div className={cn('flex items-center', collapsed ? 'justify-center px-0' : 'gap-3 px-3')}>
+    <div
+      className={cn(
+        'flex items-center',
+        collapsed ? 'justify-center px-0' : 'gap-3 px-3',
+        theme === 'light' && collapsed && 'rounded-lg bg-brand-600 p-1',
+      )}
+    >
       <img
-        src={collapsed ? '/embleme-icc-blanc.png' : '/logo-icc-blanc.png'}
+        src={theme === 'light' && !collapsed ? '/logo-icc.png' : collapsed ? '/embleme-icc-blanc.png' : '/logo-icc-blanc.png'}
         alt="Impact Centre Chrétien"
         width={collapsed ? 128 : 962}
         height={collapsed ? 128 : 510}
@@ -73,7 +79,7 @@ export function AppLayout() {
         <div className="sticky top-0 h-screen">
           <SidebarShell collapsed>
             <div className="shrink-0">
-              <BrandMark collapsed />
+              <BrandMark collapsed theme={theme} />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               <SidebarNav collapsed />
@@ -86,7 +92,7 @@ export function AppLayout() {
         <div className="sticky top-0 h-screen">
           <SidebarShell>
             <div className="shrink-0">
-              <BrandMark />
+              <BrandMark theme={theme} />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               <SidebarNav />
@@ -102,7 +108,10 @@ export function AppLayout() {
               <DialogPrimitive.Trigger asChild>
                 <button
                   type="button"
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-white transition-colors duration-200 hover:bg-white/10 lg:hidden"
+                  className={cn(
+                    'inline-flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-200 lg:hidden',
+                    theme === 'dark' ? 'text-white hover:bg-white/10' : 'text-slate-700 hover:bg-white/70',
+                  )}
                   aria-label="Ouvrir le menu"
                 >
                   <Menu className="size-5" aria-hidden="true" />
@@ -117,7 +126,7 @@ export function AppLayout() {
                   </DialogPrimitive.Description>
                   <SidebarShell>
                     <div className="shrink-0">
-                      <BrandMark />
+                      <BrandMark theme={theme} />
                     </div>
                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                       <SidebarNav onNavigate={() => setIsNavOpen(false)} />
@@ -140,7 +149,10 @@ export function AppLayout() {
             {canSeeNotifications && (
               <Link
                 to="/notifications"
-                className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 sm:size-10"
+                className={cn(
+                  'relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors sm:size-10',
+                  theme === 'dark' ? 'text-white hover:bg-white/10' : 'text-slate-700 hover:bg-white/70',
+                )}
                 aria-label="Notifications"
                 title="Notifications"
               >
@@ -155,7 +167,10 @@ export function AppLayout() {
             <button
               type="button"
               onClick={toggleTheme}
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 sm:size-10"
+              className={cn(
+                'inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors sm:size-10',
+                theme === 'dark' ? 'text-white hover:bg-white/10' : 'text-slate-700 hover:bg-white/70',
+              )}
               aria-label={theme === 'light' ? 'Activer le mode nuit' : 'Activer le mode jour'}
               title={theme === 'light' ? 'Activer le mode nuit' : 'Activer le mode jour'}
             >
@@ -165,12 +180,19 @@ export function AppLayout() {
                 <Sun className="size-5" aria-hidden="true" />
               )}
             </button>
-            <div className="mx-1 hidden h-8 w-px bg-white/20 sm:block" aria-hidden="true" />
+            <div
+              className={cn('mx-1 hidden h-8 w-px sm:block', theme === 'dark' ? 'bg-white/20' : 'bg-brand-200')}
+              aria-hidden="true"
+            />
             <div className="min-w-0 max-w-20 leading-tight sm:max-w-56">
               {fullName && (
-                <p className="truncate text-xs font-semibold text-white sm:text-sm">{fullName}</p>
+                <p className={cn('truncate text-xs font-semibold sm:text-sm', theme === 'dark' ? 'text-white' : 'text-slate-800')}>
+                  {fullName}
+                </p>
               )}
-              <p className="hidden truncate text-xs text-white/65 sm:block">{email}</p>
+              <p className={cn('hidden truncate text-xs sm:block', theme === 'dark' ? 'text-white/65' : 'text-slate-600')}>
+                {email}
+              </p>
             </div>
             <Button
               variant="ghost"
@@ -178,7 +200,12 @@ export function AppLayout() {
               onClick={() => logoutMutation.mutate()}
               isLoading={logoutMutation.isPending}
               aria-label="Déconnexion"
-              className="size-9 shrink-0 px-0 text-white hover:bg-white/10 hover:text-white sm:size-10"
+              className={cn(
+                'size-9 shrink-0 px-0 sm:size-10',
+                theme === 'dark'
+                  ? 'text-white hover:bg-white/10 hover:text-white'
+                  : 'text-slate-700 hover:bg-white/70 hover:text-brand-700',
+              )}
               title="Déconnexion"
             >
               <LogOut className="size-4" aria-hidden="true" />
