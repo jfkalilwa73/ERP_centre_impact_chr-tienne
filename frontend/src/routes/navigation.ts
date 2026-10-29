@@ -1,5 +1,4 @@
 import {
-  Bell,
   Heart,
   KeyRound,
   LayoutDashboard,
@@ -41,7 +40,6 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
 
 export const navigation: NavEntry[] = [
   { to: '/', label: 'Accueil', icon: LayoutDashboard },
-  { to: '/notifications', label: 'Notifications', icon: Bell, permission: PERMISSIONS.DEMANDES_READ },
   { to: '/personnes', label: 'Personnes', icon: Users, permission: PERMISSIONS.MEMBRES_READ },
   {
     id: 'departements',

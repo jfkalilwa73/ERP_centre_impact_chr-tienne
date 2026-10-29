@@ -44,6 +44,42 @@
   }
 }
 
+/* Les variables slate pilotent les surfaces et le texte des utilitaires Tailwind. */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --color-slate-50: #0b1220;
+  --color-slate-100: #111c2e;
+  --color-slate-200: #243247;
+  --color-slate-300: #334155;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #cbd5e1;
+  --color-slate-600: #dbe4ef;
+  --color-slate-700: #e2e8f0;
+  --color-slate-800: #f1f5f9;
+  --color-slate-900: #f8fafc;
+  --color-slate-950: #ffffff;
+}
+
+html[data-theme='dark'] body {
+  background-color: #0b1220;
+}
+
+html[data-theme='dark'] .bg-white:not(.rounded-full) {
+  background-color: #111c2e;
+}
+
+html[data-theme='dark'] .bg-white.text-brand-700 {
+  background-color: #ffffff;
+}
+
+html[data-theme='dark'] .app-topbar {
+  background-color: #111827;
+}
+
+html[data-theme='dark'] .bg-white.rounded-full {
+  background-color: #ffffff;
+}
+
 @keyframes page-enter {
   from {
     opacity: 0;
