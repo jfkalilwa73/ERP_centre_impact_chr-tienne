@@ -61,7 +61,7 @@ services:
     image: axllent/mailpit
     container_name: erp_centre_impact_chr-tienne-mailpit
     ports:
-      - "1025:1025"
+      - "1026:1025"
       - "8025:8025"
     networks:
       - net_laravel
@@ -75,6 +75,7 @@ services:
       - "8000:80"
     volumes:
       - ./backend:/var/www/html
+      - erp_centre_impact_chr-tienne_backend_vendor:/var/www/html/vendor
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
@@ -128,6 +129,8 @@ volumes:
     name: erp_centre_impact_chr-tienne_pgadmin_data
   erp_centre_impact_chr-tienne_frontend_node_modules:
     name: erp_centre_impact_chr-tienne_frontend_node_modules
+  erp_centre_impact_chr-tienne_backend_vendor:
+    name: erp_centre_impact_chr-tienne_backend_vendor
 
 networks:
   net_laravel:

@@ -27,7 +27,7 @@ Le schéma (triggers, UUID, `plpgsql`) est PostgreSQL. Il n'y a pas de service M
 | Redis | 6379 | 6379 | — |
 | MinIO S3 | 9000 | 9000 | http://localhost:9000 |
 | Console MinIO | 9001 | 9001 | http://localhost:9001 |
-| Mailpit SMTP | 1025 | 1025 | — |
+| Mailpit SMTP | 1026 | 1025 | — |
 | Mailpit web | 8025 | 8025 | http://localhost:8025 |
 | pgAdmin | 8088 | 80 | http://localhost:8088 |
 | PostgreSQL | non publié | 5432 | hôte Docker : `postgres` |
@@ -76,6 +76,8 @@ docker compose exec backend php artisan migrate
 ```
 
 Le frontend est le service `frontend` du même Compose : http://localhost:3000. Le premier démarrage installe les dépendances npm dans le conteneur.
+
+Après un changement du `Dockerfile` backend (PHP-FPM + nginx), **reconstruire l’image une fois** avec `--build`. Les mises à jour de code PHP/React ne demandent pas de rebuild : le code est monté en volume. Les paquets Composer sont dans un volume Docker (`vendor`), comme `node_modules` : le premier démarrage du backend lance `composer install` dans le conteneur. Pour l’autocomplétion IDE sur la machine hôte, lancer aussi `composer install` dans `backend/` en local.
 
 Arrêt de ce projet seulement, sans supprimer les volumes :
 

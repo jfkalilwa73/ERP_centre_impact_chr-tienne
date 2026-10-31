@@ -1,7 +1,5 @@
-# Utiliser l'image PHP CLI (et non FPM) pour le serveur de développement artisan
-FROM php:8.4-cli-alpine
+FROM php:8.4-fpm-alpine
 
-# Installer les dépendances système et extensions PHP requises pour Laravel + PostgreSQL
 RUN apk add --no-cache \
     git \
     curl \
@@ -13,6 +11,8 @@ RUN apk add --no-cache \
     postgresql-dev \
     oniguruma-dev \
     freetype-dev \
+    nginx \
+    supervisor \
     $PHPIZE_DEPS \
     && docker-php-ext-configure gd --with-freetype \
     && docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd zip intl opcache \
@@ -20,15 +20,19 @@ RUN apk add --no-cache \
     && docker-php-ext-enable redis \
     && apk del $PHPIZE_DEPS
 
-# Installer Composer globalement
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/www.conf /usr/local/etc/php-fpm.d/www.conf
+COPY docker/nginx.conf /etc/nginx/http.d/default.conf
+COPY docker/supervisord.conf /etc/supervisord.conf
+COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-# Définir le répertoire de travail
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && mkdir -p /run/nginx
+
 WORKDIR /var/www/html
 
-# L'hôte publie 8000, le conteneur écoute 80.
 EXPOSE 80
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
