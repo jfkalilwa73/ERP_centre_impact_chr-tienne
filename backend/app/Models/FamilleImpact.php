@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FamilleImpact extends Model
@@ -11,6 +12,7 @@ class FamilleImpact extends Model
     protected $primaryKey = 'id_famille';
     public $incrementing = false;
     protected $keyType = 'string';
+
     const CREATED_AT = 'date_creation';
     const UPDATED_AT = null;
     protected $fillable = [
@@ -22,10 +24,22 @@ class FamilleImpact extends Model
         'latitude' => 'float',
         'longitude' => 'float',
         'capacite_max' => 'integer',
+        'heure_reunion' => 'datetime:H:i',
+        'date_creation' => 'datetime',
     ];
+
+    public function responsable(): BelongsTo
+    {
+        return $this->belongsTo(Personne::class, 'responsable_id');
+    }
+
+    public function adjoint(): BelongsTo
+    {
+        return $this->belongsTo(Personne::class, 'adjoint_id');
+    }
 
     public function affectations(): HasMany
     {
-        return $this->hasMany(AppartenirFamille::class, 'id_famille');
+        return $this->hasMany(AffecterFamilleImpact::class, 'id_famille_impact');
     }
 }

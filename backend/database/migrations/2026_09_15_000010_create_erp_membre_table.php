@@ -15,7 +15,6 @@ return new class extends Migration {
                 statut_membre VARCHAR(20) NOT NULL DEFAULT \'en_attente\' CHECK (statut_membre IN (\'actif\', \'inactif\', \'en_attente\', \'archive\')),
                 date_changement_statut TIMESTAMPTZ,
                 motif_changement_statut TEXT,
-                famille_impact_id UUID REFERENCES famille_impact(id_famille) ON DELETE SET NULL,
                 date_creation TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 date_modification TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
@@ -23,20 +22,20 @@ return new class extends Migration {
             CREATE INDEX idx_membre_personne ON membre(id_personne);
             CREATE INDEX idx_membre_numero ON membre(numero_membre);
             CREATE INDEX idx_membre_statut ON membre(statut_membre);
-            CREATE INDEX idx_membre_famille_impact ON membre(famille_impact_id);
+
+            -- Séquence pour la génération fiable du numéro membre (évite les collisions après suppression)
+            CREATE SEQUENCE IF NOT EXISTS seq_numero_membre_2026 START 1;
 
             -- Trigger 1 : génération automatique du numéro membre (MEM-YYYY-0001)
             CREATE OR REPLACE FUNCTION generer_numero_membre()
             RETURNS TRIGGER AS $$
             DECLARE
                 annee INTEGER := EXTRACT(YEAR FROM NOW())::INTEGER;
-                compte INTEGER;
                 prefixe VARCHAR := \'MEM-\' || annee || \'-\';
                 numero VARCHAR(20);
             BEGIN
                 IF NEW.numero_membre IS NULL OR NEW.numero_membre = \'\' THEN
-                    SELECT COUNT(*) INTO compte FROM membre;
-                    numero := prefixe || LPAD((compte + 1)::TEXT, 4, \'0\');
+                    numero := prefixe || LPAD(NEXTVAL(\'seq_numero_membre_2026\')::TEXT, 4, \'0\');
                     NEW.numero_membre := numero;
                 END IF;
                 IF NEW.date_changement_statut IS NULL THEN

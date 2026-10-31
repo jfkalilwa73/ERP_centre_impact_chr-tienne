@@ -3,7 +3,7 @@
 **Date** : 18 septembre 2026  
 **Auteur** : Bienvenu (Lead Database & Business Backend)  
 **Version** : 1.0  
-**Statut** : ✅ Validé et opérationnel  
+**Statut** : ⚠️ En cours de finalisation (Corrections P0/P1 appliquées — voir rapport d'analyse)  
 **Destinataires** : Elie (Frontend), Jean François / JF (Backend), Bienvenu (Database)
 
 ---
@@ -29,8 +29,16 @@ Ce document informe l'équipe de développement de l'état actuel de la base de 
 | `affecter_famille_impact` | Affectation des membres aux familles d'impact avec historique | 4.2 | `id_affectation` (UUID) | `id_membre` → `membre`, `id_famille_impact` → `famille_impact` |
 | `presence_famille_impact` | Présences aux rencontres des familles d'impact | 4.3 | `id_presence` (UUID) | `id_affectation` → `affecter_famille_impact`, `enregistre_par` → `users` |
 | `historique_statut_membre` | Historisation des changements de statut membre | 3.5 | `id_historique` (UUID) | `id_membre` → `membre`, `change_par` → `users` |
+| `famille_disciple` | Groupe de travail transversal (task force spirituelle) multi-départements | 4.4 | `id_famille_disciple` (UUID) | `responsable_id` → `personne` |
+| `composition_famille_disciple` | Liaison membre → famille disciple avec département d'origine | 4.4 | `id_composition` (UUID) | `id_famille_disciple` → `famille_disciple`, `id_membre` → `membre`, `departement_origine_id` → `departement` |
 
 > La table `famille_impact` existait déjà (migration Phase 0, Sprint 1 famille) et a été étendue avec les colonnes : `responsable_id`, `adjoint_id`, `capacite_max`, `jour_reunion`, `heure_reunion`, `lieu_reunion`.
+
+### Vue de contrôle
+
+| Vue | Rôle |
+|-----|------|
+| `vue_completude_famille_disciple` | Vérifie qu'une famille disciple compte au moins 1 membre par département actif (statut `COMPLET` / `INCOMPLET`) |
 
 ---
 
@@ -101,6 +109,7 @@ Le seeder `Sprint1MembresFamillesSeeder` génère :
 ```bash
 # Via Docker (recommandé)
 # Régénère toutes les données (Phase 0 + Sprint 1)
+docker compose up -d
 docker compose exec backend php artisan migrate:fresh --seed
 
 # Vérifier l'état des migrations
@@ -272,6 +281,7 @@ docker compose exec backend php artisan migrate:status
 | 8 | Vérifier l'historique complet d'un membre | `historique_statut_membre` + `audit_log` | Toutes les modifications tracées avec dates et auteurs |
 | 9 | Lister les membres d'une famille d'impact | `affecter_famille_impact` + `membre` + `personne` | Liste correcte des membres actifs |
 | 10 | Calculer le taux de présence d'une famille d'impact | `presence_famille_impact` + `affecter_famille_impact` | Statistiques correctes (ex: 85% de présence) |
+| 11 | Créer une Famille des Disciples avec au moins 1 membre par département actif | `famille_disciple` + `composition_famille_disciple` + `membre` + `departement` | Groupe créé avec compositions par département ; vue `vue_completude_famille_disciple` indique COMPLET |
 
 ---
 
@@ -360,12 +370,13 @@ Pour les questions Frontend :
 
 ## 📋 Résumé
 
-✅ **Sprint 1 terminé et validé**  
-✅ **7 tables créées** avec contraintes et index  
-✅ **4 triggers fonctionnels** (numéro auto, historique statut, protection suppression, date_modification)  
-✅ **6 modèles Eloquent** configurés avec relations  
-✅ **Seeder exécutable** (10 scénarios validés)  
-✅ **Données de test réalistes** (65 membres, 25 familles, 6 familles d'impact, UPN/Kinshasa)  
+⚠️ **Sprint 1 en cours de finalisation** (corrections P0/P1 appliquées)  
+✅ **8 tables créées** (+ 2 tables Familles des Disciples) avec contraintes et index  
+✅ **1 vue de contrôle** (`vue_completude_famille_disciple`)  
+✅ **4 triggers fonctionnels** (numéro auto via séquence, historique statut, protection suppression, date_modification)  
+✅ **8 modèles Eloquent** configurés avec relations (incl. `FamilleDisciple`, `CompositionFamilleDisciple`)  
+✅ **Seeder exécutable** (11 scénarios validés, enveloppé dans `DB::transaction`)  
+✅ **Données de test réalistes** (65 membres, 25 familles, 6 familles d'impact, 3 Familles des Disciples, UPN/Kinshasa)  
 
 **Prochaine étape** : Sprint 2 — Organisation (affectation des membres aux départements)
 
