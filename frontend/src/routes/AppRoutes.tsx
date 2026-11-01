@@ -26,6 +26,7 @@ import { FamilleListAccessRoute } from './FamilleListAccessRoute'
 import { PilotageDgeRoute } from './PilotageDgeRoute'
 import { SitesPage } from '@/features/sites/SitesPage'  
 import { AppPageAccessRoute } from './AppPageAccessRoute'
+import { FamilleDiscipleDetailPage, FamillesDisciplesPage } from '@/features/familles-disciples/FamillesDisciplesPage'
 
 export function AppRoutes() {
   return (
@@ -72,6 +73,10 @@ export function AppRoutes() {
                 <Route path="familles/suivi" element={<FamillesPage />} />
                 <Route path="familles/rapports" element={<FamillesPage />} />
               </Route>
+            </Route>
+            <Route element={<PermissionRoute permission={PERMISSIONS.FAMILLES_READ} />}>
+              <Route path="familles-disciples" element={<FamillesDisciplesPage />} />
+              <Route path="familles-disciples/:familleDiscipleId" element={<FamilleDiscipleDetailPage />} />
             </Route>
             <Route element={<FamilleAccessRoute />}>
               <Route path="familles/:familleId" element={<FamilleDetailPage />} />

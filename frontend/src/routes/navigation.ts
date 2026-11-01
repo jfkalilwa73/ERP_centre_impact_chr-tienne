@@ -10,6 +10,7 @@ import {
   Shield,
   ShieldCheck,
   Users,
+  UsersRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { PERMISSIONS, type PermissionCode } from '@/lib/permissions'
@@ -41,6 +42,7 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
 export const navigation: NavEntry[] = [
   { to: '/', label: 'Accueil', icon: LayoutDashboard },
   { to: '/personnes', label: 'Personnes', icon: Users, permission: PERMISSIONS.MEMBRES_READ },
+  { to: '/familles-disciples', label: 'Familles des Disciples', icon: UsersRound, permission: PERMISSIONS.FAMILLES_READ },
   {
     id: 'departements',
     label: 'Départements',
