@@ -12,8 +12,12 @@ export function isAdminFonctionnel(user?: CurrentUser | null) {
 }
 
 /** La DGE pilote les superviseurs, qui accompagnent les chefs. L’admin voit ce pilotage. */
-export function canSeePilotageDge(user?: CurrentUser | null) {
-  return isMembreDge(user) || isAdminFonctionnel(user)
+export function canSeePilotageDge(user?: CurrentUser | null, permissions?: readonly string[]) {
+  const codes = permissions ?? user?.permissions ?? []
+  return (
+    isMembreDge(user) ||
+    (codes.includes(PERMISSIONS.COMPTES_CREATE) && codes.includes(PERMISSIONS.ROLES_MANAGE))
+  )
 }
 
 /** Lecture de toutes les unités : DGE, admin, pasteur. Pas un simple catalogue. */

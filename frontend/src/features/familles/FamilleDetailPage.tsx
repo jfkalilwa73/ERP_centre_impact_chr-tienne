@@ -20,13 +20,18 @@ import { EquipePanel } from '@/features/departements/EquipePanel'
 import { DepartementLoading } from '@/features/departements/loading'
 import { personneName } from '@/features/departements/personneName'
 import { tauxPresenceMembres } from '@/features/departements/presence'
+import { FeuillePresence } from '@/features/sprint1/FeuillePresence'
+import { useFeuillePresence } from '@/features/sprint1/hooks'
+import { tauxDepuisPresences } from '@/features/sprint1/presence'
 import { RapportsPanel } from '@/features/departements/RapportsPanel'
 import { StatCard } from '@/features/departements/StatCard'
 import { useAccessScope } from '@/features/auth/accessScope'
+import { useUnitPageAccess } from '@/features/auth/unitPageAccess'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationFamille, Personne } from '@/types'
+import { ForbiddenPage } from '@/pages/ForbiddenPage'
 import { usePersonnes, usePersonnesFamilles } from '@/features/personnes/hooks'
 import {
   activitesFamilleApi,
@@ -39,7 +44,7 @@ import { useAssignPersonneFamille, useFamille, useFamilles, useUnassignPersonneF
 import { isLeadershipRole, roleFamille, ROLES_EQUIPE_FAMILLE, type RoleFamille } from './roles'
 
 const TABS = [
-  { id: 'tableau', label: 'Tableau de bord' },
+  { id: 'tableau', label: 'Synthèse' },
   { id: 'membres', label: 'Membres' },
   { id: 'activites', label: 'Activités' },
   { id: 'budget', label: 'Budget', permission: PERMISSIONS.BUDGET_READ },
@@ -61,9 +66,11 @@ export function FamilleDetailPage() {
   const user = useCurrentUser()
   const permissions = user?.permissions ?? []
   const { isScoped, ledFamilleIds } = useAccessScope()
+  const pageAccess = useUnitPageAccess('famille', familleId, user?.personne.idPersonne)
   const canManageFamilles = useHasPermission(PERMISSIONS.FAMILLES_UPDATE)
 
   const familleQuery = useFamille(familleId)
+  const feuilleQuery = useFeuillePresence(familleId)
   const destinatairesQuery = useFamilles(
     { page: 1, limit: 100 },
     permissions.includes(PERMISSIONS.RAPPORTS_READ) ||
@@ -125,11 +132,15 @@ export function FamilleDetailPage() {
     useHasPermission(PERMISSIONS.RAPPORTS_CREATE) ||
     useHasPermission(PERMISSIONS.OBJECTIFS_MANAGE) ||
     leadsHere
-  const visibleTabs = TABS.filter((item) => !('permission' in item) || permissions.includes(item.permission))
+  const visibleTabs = TABS.filter((item) =>
+    pageAccess.canView(item.id, !('permission' in item) || permissions.includes(item.permission)),
+  )
+  const activeTab = visibleTabs.some((item) => item.id === tab) ? tab : visibleTabs[0]?.id
   const activites = familleId ? listActivitesFamille(familleId) : []
   const evolution = evolutionFamille(allAffectations)
   const evolutionActs = evolutionActivites(activites)
-  const tauxPresence = tauxPresenceMembres(activites)
+  const tauxApi = tauxDepuisPresences(feuilleQuery.data?.presences ?? [])
+  const tauxPresence = tauxApi.length > 0 ? tauxApi : tauxPresenceMembres(activites)
   const chef = membres.find((item) => roleFamille(item.affectation.fonction) === 'Chef')
   const superviseur = membres.find((item) => roleFamille(item.affectation.fonction) === 'Superviseur')
   const hommes = membres.filter((item) => item.personne.sexe === 'M').length
@@ -186,6 +197,8 @@ export function FamilleDetailPage() {
     void applyRole(selectedPersonneId, roleDraft)
   }
 
+  if (!activeTab) return <ForbiddenPage />
+
   if (familleQuery.isLoading) {
     return (
       <div className="flex flex-col gap-6">
@@ -239,6 +252,8 @@ export function FamilleDetailPage() {
             titre={famille.nom}
             message={[
               famille.description || "Que cette famille serve l'Église avec fidélité.",
+              [famille.jourReunion, famille.heureReunion, famille.lieuReunion].filter(Boolean).join(' · '),
+              famille.capaciteMax ? `Capacité ${famille.capaciteMax}` : '',
               superviseur ? `Superviseur : ${personneName(superviseur.personne)}` : '',
               chef ? `Chef : ${personneName(chef.personne)}` : '',
             ]
@@ -268,10 +283,10 @@ export function FamilleDetailPage() {
             key={item.id}
             type="button"
             role="tab"
-            aria-selected={tab === item.id}
+            aria-selected={activeTab === item.id}
             className={cn(
               '-mb-px border-b-2 pb-3 text-sm font-medium',
-              tab === item.id
+              activeTab === item.id
                 ? 'border-gerbe-or text-slate-900'
                 : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
@@ -282,9 +297,9 @@ export function FamilleDetailPage() {
         ))}
       </div>
 
-      {tab === 'tableau' && (
+      {activeTab === 'tableau' && (
         <div className="flex flex-col gap-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             <StatCard
               label="Membres affectés"
               value={actives.length}
@@ -321,17 +336,23 @@ export function FamilleDetailPage() {
             <div className="md:col-span-2">
               <ChartPanel
                 title="Taux de présence des membres"
-                hint="Selon les comptes rendus des activités réalisées."
+                hint={
+                  tauxApi.length > 0
+                    ? 'Selon les feuilles de présence des réunions.'
+                    : 'Selon les comptes rendus des activités réalisées.'
+                }
                 bodyClassName="h-auto min-h-52"
               >
                 <PresenceMembresChart data={tauxPresence} />
               </ChartPanel>
             </div>
           </div>
+
+          {familleId && <FeuillePresence familleId={familleId} canWrite={canAssign || canWriteActivites} />}
         </div>
       )}
 
-      {tab === 'membres' && familleId && (
+      {activeTab === 'membres' && familleId && (
         <EquipePanel
           departementId={familleId}
           membres={membres}
@@ -352,7 +373,7 @@ export function FamilleDetailPage() {
         />
       )}
 
-      {tab === 'activites' && familleId && (
+      {activeTab === 'activites' && familleId && (
         <ActivitesPanel
           departementId={familleId}
           nomDepartement={famille.nom}
@@ -365,7 +386,7 @@ export function FamilleDetailPage() {
         />
       )}
 
-      {tab === 'budget' && familleId && (
+      {activeTab === 'budget' && familleId && (
         <BudgetPanel
           departementId={familleId}
           nomDepartement={famille.nom}
@@ -375,7 +396,7 @@ export function FamilleDetailPage() {
         />
       )}
 
-      {tab === 'rapports' && familleId && (
+      {activeTab === 'rapports' && familleId && (
         <RapportsPanel
           departementId={familleId}
           nomDepartement={famille.nom}

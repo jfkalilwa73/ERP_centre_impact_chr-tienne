@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { showSuccessFeedback } from '@/lib/successFeedback'
 import {
   addProjet,
   addRisque,
@@ -39,7 +40,7 @@ export function ProjetsPanel({ departementId, nomDepartement, canWrite }: Projet
   const onProjet = (event: FormEvent) => {
     event.preventDefault()
     if (!code.trim() || !titre.trim() || !responsable.trim() || !dateFin) return
-    addProjet(departementId, nomDepartement, {
+    const created = addProjet(departementId, nomDepartement, {
       code,
       titre,
       responsable,
@@ -49,25 +50,29 @@ export function ProjetsPanel({ departementId, nomDepartement, canWrite }: Projet
       progression: 0,
       dateFin,
     })
+    if (!created) return
     setCode('')
     setTitre('')
     setResponsable('')
     setBudget('')
     setDateFin('')
+    showSuccessFeedback('Le projet a bien été créé.')
   }
 
   const onRisque = (event: FormEvent) => {
     event.preventDefault()
     if (!risqueProjet || !risqueLibelle.trim()) return
-    addRisque(risqueProjet, {
+    const created = addRisque(risqueProjet, {
       libelle: risqueLibelle,
       probabilite: 'moyenne' satisfies Gravite,
       impact: 'moyenne',
       statut: 'ouvert' satisfies RisqueStatut,
       mitigation: risqueMitigation,
     })
+    if (!created) return
     setRisqueLibelle('')
     setRisqueMitigation('')
+    showSuccessFeedback('Le risque a bien été enregistré.')
   }
 
   return (

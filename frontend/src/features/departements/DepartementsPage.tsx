@@ -1,11 +1,12 @@
-import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { Link, NavLink, Navigate, useLocation } from 'react-router-dom'
-import { CalendarDays, Layers, Pencil, Plus, Search, Shield, Trash2, Crown, Users } from 'lucide-react'
+import { Pencil, Plus, Search, Shield, Trash2, Crown } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { useAccessScope } from '@/features/auth/accessScope'
+import { applicationPageFromPath, useApplicationPageAccess } from '@/features/auth/applicationPageAccess'
 import { canSeePilotageDge, isMembreDge } from '@/features/auth/orgRoles'
 import { useComptes } from '@/features/comptes/hooks'
 import {
@@ -17,32 +18,33 @@ import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Departement, Personne } from '@/types'
-import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
-import { getActivitesVersion, listAllActivites, subscribeActivites } from './activites'
+import {
+  usePersonneAffectations,
+  usePersonnes,
+  usePersonnesAffectations,
+} from '@/features/personnes/hooks'
 import { DepartementBanner } from './banner'
-import { ChartPanel, EffectifsDepartementsChart, EvolutionMembresChart } from './charts'
 import { DepartementFormDialog } from './DepartementFormDialog'
 import { defaultSiteId } from './api'
-import { effectifsParDepartement, evolutionDepartement } from './evolution'
 import {
   useAssignPersonneDepartement,
   useCreateDepartement,
   useDeleteDepartement,
   useDepartements,
+  useDepartementsByIds,
   useUnassignPersonneDepartement,
   useUpdateDepartement,
 } from './hooks'
 import { roleDepartement } from './roles'
 import { toDepartementCreate, toDepartementUpdate, type DepartementFormValues } from './schema'
-import { DashboardBodyLoading, TableLoading } from './loading'
+import { TableLoading } from './loading'
 import { DgeRapportsPanel, DgeSuiviPanel } from './DgeSuiviPanel'
 
 const DGE_VUES = [
-  { to: '/departements', label: 'Tableau de bord', end: true },
+  { to: '/departements', label: 'Tous les départements', end: true },
   { to: '/departements/suivi', label: 'Suivi DGE' },
   { to: '/departements/rapports', label: 'Rapports reçus' },
 ] as const
-import { StatCard } from './StatCard'
 
 const PAGE_SIZE = 20
 
@@ -56,6 +58,7 @@ function personneName(personne: Personne) {
 
 export function DepartementsPage() {
   const location = useLocation()
+  const applicationPageAccess = useApplicationPageAccess()
   const vue = location.pathname.endsWith('/suivi')
     ? 'suivi'
     : location.pathname.endsWith('/rapports')
@@ -73,13 +76,12 @@ export function DepartementsPage() {
   const [demandeMessage, setDemandeMessage] = useState<string>()
   const [formSiteError, setFormSiteError] = useState<string>()
 
-  useSyncExternalStore(subscribeActivites, getActivitesVersion, getActivitesVersion)
-
-  const canCreate = useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE)
+  const canCreate = useHasPermission(PERMISSIONS.DEPARTEMENTS_CREATE) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canUpdate = useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE)
   const canDelete = useHasPermission(PERMISSIONS.DEPARTEMENTS_DELETE)
   const user = useCurrentUser()
-  const { isScoped, isLoading: scopeLoading, ledDepartementIds } = useAccessScope()
+  const { isScoped, ledDepartementIds } = useAccessScope()
+  const departementAffectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
   const isDge = isMembreDge(user)
   const voitPilotage = canSeePilotageDge(user)
   const canAssignSuperviseur = isDge || canUpdate
@@ -96,8 +98,9 @@ export function DepartementsPage() {
     }),
     [page, submittedSearch],
   )
-  const catalogQuery = useDepartements({ page: 1, limit: 100 })
-  const departementsQuery = useDepartements(listParams)
+  const catalogQuery = useDepartements({ page: 1, limit: 100 }, !isScoped)
+  const departementsQuery = useDepartements(listParams, !isScoped)
+  const scopedDepartementQueries = useDepartementsByIds(isScoped ? ledDepartementIds : [])
   const personnesQuery = usePersonnes({ page: 1, limit: 100 })
   const comptesQuery = useComptes(
     { page: 1, limit: 100 },
@@ -142,29 +145,37 @@ export function DepartementsPage() {
     return map
   }, [affectationsActives, personnes])
 
-  const scopedIds = useMemo(() => new Set(ledDepartementIds), [ledDepartementIds])
-  const departements = (departementsQuery.data?.data ?? []).filter(
-    (departement) => !isScoped || scopedIds.has(departement.idDepartement),
+  const scopedDepartements = useMemo(() => {
+    const search = submittedSearch.trim().toLowerCase()
+    return scopedDepartementQueries
+      .flatMap((query) => (query.data ? [query.data] : []))
+      .filter((departement) => departement.actif)
+      .filter((departement) =>
+        !search ||
+        [departement.code, departement.nom, departement.mission]
+          .filter(Boolean)
+          .some((value) => value!.toLowerCase().includes(search)),
+      )
+  }, [scopedDepartementQueries, submittedSearch])
+  const scopedStart = (page - 1) * PAGE_SIZE
+  const departements = isScoped
+    ? scopedDepartements.slice(scopedStart, scopedStart + PAGE_SIZE)
+    : (departementsQuery.data?.data ?? [])
+  const pagination = isScoped ? undefined : departementsQuery.data?.pagination
+  const totalCount = isScoped ? scopedDepartements.length : pagination?.total ?? 0
+  const currentPage = isScoped ? page : pagination?.page ?? page
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalCount / (isScoped ? PAGE_SIZE : pagination?.limit ?? PAGE_SIZE)),
   )
-  const catalog = (catalogQuery.data?.data ?? []).filter(
-    (departement) => !isScoped || scopedIds.has(departement.idDepartement),
-  )
-  const pagination = departementsQuery.data?.pagination
-  const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.limit)) : 1
-  const activites = listAllActivites()
-  const stats = {
-    total: catalog.length,
-    actifs: catalog.filter((departement) => departement.actif).length,
-    membres: affectationsActives.filter(
-      (affectation) => !isScoped || scopedIds.has(affectation.idDepartement),
-    ).length,
-    activites: isScoped
-      ? activites.filter((activite) => scopedIds.has(activite.idDepartement)).length
-      : activites.length,
-  }
-  const evolutionGlobale = evolutionDepartement(affectations)
-  const effectifs = effectifsParDepartement(catalog, affectations)
-
+  const scopedListLoading =
+    isScoped &&
+    (departementAffectationsQuery.isLoading || scopedDepartementQueries.some((query) => query.isLoading))
+  const listLoading = isScoped ? scopedListLoading : departementsQuery.isLoading
+  const scopedListError =
+    departementAffectationsQuery.error?.message ??
+    scopedDepartementQueries.find((query) => query.error)?.error?.message
+  const listError = isScoped ? scopedListError : departementsQuery.error?.message
   const prochesChef = personnes.filter((personne) => {
     const needle = chefSearch.trim().toLowerCase()
     if (!needle) return true
@@ -347,7 +358,10 @@ export function DepartementsPage() {
       {voitPilotage && (
         <div>
           <div role="tablist" aria-label="Sections DGE" className="flex flex-wrap gap-6 border-b border-slate-200">
-            {DGE_VUES.map((item) => (
+            {DGE_VUES.filter((item) => {
+              const page = applicationPageFromPath(item.to)
+              return page !== null && applicationPageAccess.canView(page)
+            }).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -385,49 +399,6 @@ export function DepartementsPage() {
         <DgeRapportsPanel filtreIds={destDge.map((item) => item.idDepartement)} />
       )}
 
-      {vue === 'tableau' && (catalogQuery.isLoading ? (
-        <DashboardBodyLoading />
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              label="Départements"
-              value={stats.total}
-              hint={`${stats.actifs} actifs`}
-              icon={Layers}
-              accent
-            />
-            <StatCard
-              label="Membres affectés"
-              value={stats.membres}
-              hint="Toutes affectations en cours"
-              icon={Users}
-            />
-            <StatCard
-              label="Activités"
-              value={stats.activites}
-              hint="Planifiées et réalisées"
-              icon={CalendarDays}
-            />
-            <StatCard
-              label="Départements actifs"
-              value={stats.actifs}
-              hint={`${Math.max(0, stats.total - stats.actifs)} inactifs`}
-              icon={Crown}
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <ChartPanel title="Évolution globale" hint="Affectations et retraits sur les 12 derniers mois.">
-              <EvolutionMembresChart data={evolutionGlobale} />
-            </ChartPanel>
-            <ChartPanel title="Effectifs par département" hint="Comparaison des membres actuellement affectés.">
-              <EffectifsDepartementsChart data={effectifs} />
-            </ChartPanel>
-          </div>
-        </>
-      ))}
-
       {vue === 'tableau' && demandeMessage && (
         <Alert variant="success" title="Demande transmise">
           {demandeMessage}
@@ -457,21 +428,25 @@ export function DepartementsPage() {
         </Button>
       </form>
 
-      {departementsQuery.isError && (
+      {listError && (
         <Alert variant="error" title="Impossible de charger les départements">
-          {departementsQuery.error.message}
+          {listError}
         </Alert>
       )}
 
-      {(departementsQuery.isLoading || (isScoped && scopeLoading)) && (
+      {listLoading && (
         <TableLoading label="Chargement des départements…" />
       )}
 
-      {departementsQuery.isSuccess && !(isScoped && scopeLoading) && departements.length === 0 && (
+      {!listLoading && !listError && departements.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
           <p className="font-medium text-slate-900">Aucun département</p>
           <p className="mt-1 text-sm text-slate-500">
-            {submittedSearch ? 'Aucun résultat pour ces critères.' : "Aucun département n'est encore enregistré."}
+            {submittedSearch
+              ? 'Aucun résultat pour ces critères.'
+              : isScoped
+                ? "Aucun département actif ne vous est affecté."
+                : "Aucun département n'est encore enregistré."}
           </p>
         </div>
       )}
@@ -596,11 +571,10 @@ export function DepartementsPage() {
             </table>
           </div>
 
-          {pagination && pagination.total > PAGE_SIZE && (
+          {totalCount > PAGE_SIZE && (
             <div className="flex items-center justify-between text-sm text-slate-500">
               <p>
-                {pagination.total} département{pagination.total > 1 ? 's' : ''} · page{' '}
-                {pagination.page} / {totalPages}
+                {totalCount} département{totalCount > 1 ? 's' : ''} · page {currentPage} / {totalPages}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -614,7 +588,7 @@ export function DepartementsPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={page >= totalPages}
+                  disabled={currentPage >= totalPages}
                   onClick={() => setPage((current) => current + 1)}
                 >
                   Suivant

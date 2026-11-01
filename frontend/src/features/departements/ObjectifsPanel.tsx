@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { showSuccessFeedback } from '@/lib/successFeedback'
 import {
   addObjectif,
   addPlanAction,
@@ -32,30 +33,34 @@ export function ObjectifsPanel({ departementId, canWrite }: ObjectifsPanelProps)
   const onObjectif = (event: FormEvent) => {
     event.preventDefault()
     if (!libelle.trim() || !cible.trim()) return
-    addObjectif(departementId, {
+    const created = addObjectif(departementId, {
       libelle,
       cible,
       avancement: Number(avancement) || 0,
       ecart,
     })
+    if (!created) return
     setLibelle('')
     setCible('')
     setAvancement('0')
     setEcart('')
+    showSuccessFeedback("L’objectif a bien été enregistré.")
   }
 
   const onPlan = (event: FormEvent) => {
     event.preventDefault()
     if (!planLibelle.trim() || !planEcheance) return
-    addPlanAction(departementId, {
+    const created = addPlanAction(departementId, {
       libelle: planLibelle,
       echeance: planEcheance,
       statut: 'ouvert',
       idObjectif: planObjectif || undefined,
     })
+    if (!created) return
     setPlanLibelle('')
     setPlanEcheance('')
     setPlanObjectif('')
+    showSuccessFeedback("Le plan d’action a bien été créé.")
   }
 
   return (
@@ -174,7 +179,15 @@ export function ObjectifsPanel({ departementId, canWrite }: ObjectifsPanelProps)
                   </p>
                 </div>
                 {canWrite && plan.statut === 'ouvert' && (
-                  <Button variant="secondary" size="sm" onClick={() => marquerPlanFait(departementId, plan.id)}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (marquerPlanFait(departementId, plan.id)) {
+                        showSuccessFeedback("Le plan d’action a été marqué comme terminé.")
+                      }
+                    }}
+                  >
                     Marquer fait
                   </Button>
                 )}

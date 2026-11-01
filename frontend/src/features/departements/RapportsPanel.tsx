@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { showSuccessFeedback } from '@/lib/successFeedback'
 import { createCirculation } from '@/features/notifications/circulation'
 import { addRapport, getRapportsVersion, listRapports, listRapportsConsolides, subscribeRapports } from './rapports'
 
@@ -38,7 +39,7 @@ export function RapportsPanel({
     event.preventDefault()
     const cible = destinataires.find((item) => item.idDepartement === rapportCible)
     if (!rapportTitre.trim() || !rapportDescription.trim() || !cible || !auteur) return
-    addRapport({
+    const created = addRapport({
       titre: rapportTitre,
       description: rapportDescription,
       idDepartementSource: departementId,
@@ -46,6 +47,7 @@ export function RapportsPanel({
       idDepartementCible: cible.idDepartement,
       nomDepartementCible: cible.nom,
     })
+    if (!created) return
     createCirculation({
       kind: 'rapport',
       titre: rapportTitre,
@@ -60,6 +62,7 @@ export function RapportsPanel({
     setRapportTitre('')
     setRapportDescription('')
     setRapportCible(departementId)
+    showSuccessFeedback('Le rapport a bien été envoyé.')
   }
 
   return (

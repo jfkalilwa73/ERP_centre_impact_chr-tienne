@@ -176,11 +176,13 @@ export function addPlanAction(departementId: string, input: Omit<PlanAction, 'id
 
 export function marquerPlanFait(departementId: string, id: string) {
   if (!canMutateUnite(departementId, [PERMISSIONS.OBJECTIFS_MANAGE, PERMISSIONS.RAPPORTS_CREATE])) {
-    return
+    return false
   }
   const found = (plans[departementId] ?? []).find((item) => item.id === id)
-  if (found) found.statut = 'fait'
+  if (!found || found.statut === 'fait') return false
+  found.statut = 'fait'
   emit()
+  return true
 }
 
 export function listRapports(departementId: string) {
@@ -236,6 +238,23 @@ export function addRapport(input: {
 export function transmettreRapport(id: string) {
   const found = rapports.find((item) => item.id === id)
   if (found) found.statut = 'transmis'
+  emit()
+}
+
+export type RapportsSnapshot = {
+  objectifs: Record<string, Objectif[]>
+  plans: Record<string, PlanAction[]>
+  rapports: Rapport[]
+}
+
+export function snapshotRapports(): RapportsSnapshot {
+  return structuredClone({ objectifs, plans, rapports })
+}
+
+export function replaceRapports(next: RapportsSnapshot) {
+  objectifs = structuredClone(next.objectifs ?? {})
+  plans = structuredClone(next.plans ?? {})
+  rapports = structuredClone(next.rapports ?? [])
   emit()
 }
 

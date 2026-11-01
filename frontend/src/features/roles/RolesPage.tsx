@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
@@ -9,7 +10,13 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { useHasPermission } from '@/stores/authStore'
 import type { Role } from '@/types'
 import { RoleFormDialog } from './RoleFormDialog'
-import { useCreateRole, useDeleteRole, useRoles, useUpdateRole } from './hooks'
+import {
+  useCreateRole,
+  useDeleteRole,
+  useInstallDefaultRoles,
+  useRoles,
+  useUpdateRole,
+} from './hooks'
 import { toRoleCreate, toRoleUpdate, type RoleFormValues } from './schema'
 
 const PAGE_SIZE = 20
@@ -36,6 +43,7 @@ export function RolesPage() {
   const createMutation = useCreateRole()
   const updateMutation = useUpdateRole()
   const deleteMutation = useDeleteRole()
+  const installDefaultsMutation = useInstallDefaultRoles()
 
   const roles = rolesQuery.data?.data ?? []
   const pagination = rolesQuery.data?.pagination
@@ -88,12 +96,44 @@ export function RolesPage() {
           </p>
         </div>
         {canManage && (
-          <Button onClick={openCreate}>
-            <Plus className="size-4" aria-hidden="true" />
-            Nouveau rôle
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              isLoading={installDefaultsMutation.isPending}
+              onClick={() => installDefaultsMutation.mutate()}
+            >
+              Installer les rôles prédéfinis
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="size-4" aria-hidden="true" />
+              Nouveau rôle
+            </Button>
+          </div>
         )}
       </div>
+
+      {installDefaultsMutation.isSuccess && (
+        <Alert variant="success" title="Rôles prédéfinis prêts">
+          {installDefaultsMutation.data.rolesCreated === 0 &&
+          installDefaultsMutation.data.permissionsCreated === 0 &&
+          installDefaultsMutation.data.rolePermissionsAdded === 0 ? (
+            'Les rôles et leurs droits de base sont déjà présents.'
+          ) : (
+            <>
+              {installDefaultsMutation.data.rolesCreated} rôle(s) créé(s),{' '}
+              {installDefaultsMutation.data.rolesReused} rôle(s) existant(s) réutilisé(s),{' '}
+              {installDefaultsMutation.data.permissionsCreated} permission(s) de catalogue créée(s) et{' '}
+              {installDefaultsMutation.data.rolePermissionsAdded} droit(s) associé(s). Les droits
+              déjà configurés et les droits personnalisés ont été conservés.
+            </>
+          )}
+        </Alert>
+      )}
+      {installDefaultsMutation.isError && (
+        <Alert variant="error" title="Installation des rôles impossible">
+          {installDefaultsMutation.error.message}
+        </Alert>
+      )}
 
       <form onSubmit={handleSearch} className="flex gap-2" role="search">
         <div className="relative max-w-sm flex-1">
@@ -120,7 +160,7 @@ export function RolesPage() {
         </Alert>
       )}
 
-      {rolesQuery.isLoading && <p className="text-sm text-slate-500">Chargement des rôles…</p>}
+      {rolesQuery.isLoading && <ChargementCentre label="Chargement des rôles…" />}
 
       {rolesQuery.isSuccess && roles.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
@@ -135,8 +175,16 @@ export function RolesPage() {
 
       {roles.length > 0 && (
         <>
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
+          <p className="text-xs text-slate-500 sm:hidden">
+            Faites glisser le tableau horizontalement pour voir toutes les colonnes.
+          </p>
+          <div
+            className="overflow-x-auto overscroll-x-contain rounded-xl border border-slate-200 bg-white"
+            role="region"
+            aria-label="Liste des rôles, défilement horizontal possible"
+            tabIndex={0}
+          >
+            <table className="w-full min-w-[38rem] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
                 <tr>
                   <th className="px-4 py-3 font-medium">Code</th>

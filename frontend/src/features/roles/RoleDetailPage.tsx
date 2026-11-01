@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
@@ -61,7 +62,7 @@ export function RoleDetailPage() {
   })
 
   if (roleQuery.isLoading) {
-    return <p className="text-sm text-slate-500">Chargement du rôle…</p>
+    return <ChargementCentre label="Chargement du rôle…" page />
   }
 
   if (roleQuery.isError || !role) {

@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -93,7 +94,7 @@ export function AuditPage() {
         </Alert>
       )}
 
-      {logsQuery.isLoading && <p className="text-sm text-slate-500">Chargement des traces…</p>}
+      {logsQuery.isLoading && <ChargementCentre label="Chargement des traces…" />}
 
       {logsQuery.isSuccess && logs.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">

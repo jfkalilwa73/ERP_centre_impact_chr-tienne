@@ -246,7 +246,20 @@ export function createActivitesStore(initiales: Record<string, Activite[]>) {
 
     remove(ownerId: string, activiteId: string) {
       if (!canMutateUnite(ownerId, ACTIVITE_WRITE)) return
-      activites[ownerId] = (activites[ownerId] ?? []).filter((item) => item.id !== activiteId)
+      const current = activites[ownerId] ?? []
+      const next = current.filter((item) => item.id !== activiteId)
+      if (next.length === current.length) return
+      activites[ownerId] = next
+      emit()
+      return true
+    },
+
+    snapshot() {
+      return structuredClone(activites)
+    },
+
+    replace(next: Record<string, Activite[]>) {
+      activites = structuredClone(next)
       emit()
     },
 
@@ -407,6 +420,8 @@ export const updateActivite = store.update
 export const marquerActiviteFaite = store.marquerFaite
 export const enregistrerCompteRendu = store.enregistrerCompteRendu
 export const deleteActivite = store.remove
+export const snapshotActivites = store.snapshot
+export const replaceActivites = store.replace
 export const resetActivites = store.reset
 
 export function listAllActivites() {

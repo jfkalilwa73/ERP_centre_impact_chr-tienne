@@ -1,32 +1,21 @@
-import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { Link, Navigate, NavLink, useLocation } from 'react-router-dom'
-import { CalendarDays, Crown, Heart, Pencil, Plus, Search, Shield, Trash2, Users } from 'lucide-react'
+import { Crown, Pencil, Plus, Search, Shield, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { useAccessScope } from '@/features/auth/accessScope'
+import { applicationPageFromPath, useApplicationPageAccess } from '@/features/auth/applicationPageAccess'
 import { canSeePilotageDge, isMembreDge } from '@/features/auth/orgRoles'
 import { DepartementBanner } from '@/features/departements/banner'
-import {
-  ChartPanel,
-  EffectifsDepartementsChart,
-  EvolutionMembresChart,
-} from '@/features/departements/charts'
 import { DgeRapportsPanel, DgeSuiviPanel } from '@/features/departements/DgeSuiviPanel'
 import { TableLoading } from '@/features/departements/loading'
-import { StatCard } from '@/features/departements/StatCard'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
 import { useCurrentUser, useHasPermission } from '@/stores/authStore'
 import type { AffectationFamille, FamilleImpact, Personne } from '@/types'
 import { usePersonnes, usePersonnesFamilles } from '@/features/personnes/hooks'
-import {
-  getActivitesFamilleVersion,
-  listAllActivitesFamille,
-  subscribeActivitesFamille,
-} from './activites'
-import { effectifsParFamille, evolutionFamille } from './evolution'
 import { FamilleFormDialog } from './FamilleFormDialog'
 import {
   useAssignPersonneFamille,
@@ -40,7 +29,7 @@ import { roleFamille } from './roles'
 import { toFamilleCreate, toFamilleUpdate, type FamilleFormValues } from './schema'
 
 const DGE_VUES = [
-  { to: '/familles', label: 'Tableau de bord', end: true },
+  { to: '/familles', label: "Toutes les familles d'impact", end: true },
   { to: '/familles/suivi', label: 'Suivi DGE' },
   { to: '/familles/rapports', label: 'Rapports reçus' },
 ] as const
@@ -57,6 +46,7 @@ function personneName(personne: Personne) {
 
 export function FamillesPage() {
   const location = useLocation()
+  const applicationPageAccess = useApplicationPageAccess()
   const vue = location.pathname.endsWith('/suivi')
     ? 'suivi'
     : location.pathname.endsWith('/rapports')
@@ -71,8 +61,6 @@ export function FamillesPage() {
   const [chefFamille, setChefFamille] = useState<FamilleImpact | null>(null)
   const [superviseurFamille, setSuperviseurFamille] = useState<FamilleImpact | null>(null)
   const [chefSearch, setChefSearch] = useState('')
-
-  useSyncExternalStore(subscribeActivitesFamille, getActivitesFamilleVersion, getActivitesFamilleVersion)
 
   const canCreate = useHasPermission(PERMISSIONS.FAMILLES_CREATE)
   const canUpdate = useHasPermission(PERMISSIONS.FAMILLES_UPDATE)
@@ -138,24 +126,8 @@ export function FamillesPage() {
   const familles = (famillesQuery.data?.data ?? []).filter(
     (famille) => !isScoped || scopedIds.has(famille.idFamille),
   )
-  const catalog = (catalogQuery.data?.data ?? []).filter(
-    (famille) => !isScoped || scopedIds.has(famille.idFamille),
-  )
   const pagination = famillesQuery.data?.pagination
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.limit)) : 1
-  const activites = listAllActivitesFamille()
-  const stats = {
-    total: catalog.length,
-    actifs: catalog.filter((famille) => famille.actif).length,
-    membres: affectationsActives.filter(
-      (affectation) => !isScoped || scopedIds.has(affectation.idFamille),
-    ).length,
-    activites: isScoped
-      ? activites.filter((activite) => scopedIds.has(activite.idFamille)).length
-      : activites.length,
-  }
-  const evolutionGlobale = evolutionFamille(affectations)
-  const effectifs = effectifsParFamille(catalog, affectations)
 
   const prochesChef = personnes.filter((personne) => {
     const needle = chefSearch.trim().toLowerCase()
@@ -255,7 +227,7 @@ export function FamillesPage() {
     return <Navigate to="/familles" replace />
   }
 
-  const destDge = catalog
+  const destDge = (catalogQuery.data?.data ?? [])
     .filter((item) => item.actif)
     .map((item) => ({ idDepartement: item.idFamille, nom: item.nom }))
 
@@ -281,7 +253,10 @@ export function FamillesPage() {
             aria-label="Pilotage des familles d'impact"
             className="flex flex-wrap gap-6 border-b border-slate-200"
           >
-            {DGE_VUES.map((item) => (
+            {DGE_VUES.filter((item) => {
+              const page = applicationPageFromPath(item.to)
+              return page !== null && applicationPageAccess.canView(page)
+            }).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -324,50 +299,6 @@ export function FamillesPage() {
           libelleUnite="familles d'impact"
         />
       )}
-
-      {vue === 'tableau' &&
-        (catalogQuery.isLoading ? (
-          <TableLoading label="Chargement des familles…" />
-        ) : (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                label="Familles d'impact"
-                value={stats.total}
-                hint={`${stats.actifs} actives`}
-                icon={Heart}
-                accent
-              />
-              <StatCard
-                label="Membres affectés"
-                value={stats.membres}
-                hint="Toutes affectations en cours"
-                icon={Users}
-              />
-              <StatCard
-                label="Activités"
-                value={stats.activites}
-                hint="Planifiées et réalisées"
-                icon={CalendarDays}
-              />
-              <StatCard
-                label="Familles actives"
-                value={stats.actifs}
-                hint={`${Math.max(0, stats.total - stats.actifs)} inactives`}
-                icon={Crown}
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <ChartPanel title="Évolution globale" hint="Affectations et retraits sur les 12 derniers mois.">
-                <EvolutionMembresChart data={evolutionGlobale} />
-              </ChartPanel>
-              <ChartPanel title="Effectifs par famille" hint="Comparaison des membres actuellement affectés.">
-                <EffectifsDepartementsChart data={effectifs} />
-              </ChartPanel>
-            </div>
-          </>
-        ))}
 
       {vue === 'tableau' && (
         <>
@@ -567,6 +498,7 @@ export function FamillesPage() {
         open={formOpen}
         famille={editingFamille}
         errorMessage={formError}
+        personnes={personnes}
         isSubmitting={isSubmitting}
         onOpenChange={setFormOpen}
         onSubmit={handleFormSubmit}

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { startPilotageSync } from '@/features/pilotage/sync'
 import { useAuthStore, useIsAuthenticated } from '@/stores/authStore'
 import type { ApiError } from '@/lib/apiError'
 import type { LoginRequest, LoginResponse } from '@/types'
@@ -18,6 +19,7 @@ export function useLogin() {
 
   return useMutation<LoginResponse, ApiError, LoginRequest>({
     mutationFn: login,
+    meta: { successMessage: false },
     onSuccess: openSession,
   })
 }
@@ -28,8 +30,7 @@ export function useLogout() {
 
   return useMutation<void, ApiError, void>({
     mutationFn: logout,
-    // La session locale est fermée même si la révocation serveur échoue :
-    // l'utilisateur doit toujours pouvoir quitter l'application.
+    meta: { successMessage: false },
     onSettled: () => {
       closeSession()
       queryClient.clear()
@@ -37,14 +38,10 @@ export function useLogout() {
   })
 }
 
-/**
- * Rafraîchit le contexte courant (rôles et permissions effectifs) au montage de
- * l'application : les droits peuvent avoir changé depuis l'ouverture de session.
- */
 export function useSyncCurrentUser() {
   const isAuthenticated = useIsAuthenticated()
-  const setUser = useAuthStore((state) => state.setUser)
   const closeSession = useAuthStore((state) => state.closeSession)
+  const setUser = useAuthStore((state) => state.setUser)
 
   const query = useQuery({
     queryKey: authKeys.me,
@@ -62,6 +59,11 @@ export function useSyncCurrentUser() {
     }
     setUser(query.data)
   }, [closeSession, query.data, setUser])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    return startPilotageSync()
+  }, [isAuthenticated])
 
   return query
 }

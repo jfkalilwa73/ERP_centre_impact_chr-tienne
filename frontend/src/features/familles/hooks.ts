@@ -52,6 +52,7 @@ export function useFamillesByIds(familleIds: string[]) {
 function invalidateOrganisation(queryClient: ReturnType<typeof useQueryClient>, personneId?: string) {
   void queryClient.invalidateQueries({ queryKey: familleKeys.all })
   void queryClient.invalidateQueries({ queryKey: ['personnes'] })
+  void queryClient.invalidateQueries({ queryKey: ['sprint1'] })
   if (personneId) {
     void queryClient.invalidateQueries({ queryKey: ['personnes', 'familles', personneId] })
   }

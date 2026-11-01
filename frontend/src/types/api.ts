@@ -903,16 +903,37 @@ export interface components {
             nom: string;
             /** @example Nord */
             zone?: string;
+            /** @example -4.348 */
+            latitude?: number | null;
+            /** @example 15.246 */
+            longitude?: number | null;
             description?: string;
             /** @default true */
             actif: boolean;
+            /** Format: uuid */
+            responsableId?: string | null;
+            /** Format: uuid */
+            adjointId?: string | null;
+            capaciteMax?: number | null;
+            jourReunion?: string | null;
+            /** @example 18:30 */
+            heureReunion?: string | null;
+            lieuReunion?: string | null;
         };
         FamilleImpactUpdate: {
             code?: string;
             nom?: string;
             zone?: string;
+            latitude?: number | null;
+            longitude?: number | null;
             description?: string;
             actif?: boolean;
+            responsableId?: string | null;
+            adjointId?: string | null;
+            capaciteMax?: number | null;
+            jourReunion?: string | null;
+            heureReunion?: string | null;
+            lieuReunion?: string | null;
         };
         FamilleImpact: components["schemas"]["FamilleImpactCreate"] & {
             /** Format: uuid */

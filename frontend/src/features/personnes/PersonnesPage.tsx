@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, BadgeCheck, ChartColumn, Eye, Plus, Search, UserPlus, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
@@ -236,7 +237,7 @@ export function PersonnesPage() {
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard
           label="Total Personnes"
           value={stats.total}
@@ -332,7 +333,7 @@ export function PersonnesPage() {
         </Alert>
       )}
 
-      {catalogQuery.isLoading && <p className="text-sm text-slate-500">Chargement des personnes…</p>}
+      {catalogQuery.isLoading && <ChargementCentre label="Chargement des personnes…" />}
 
       {catalogQuery.isSuccess && filtered.length === 0 && (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
@@ -364,7 +365,7 @@ export function PersonnesPage() {
                 <button
                   type="button"
                   onClick={() => setDuplicatesOpen(true)}
-                  className="shrink-0 text-sm font-medium text-slate-600 hover:text-slate-900"
+                  className="shrink-0 text-sm font-semibold text-amber-950 hover:text-brand-800"
                 >
                   Voir les doublons
                 </button>

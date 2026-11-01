@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { useAuditLog } from './hooks'
 import { labelAction, labelEntiteType } from './labels'
 
@@ -36,7 +37,7 @@ export function AuditDetailPage() {
   const log = logQuery.data
 
   if (logQuery.isLoading) {
-    return <p className="text-sm text-slate-500">Chargement de la trace…</p>
+    return <ChargementCentre label="Chargement de la trace…" page />
   }
 
   if (logQuery.isError || !log) {

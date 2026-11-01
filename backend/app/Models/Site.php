@@ -16,7 +16,7 @@ class Site extends Model
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'code', 'nom', 'adresse', 'ville', 'pays', 'telephone', 'actif'
+        'id_site', 'code', 'nom', 'adresse', 'ville', 'pays', 'telephone', 'actif'
     ];
 
     protected $casts = [

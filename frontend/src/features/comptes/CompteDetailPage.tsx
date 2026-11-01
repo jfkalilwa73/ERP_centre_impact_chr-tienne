@@ -4,16 +4,26 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
 import { Select } from '@/components/ui/Select'
+import { usePermissions } from '@/features/permissions/hooks'
+import { permissionLabel } from '@/features/permissions/labels'
 import { usePersonne } from '@/features/personnes/hooks'
 import { useRoles } from '@/features/roles/hooks'
 import { errorId } from '@/lib/form'
 import { PERMISSIONS } from '@/lib/permissions'
+import { canonicalRoleCode, ROLE_CODES } from '@/lib/roleCodes'
 import { useHasPermission } from '@/stores/authStore'
-import { useAssignRole, useCompte, useCompteRoles, useUnassignRole } from './hooks'
+import {
+  useAssignRole,
+  useCheckComptePermission,
+  useCompte,
+  useCompteRoles,
+  useUnassignRole,
+} from './hooks'
 import { affectationRoleSchema, type AffectationRoleFormValues } from './schema'
 import { statutCompteBadgeClass, statutCompteLabels } from './statut'
 
@@ -26,6 +36,7 @@ function formatDateTime(value: string) {
 export function CompteDetailPage() {
   const { compteId } = useParams<{ compteId: string }>()
   const [assignOpen, setAssignOpen] = useState(false)
+  const [permissionCode, setPermissionCode] = useState('')
 
   const canManageRoles = useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canReadPersonnes = useHasPermission(PERMISSIONS.MEMBRES_READ)
@@ -35,6 +46,9 @@ export function CompteDetailPage() {
   const rolesQuery = useRoles({ page: 1, limit: 100 }, canManageRoles)
   const assignMutation = useAssignRole(compteId ?? '')
   const unassignMutation = useUnassignRole(compteId ?? '')
+  const permissionsQuery = usePermissions({ page: 1, limit: 100 }, canManageRoles)
+  const checkMutation = useCheckComptePermission(compteId ?? '')
+  const permissions = (permissionsQuery.data?.data ?? []).filter((permission) => permission.actif)
 
   const compte = compteQuery.data
   const personneQuery = usePersonne(canReadPersonnes ? compte?.idPersonne : undefined)
@@ -56,8 +70,13 @@ export function CompteDetailPage() {
     affectations.filter((affectation) => affectation.actif).map((affectation) => affectation.idRole),
   )
   const rolesDisponibles = roles.filter(
-    (role) => role.actif && !rolesDejaActifs.has(role.idRole),
+    (role) =>
+      role.actif &&
+      !rolesDejaActifs.has(role.idRole) &&
+      canonicalRoleCode(role) !== ROLE_CODES.CHEF_DEPARTEMENT &&
+      canonicalRoleCode(role) !== ROLE_CODES.SUPERVISEUR,
   )
+  const roleCodesById = new Map(roles.map((role) => [role.idRole, canonicalRoleCode(role)]))
 
   const onAssign = handleSubmit((values) => {
     assignMutation.mutate(
@@ -71,8 +90,13 @@ export function CompteDetailPage() {
     )
   })
 
+  const onCheckPermission = () => {
+    if (!permissionCode) return
+    checkMutation.mutate(permissionCode)
+  }
+
   if (compteQuery.isLoading) {
-    return <p className="text-sm text-slate-500">Chargement du compte…</p>
+    return <ChargementCentre label="Chargement du compte…" page />
   }
 
   if (compteQuery.isError || !compte) {
@@ -177,6 +201,13 @@ export function CompteDetailPage() {
           )}
         </div>
 
+        {canManageRoles && (
+          <Alert variant="info" title="Rôles liés à un département">
+            Pour attribuer ou retirer Chef de département ou Superviseur, utilisez Modifier le compte
+            dans la liste des comptes : cette action demande aussi les départements concernés.
+          </Alert>
+        )}
+
         {affectationsQuery.isError && (
           <Alert variant="error" title="Impossible de charger les rôles">
             {affectationsQuery.error.message}
@@ -222,13 +253,26 @@ export function CompteDetailPage() {
                             variant="ghost"
                             size="sm"
                             className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                            disabled={
+                              roleCodesById.get(affectation.idRole) === ROLE_CODES.CHEF_DEPARTEMENT ||
+                              roleCodesById.get(affectation.idRole) === ROLE_CODES.SUPERVISEUR
+                            }
+                            title={
+                              roleCodesById.get(affectation.idRole) === ROLE_CODES.CHEF_DEPARTEMENT ||
+                              roleCodesById.get(affectation.idRole) === ROLE_CODES.SUPERVISEUR
+                                ? 'Retirez ce rôle depuis Modifier le compte pour mettre à jour aussi ses départements.'
+                                : undefined
+                            }
                             isLoading={
                               unassignMutation.isPending &&
                               unassignMutation.variables === affectation.idRole
                             }
                             onClick={() => unassignMutation.mutate(affectation.idRole)}
                           >
-                            Retirer
+                            {roleCodesById.get(affectation.idRole) === ROLE_CODES.CHEF_DEPARTEMENT ||
+                            roleCodesById.get(affectation.idRole) === ROLE_CODES.SUPERVISEUR
+                              ? 'Modifier dans Comptes'
+                              : 'Retirer'}
                           </Button>
                         ) : (
                           <span className="text-xs text-slate-400">Clôturé</span>
@@ -248,6 +292,57 @@ export function CompteDetailPage() {
           </Alert>
         )}
       </section>
+
+      {canManageRoles && (
+        <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-slate-900">Vérifier un droit</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <FormField id="check-permission" label="Droit">
+                <Select
+                  id="check-permission"
+                  value={permissionCode}
+                  onChange={(event) => {
+                    setPermissionCode(event.target.value)
+                    checkMutation.reset()
+                  }}
+                >
+                  <option value="">Choisir un droit</option>
+                  {permissions.map((permission) => (
+                    <option key={permission.idPermission} value={permission.code}>
+                      {permissionLabel(permission)} ({permission.code})
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            </div>
+            <Button
+              type="button"
+              onClick={onCheckPermission}
+              disabled={!permissionCode}
+              isLoading={checkMutation.isPending}
+            >
+              Vérifier
+            </Button>
+          </div>
+          {checkMutation.isError && (
+            <Alert variant="error" title="Vérification impossible">
+              {checkMutation.error.message}
+            </Alert>
+          )}
+          {checkMutation.isSuccess && (
+            <Alert
+              variant={checkMutation.data.autorise ? 'success' : 'warning'}
+              title={checkMutation.data.autorise ? 'Droit accordé' : 'Droit refusé'}
+            >
+              {checkMutation.data.permissionCode}
+              {checkMutation.data.autorise
+                ? ' est accordé à ce compte.'
+                : ' n’est pas accordé à ce compte.'}
+            </Alert>
+          )}
+        </section>
+      )}
 
       <Dialog
         open={assignOpen}
@@ -281,6 +376,12 @@ export function CompteDetailPage() {
                 ))}
               </Select>
             </FormField>
+            {rolesDisponibles.length === 0 && (
+              <p className="text-sm text-slate-500">
+                Aucun autre rôle n’est disponible ici. Les rôles Chef de département et Superviseur
+                se configurent depuis Modifier le compte avec leurs départements.
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setAssignOpen(false)}>
                 Annuler

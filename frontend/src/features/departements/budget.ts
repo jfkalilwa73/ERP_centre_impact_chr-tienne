@@ -135,6 +135,10 @@ export function listDepenses(departementId: string) {
   return [...(depenses[departementId] ?? [])].sort((left, right) => right.date.localeCompare(left.date))
 }
 
+export function listToutesRentrees() {
+  return Object.values(rentreesParUnite).flatMap((items) => items.map((item) => ({ ...item })))
+}
+
 export function listRentrees(departementId: string) {
   return [...(rentreesParUnite[departementId] ?? [])].sort((left, right) =>
     right.date.localeCompare(left.date),
@@ -206,6 +210,23 @@ export function enregistrerRentree(
   rentreesParUnite[departementId] = [created, ...(rentreesParUnite[departementId] ?? [])]
   emit()
   return created
+}
+
+export type BudgetSnapshot = {
+  enveloppes: Record<string, Enveloppe>
+  depenses: Record<string, Depense[]>
+  rentrees: Record<string, Rentree[]>
+}
+
+export function snapshotBudget(): BudgetSnapshot {
+  return structuredClone({ enveloppes, depenses, rentrees: rentreesParUnite })
+}
+
+export function replaceBudget(next: BudgetSnapshot) {
+  enveloppes = structuredClone(next.enveloppes ?? {})
+  depenses = structuredClone(next.depenses ?? {})
+  rentreesParUnite = structuredClone(next.rentrees ?? {})
+  emit()
 }
 
 export function resetBudget() {

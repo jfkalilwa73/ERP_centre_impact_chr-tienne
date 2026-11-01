@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertTriangle, ArrowLeft, Camera, FileDown, Heart, Pencil, Plus, StickyNote, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
+import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
@@ -15,6 +16,7 @@ import { useFamille, useFamilles } from '@/features/familles/hooks'
 import { cn } from '@/lib/cn'
 import { errorId } from '@/lib/form'
 import { PERMISSIONS } from '@/lib/permissions'
+import { showSuccessFeedback } from '@/lib/successFeedback'
 import { useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Personne } from '@/types'
 import { PersonneFormDialog } from './PersonneFormDialog'
@@ -41,6 +43,7 @@ import {
 import {
   useAssignDepartement,
   useAssignFamille,
+  useDeletePersonne,
   usePersonne,
   usePersonneAffectations,
   usePersonneFamilles,
@@ -50,6 +53,9 @@ import {
   useUpdatePersonne,
 } from './hooks'
 import { ROLES_DEPARTEMENT, roleDepartement } from '@/features/departements/roles'
+import { MembrePanel } from '@/features/sprint1/MembrePanel'
+import { useEnregistrerLien, useMembre, useRegroupement } from '@/features/sprint1/hooks'
+import { TYPE_RELATION_LABELS } from '@/features/sprint1/types'
 import { formatDate, formatDateLong, STATUT_LABELS, statutBadgeClass } from './labels'
 import { PersonneAvatar } from './PersonneAvatar'
 import { readImageAsDataUrl, setPersonnePhoto, usePersonnePhoto } from './photos'
@@ -294,21 +300,30 @@ function FicheImpression({
 
 export function PersonneDetailPage() {
   const { personneId } = useParams<{ personneId: string }>()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<TabId>('general')
   const [assignOpen, setAssignOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
   const [complement, setComplement] = useState(emptyFicheComplement)
   const [lienSearch, setLienSearch] = useState('')
+  const [lienErreur, setLienErreur] = useState<string | null>(null)
   const [historyTick, setHistoryTick] = useState(0)
 
   const canUpdate = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
-  const canReadDepartements = useHasPermission(PERMISSIONS.DEPARTEMENTS_READ)
+  const canAssignDepartement = canUpdate || useHasPermission(PERMISSIONS.ROLES_MANAGE)
+  const canDelete =
+    useHasPermission(PERMISSIONS.MEMBRES_DELETE) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
+  const canReadDepartements =useHasPermission(PERMISSIONS.DEPARTEMENTS_READ) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canReadFamilles = useHasPermission(PERMISSIONS.FAMILLES_READ)
   const canReadComptes = useHasPermission(PERMISSIONS.COMPTES_READ)
 
   const personneQuery = usePersonne(personneId)
+  const membreQuery = useMembre(personneId)
+  const regroupementQuery = useRegroupement(personneId)
+  const enregistrerLien = useEnregistrerLien(personneId ?? '')
   const catalogQuery = usePersonnes({ page: 1, limit: 100 })
   const affectationsQuery = usePersonneAffectations(personneId)
   const famillesAffectationsQuery = usePersonneFamilles(personneId)
@@ -325,6 +340,7 @@ export function PersonneDetailPage() {
   const assignFamilleMutation = useAssignFamille(personneId ?? '')
   const unassignFamilleMutation = useUnassignFamille(personneId ?? '')
   const updateMutation = useUpdatePersonne()
+  const deleteMutation = useDeletePersonne()
 
   const {
     register,
@@ -464,6 +480,7 @@ export function PersonneDetailPage() {
       libelle: 'Photo de profil mise à jour',
     })
     setHistoryTick((current) => current + 1)
+    showSuccessFeedback('La photo de profil a bien été mise à jour.')
   }
 
   const onChangeLien = (idProche: string, typeLien: string) => {
@@ -472,6 +489,10 @@ export function PersonneDetailPage() {
       setComplement(removeLienFamilial(personne.idPersonne, idProche))
       removeLienFamilial(idProche, personne.idPersonne)
       setHistoryTick((current) => current + 1)
+      void enregistrerLien
+        .mutateAsync({ personne, autreId: idProche, lien: '' })
+        .then(() => setLienErreur(null))
+        .catch((error: Error) => setLienErreur(error.message))
       return
     }
     setComplement(upsertLienFamilial(personne.idPersonne, { idPersonne: idProche, lien: typeLien }))
@@ -480,10 +501,14 @@ export function PersonneDetailPage() {
       upsertLienFamilial(idProche, { idPersonne: personne.idPersonne, lien: inverse })
     }
     setHistoryTick((current) => current + 1)
+    void enregistrerLien
+      .mutateAsync({ personne, autreId: idProche, lien: typeLien })
+      .then(() => setLienErreur(null))
+      .catch((error: Error) => setLienErreur(error.message))
   }
 
   if (personneQuery.isLoading) {
-    return <p className="text-sm text-slate-500">Chargement de la fiche…</p>
+    return <ChargementCentre label="Chargement de la fiche…" page />
   }
 
   if (personneQuery.isError || !personne || !qualite) {
@@ -529,9 +554,11 @@ export function PersonneDetailPage() {
                   {personne.prenom} {personne.nom}
                 </h1>
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                  <span>ID: {memberCode(personne)}</span>
+                  <span>ID: {membreQuery.data?.numeroMembre ?? memberCode(personne)}</span>
                   <span aria-hidden="true">·</span>
-                  <span>Membre depuis {formatDateLong(personne.dateCreation)}</span>
+                  <span>
+                    Membre depuis {formatDateLong(membreQuery.data?.dateIntegration ?? personne.dateCreation)}
+                  </span>
                   <span aria-hidden="true">·</span>
                   <span className={statutBadgeClass(statut)}>{STATUT_LABELS[statut]}</span>
                 </p>
@@ -542,6 +569,18 @@ export function PersonneDetailPage() {
                 <Button variant="secondary" onClick={() => setEditOpen(true)}>
                   <Pencil className="size-4" aria-hidden="true" />
                   Modifier
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    deleteMutation.reset()
+                    setDeleteOpen(true)
+                  }}
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Supprimer
                 </Button>
               )}
               <Button
@@ -595,6 +634,7 @@ export function PersonneDetailPage() {
         {tab === 'general' && (
           <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(18rem,1fr)]">
             <div className="flex flex-col gap-4">
+              <MembrePanel personneId={personne.idPersonne} canUpdate={canUpdate} />
               <Card title="Coordonnées">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Téléphone" value={personne.telephone ?? '—'} />
@@ -718,7 +758,10 @@ export function PersonneDetailPage() {
                             size="sm"
                             className="shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                             aria-label="Supprimer la note"
-                            onClick={() => setComplement(deleteNotePastorale(personne.idPersonne, note.id))}
+                            onClick={() => {
+                              setComplement(deleteNotePastorale(personne.idPersonne, note.id))
+                              showSuccessFeedback('La note pastorale a bien été supprimée.')
+                            }}
                           >
                             <Trash2 className="size-4" aria-hidden="true" />
                           </Button>
@@ -740,6 +783,27 @@ export function PersonneDetailPage() {
 
         {tab === 'famille' && (
           <div className="mt-4 flex flex-col gap-4">
+            {lienErreur && (
+              <Alert variant="error" title="Lien non enregistré">
+                {lienErreur}
+              </Alert>
+            )}
+            {regroupementQuery.data && (
+              <Card title={regroupementQuery.data.nomFamille}>
+                {regroupementQuery.data.relations.length === 0 ? (
+                  <p className="text-sm text-slate-500">Aucune relation enregistrée.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {regroupementQuery.data.relations.map((relation) => (
+                      <li key={relation.idRelation} className="text-sm text-slate-700">
+                        {relation.prenom1} {relation.nom1} · {TYPE_RELATION_LABELS[relation.typeRelation]} ·{' '}
+                        {relation.prenom2} {relation.nom2}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            )}
             <Card title="Personnes existantes">
               <p className="mb-4 text-sm text-slate-500">
                 Choisissez un lien dans la liste pour rattacher une personne déjà enregistrée.
@@ -808,7 +872,7 @@ export function PersonneDetailPage() {
           <div className="mt-4 flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-slate-900">Responsabilités & Ministères</h2>
-              {canUpdate && (
+              {canAssignDepartement && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -917,6 +981,44 @@ export function PersonneDetailPage() {
         nomDepartement={nomDepartement}
       />
 
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open)
+          if (!open) deleteMutation.reset()
+        }}
+      >
+        <DialogContent
+          title="Supprimer cette personne ?"
+          description="Une personne active ne peut pas être supprimée."
+        >
+          {deleteMutation.isError && (
+            <Alert variant="error" title="Suppression impossible">
+              {deleteMutation.error.message}
+            </Alert>
+          )}
+          <p className="text-sm text-slate-600">
+            {personne.prenom} {personne.nom} est au statut {STATUT_LABELS[statut]}.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="danger"
+              isLoading={deleteMutation.isPending}
+              onClick={() => {
+                deleteMutation.mutate(personne.idPersonne, {
+                  onSuccess: () => navigate('/personnes'),
+                })
+              }}
+            >
+              Supprimer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <PersonneFormDialog
         open={editOpen}
         personne={personne}
@@ -1005,6 +1107,7 @@ export function PersonneDetailPage() {
               setComplement(addNotePastorale(personne.idPersonne, texte))
               setNoteDraft('')
               setNoteOpen(false)
+              showSuccessFeedback('La note pastorale a bien été enregistrée.')
             }}
           >
             <label className="flex flex-col gap-1.5 text-sm">

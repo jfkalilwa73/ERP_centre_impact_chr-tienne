@@ -15,14 +15,24 @@ export default defineConfig({
       '@': path.resolve(projectRoot, './src'),
     },
   },
+  optimizeDeps: {
+    exclude: ['maplibre-gl'],
+  },
   server: {
-    port: 5173,
+    port: 3000,
     host: true,
-    // Proxy vers le backend Laravel pour éviter les erreurs CORS en développement.
-    // Le navigateur envoie les requêtes au serveur Vite qui les retransmet à Laravel.
+    watch: {
+      usePolling: true,
+    },
+    // Dans Compose, BACKEND_PROXY_TARGET vaut http://backend:80.
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.BACKEND_PROXY_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/sanctum': {
+        target: process.env.BACKEND_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },

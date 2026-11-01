@@ -84,7 +84,7 @@ export function useDeleteDepartement() {
   })
 }
 
-export function useAssignPersonneDepartement() {
+export function useAssignPersonneDepartement(showSuccessMessage = true) {
   const queryClient = useQueryClient()
 
   return useMutation<
@@ -93,16 +93,18 @@ export function useAssignPersonneDepartement() {
     { personneId: string; payload: AffectationDepartementCreate }
   >({
     mutationFn: ({ personneId, payload }) => assignPersonneDepartement(personneId, payload),
+    meta: showSuccessMessage ? undefined : { successMessage: false },
     onSuccess: (_data, variables) => invalidateOrganisation(queryClient, variables.personneId),
   })
 }
 
-export function useUnassignPersonneDepartement() {
+export function useUnassignPersonneDepartement(showSuccessMessage = true) {
   const queryClient = useQueryClient()
 
   return useMutation<void, ApiError, { personneId: string; departementId: string }>({
     mutationFn: ({ personneId, departementId }) =>
       unassignPersonneDepartement(personneId, departementId),
+    meta: showSuccessMessage ? undefined : { successMessage: false },
     onSuccess: (_data, variables) => invalidateOrganisation(queryClient, variables.personneId),
   })
 }
