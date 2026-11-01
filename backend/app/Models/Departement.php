@@ -17,7 +17,7 @@ class Departement extends Model
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'id_departement', 'code', 'nom', 'mission', 'id_site', 'actif'
+        'code', 'nom', 'mission', 'id_site', 'actif'
     ];
 
     protected $casts = [

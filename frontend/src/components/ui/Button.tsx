@@ -39,7 +39,7 @@ export function Button({
       type="button"
       disabled={disabled || isLoading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.98]',
+        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors',
         'disabled:cursor-not-allowed',
         variantClasses[variant],
         sizeClasses[size],

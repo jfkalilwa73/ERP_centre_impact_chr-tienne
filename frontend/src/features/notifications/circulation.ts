@@ -195,13 +195,13 @@ export function repondreCirculation(
   chefDepartementIds: string[],
 ) {
   const found = circulations.find((item) => item.id === id)
-  if (!found || !canReplyCirculation(found, chefDepartementIds)) return false
+  if (!found || !canReplyCirculation(found, chefDepartementIds)) return
   if (!isTestBypass()) {
     const user = currentUser()
-    if (!user || input.idAuteur !== user.personne.idPersonne) return false
+    if (!user || input.idAuteur !== user.personne.idPersonne) return
   }
   const texte = clampText(input.texte, MAX_DESCRIPTION)
-  if (!texte) return false
+  if (!texte) return
   found.reponses = [
     ...found.reponses,
     {
@@ -213,7 +213,6 @@ export function repondreCirculation(
     },
   ]
   emit()
-  return true
 }
 
 export function markCirculationsLues(idPersonne: string, items: Circulation[]) {
@@ -244,11 +243,10 @@ function canDeleteCirculation(item: Circulation) {
 
 export function deleteCirculation(id: string) {
   const found = circulations.find((item) => item.id === id)
-  if (!found || !canDeleteCirculation(found)) return false
+  if (!found || !canDeleteCirculation(found)) return
   if (found.sourceKey) dismissedKeys.add(found.sourceKey)
   circulations = circulations.filter((item) => item.id !== id)
   emit()
-  return true
 }
 
 export function deleteCirculations(ids: string[]) {
@@ -262,10 +260,9 @@ export function deleteCirculations(ids: string[]) {
   })
   const remove = new Set(allowed)
   const next = circulations.filter((item) => !remove.has(item.id))
-  if (next.length === circulations.length) return false
+  if (next.length === circulations.length) return
   circulations = next
   emit()
-  return true
 }
 
 export function replaceAlertes(next: Circulation[]) {
@@ -293,15 +290,6 @@ export function replaceAlertes(next: Circulation[]) {
     })),
     ...others,
   ]
-  emit()
-}
-
-export function snapshotCirculations() {
-  return structuredClone(circulations)
-}
-
-export function replaceCirculations(next: Circulation[]) {
-  circulations = structuredClone(next)
   emit()
 }
 

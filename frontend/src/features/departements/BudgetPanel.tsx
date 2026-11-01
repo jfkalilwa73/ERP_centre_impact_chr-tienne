@@ -3,7 +3,6 @@ import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { showSuccessFeedback } from '@/lib/successFeedback'
 import { createCirculation } from '@/features/notifications/circulation'
 import { addRapport } from './rapports'
 import {
@@ -78,7 +77,6 @@ export function BudgetPanel({
     setMotif('')
     setMontant('')
     setSource('departement')
-    showSuccessFeedback('La demande de dépense a bien été envoyée.')
   }
 
   const onRentree = (event: FormEvent) => {
@@ -114,7 +112,6 @@ export function BudgetPanel({
     })
     setMotifRentree('')
     setMontantRentree('')
-    showSuccessFeedback('La rentrée a bien été enregistrée.')
   }
 
   return (

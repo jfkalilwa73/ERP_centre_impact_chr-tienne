@@ -108,28 +108,26 @@ export function createDemandeSuperviseur(
 }
 
 export function traiterDemandeSuperviseur(id: string, emailCree: string) {
-  if (!isTestBypass() && !isAdminFonctionnel(currentUser())) return false
+  if (!isTestBypass() && !isAdminFonctionnel(currentUser())) return
   const found = demandes.find((demande) => demande.id === id)
-  if (!found || found.statut !== 'en_attente') return false
+  if (!found || found.statut !== 'en_attente') return
   found.statut = 'traitee'
   found.emailCree = emailCree
   found.dateTraitement = new Date().toISOString()
   found.luAdmin = true
   found.luDemandeur = false
   emit()
-  return true
 }
 
 export function refuserDemandeSuperviseur(id: string) {
-  if (!isTestBypass() && !isAdminFonctionnel(currentUser())) return false
+  if (!isTestBypass() && !isAdminFonctionnel(currentUser())) return
   const found = demandes.find((demande) => demande.id === id)
-  if (!found || found.statut !== 'en_attente') return false
+  if (!found || found.statut !== 'en_attente') return
   found.statut = 'refusee'
   found.dateTraitement = new Date().toISOString()
   found.luAdmin = true
   found.luDemandeur = false
   emit()
-  return true
 }
 
 export function markDemandesLues(input: { admin?: boolean; idDemandeur?: string }) {
@@ -154,18 +152,8 @@ export function unreadDemandesCount(input: { isAdmin: boolean; idPersonne?: stri
 
 export function deleteDemande(id: string) {
   const found = demandes.find((demande) => demande.id === id)
-  if (!found || found.statut === 'en_attente') return false
+  if (!found || found.statut === 'en_attente') return
   demandes = demandes.filter((demande) => demande.id !== id)
-  emit()
-  return true
-}
-
-export function snapshotDemandes() {
-  return structuredClone(demandes)
-}
-
-export function replaceDemandes(next: DemandeSuperviseur[]) {
-  demandes = structuredClone(next)
   emit()
 }
 

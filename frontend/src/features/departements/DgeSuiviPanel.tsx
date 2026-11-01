@@ -2,7 +2,6 @@ import { useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { showSuccessFeedback } from '@/lib/successFeedback'
 import {
   createCirculation,
   getCirculationsVersion,
@@ -49,7 +48,7 @@ export function DgeSuiviPanel({
     event.preventDefault()
     const dest = destinataires.find((item) => item.idDepartement === cible)
     if (!titre.trim() || !description.trim() || !dest) return
-    const created = createCirculation({
+    createCirculation({
       kind: 'demande',
       titre,
       description,
@@ -60,8 +59,6 @@ export function DgeSuiviPanel({
       idAuteur: auteur.idPersonne,
       nomAuteur: auteur.nom,
     })
-    if (!created) return
-    showSuccessFeedback('La demande a bien été envoyée.')
     setTitre('')
     setDescription('')
     setCible('')

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Alert } from '@/components/ui/Alert'
-import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Select } from '@/components/ui/Select'
@@ -107,7 +106,7 @@ export function PermissionAccesDialog({
                 Retirer ce droit d’un rôle l’enlève à toutes les personnes qui l’ont via ce rôle.
               </p>
               {grantingQuery.isLoading ? (
-                <ChargementCentre label="Chargement des rôles…" compact />
+                <p className="mt-3 text-sm text-slate-500">Chargement des rôles…</p>
               ) : grantingRoles.length === 0 ? (
                 <p className="mt-3 rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
                   Aucun rôle n’ouvre ce droit pour le moment.
@@ -167,7 +166,7 @@ export function PermissionAccesDialog({
                 </Alert>
               )}
               {titulairesQuery.isLoading ? (
-                <ChargementCentre label="Chargement des personnes…" compact />
+                <p className="mt-3 text-sm text-slate-500">Chargement des personnes…</p>
               ) : titulaires.length === 0 ? (
                 <p className="mt-3 rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
                   Personne n’a ce droit pour le moment.

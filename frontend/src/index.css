@@ -27,18 +27,6 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
-    scrollbar-width: none;
-  }
-
-  /* Garde le défilement actif sans afficher les barres dans l'interface. */
-  * {
-    scrollbar-width: none;
-  }
-
-  *::-webkit-scrollbar {
-    display: none;
-    width: 0;
-    height: 0;
   }
 
   body {
@@ -54,382 +42,6 @@
     outline: 2px solid var(--color-brand-600);
     outline-offset: 2px;
   }
-}
-
-/* Les variables slate pilotent les surfaces et le texte des utilitaires Tailwind. */
-html[data-theme='dark'] {
-  color-scheme: dark;
-  --color-slate-50: #0f1016;
-  --color-slate-100: #171820;
-  --color-slate-200: #2b2b36;
-  --color-slate-300: #41414e;
-  --color-slate-400: #9995a5;
-  --color-slate-500: #c2bfcb;
-  --color-slate-600: #d6d3dc;
-  --color-slate-700: #e6e4eb;
-  --color-slate-800: #f0eef4;
-  --color-slate-900: #faf9fc;
-  --color-slate-950: #ffffff;
-}
-
-html[data-theme='dark'] body {
-  background-color: #09060f;
-  background-image:
-    radial-gradient(circle at 12% 13%, rgb(236 183 8 / 35%) 0 0.8px, transparent 1.6px),
-    radial-gradient(circle at 22% 39%, rgb(189 152 227 / 45%) 0 0.7px, transparent 1.6px),
-    radial-gradient(circle at 33% 11%, rgb(236 183 8 / 35%) 0 0.8px, transparent 1.6px),
-    radial-gradient(circle at 41% 68%, rgb(189 152 227 / 35%) 0 0.7px, transparent 1.5px),
-    radial-gradient(circle at 53% 25%, rgb(236 183 8 / 32%) 0 0.7px, transparent 1.5px),
-    radial-gradient(circle at 67% 56%, rgb(189 152 227 / 38%) 0 0.8px, transparent 1.6px),
-    radial-gradient(circle at 76% 18%, rgb(236 183 8 / 38%) 0 0.8px, transparent 1.7px),
-    radial-gradient(circle at 88% 44%, rgb(189 152 227 / 35%) 0 0.7px, transparent 1.5px),
-    radial-gradient(ellipse 62% 48% at 100% 0%, rgb(80 16 128 / 42%), transparent 72%),
-    radial-gradient(ellipse 48% 36% at 4% 22%, rgb(60 1 115 / 38%), transparent 74%),
-    radial-gradient(ellipse 58% 48% at 58% 100%, rgb(80 16 128 / 26%), transparent 74%),
-    radial-gradient(ellipse 48% 36% at 88% 76%, rgb(236 183 8 / 10%), transparent 74%);
-  background-attachment: fixed;
-}
-
-html[data-theme='dark'] .bg-white:not(.rounded-full):not(button):not(input):not(select):not(textarea) {
-  background-color: rgb(23 24 32 / 32%);
-  background-image: linear-gradient(135deg, rgb(255 255 255 / 5%), rgb(80 16 128 / 8%));
-  backdrop-filter: blur(26px) saturate(155%);
-  -webkit-backdrop-filter: blur(26px) saturate(155%);
-  border-color: rgb(217 193 240 / 16%);
-}
-
-html[data-theme='dark'] .bg-white:not(.rounded-full):not(button):not(input):not(select):not(textarea):is(.rounded-lg, .rounded-xl, .rounded-2xl) {
-  box-shadow:
-    0 18px 44px rgb(0 0 0 / 24%),
-    inset 0 1px 0 rgb(255 255 255 / 8%),
-    inset 0 -1px 0 rgb(80 16 128 / 16%);
-}
-
-html[data-theme='dark'] .bg-white.text-brand-700 {
-  background-color: rgb(217 193 240 / 68%);
-  background-image: linear-gradient(135deg, rgb(255 255 255 / 64%), rgb(217 193 240 / 46%));
-}
-
-html[data-theme='dark'] .bg-white.rounded-full {
-  background-color: #ffffff;
-}
-
-html[data-theme='dark'] .bg-slate-50 {
-  background-color: rgb(9 10 15 / 20%);
-  backdrop-filter: blur(20px) saturate(145%);
-  -webkit-backdrop-filter: blur(20px) saturate(145%);
-}
-
-html[data-theme='dark'] .bg-slate-100 {
-  background-color: rgb(43 43 54 / 32%);
-}
-
-html[data-theme='dark'] .bg-brand-900 {
-  background-color: rgb(9 10 15 / 62%);
-  backdrop-filter: blur(26px) saturate(150%);
-  -webkit-backdrop-filter: blur(26px) saturate(150%);
-  border-right: 1px solid rgb(217 193 240 / 11%);
-  box-shadow: 12px 0 42px rgb(0 0 0 / 32%);
-}
-
-html[data-theme='dark'] .app-topbar {
-  background-color: transparent;
-  background-image: none;
-  border-color: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html[data-theme='dark'] .app-topbar :is(.topbar-control, .topbar-profile) {
-  background-color: rgb(255 255 255 / 6%);
-  background-image: linear-gradient(135deg, rgb(255 255 255 / 8%), rgb(80 16 128 / 8%));
-  border-color: rgb(217 193 240 / 18%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%);
-  backdrop-filter: blur(18px) saturate(145%);
-  -webkit-backdrop-filter: blur(18px) saturate(145%);
-}
-
-html[data-theme='dark'] .app-topbar .topbar-avatar {
-  color: #d9c1f0;
-  background-color: rgb(110 45 174 / 24%);
-  border: 1px solid rgb(189 152 227 / 25%);
-}
-
-html[data-theme='dark'] main a.text-brand-600:not(.bg-white),
-html[data-theme='dark'] main a.text-brand-700:not(.bg-white) {
-  color: #d9c1f0;
-}
-
-html[data-theme='dark'] main a.text-brand-600:not(.bg-white):hover,
-html[data-theme='dark'] main a.text-brand-700:not(.bg-white):hover {
-  color: #ede0f8;
-}
-
-html[data-theme='dark'] main button.bg-brand-600,
-html[data-theme='dark'] main a.bg-brand-600 {
-  background-color: #6e2dae;
-}
-
-html[data-theme='dark'] main button.bg-brand-600:hover,
-html[data-theme='dark'] main a.bg-brand-600:hover {
-  background-color: #501080;
-}
-
-html[data-theme='dark'] aside nav a[aria-current='page'] {
-  border: 1px solid rgb(156 107 209 / 34%);
-  background-color: rgb(110 45 174 / 20%);
-  color: #ffffff;
-}
-
-html[data-theme='dark'] aside nav a[aria-current='page'] svg {
-  color: #bd98e3;
-}
-
-html[data-theme='dark'] .bg-brand-50 {
-  background-color: rgb(110 45 174 / 14%);
-  border-color: rgb(189 152 227 / 22%);
-  color: #ede0f8;
-}
-
-html[data-theme='dark'] .bg-amber-50 {
-  background-color: rgb(236 183 8 / 10%);
-  border-color: rgb(236 183 8 / 20%);
-  color: #fef3c7;
-}
-
-html[data-theme='dark'] .bg-red-50 {
-  background-color: rgb(221 28 22 / 12%);
-  border-color: rgb(248 113 113 / 20%);
-  color: #fecaca;
-}
-
-html[data-theme='dark'] .bg-emerald-50 {
-  background-color: rgb(64 157 59 / 12%);
-  border-color: rgb(74 222 128 / 20%);
-  color: #bbf7d0;
-}
-
-html[data-theme='dark'] .bg-amber-50 :is(.text-amber-800, .text-amber-900),
-html[data-theme='dark'] .bg-red-50 :is(.text-red-800, .text-red-900),
-html[data-theme='dark'] .bg-emerald-50 :is(.text-emerald-700, .text-emerald-800) {
-  color: inherit;
-}
-
-html[data-theme='dark'] :is(.bg-brand-50, .bg-amber-50, .bg-red-50, .bg-emerald-50),
-html:not([data-theme='dark']) :is(.bg-brand-50, .bg-amber-50, .bg-red-50, .bg-emerald-50) {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-html:not([data-theme='dark']) body {
-  background-color: #f8f5fb;
-  background-image:
-    linear-gradient(180deg, rgb(255 255 255 / 38%), transparent 58%),
-    radial-gradient(ellipse 68% 52% at 4% 2%, rgb(189 152 227 / 34%), transparent 74%),
-    radial-gradient(ellipse 58% 48% at 88% 14%, rgb(207 210 255 / 42%), transparent 76%),
-    radial-gradient(ellipse 60% 50% at 15% 78%, rgb(247 196 216 / 31%), transparent 76%),
-    radial-gradient(ellipse 62% 44% at 94% 90%, rgb(255 229 180 / 38%), transparent 78%),
-    radial-gradient(ellipse 48% 34% at 50% 48%, rgb(255 255 255 / 44%), transparent 80%);
-  background-attachment: fixed;
-}
-
-html:not([data-theme='dark']) .bg-white:not(.rounded-full):not(button):not(input):not(select):not(textarea) {
-  background-color: rgb(255 255 255 / 8%);
-  background-image: linear-gradient(135deg, rgb(255 255 255 / 28%), rgb(255 255 255 / 4%));
-  backdrop-filter: blur(32px) saturate(175%);
-  -webkit-backdrop-filter: blur(32px) saturate(175%);
-  border-color: rgb(255 255 255 / 76%);
-}
-
-html:not([data-theme='dark']) .bg-white:not(.rounded-full):not(button):not(input):not(select):not(textarea) {
-  box-shadow:
-    0 18px 42px rgb(60 1 115 / 9%),
-    inset 0 1px 0 rgb(255 255 255 / 88%),
-    inset 0 -1px 0 rgb(60 1 115 / 4%);
-}
-
-html:not([data-theme='dark']) .bg-white.text-brand-700 {
-  background-color: rgb(255 255 255 / 38%);
-}
-
-html:not([data-theme='dark']) .bg-white.rounded-full {
-  background-color: rgb(255 255 255 / 38%);
-}
-
-html:not([data-theme='dark']) .bg-slate-50 {
-  background-color: rgb(247 242 252 / 16%);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-}
-
-html:not([data-theme='dark']) .bg-slate-100 {
-  background-color: rgb(237 224 248 / 18%);
-}
-
-html:not([data-theme='dark']) .app-topbar {
-  background-color: transparent;
-  background-image: none;
-  color: #334155;
-  border-color: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html:not([data-theme='dark']) .app-topbar :is(.topbar-control, .topbar-profile) {
-  background-color: rgb(255 255 255 / 28%);
-  background-image: linear-gradient(135deg, rgb(255 255 255 / 54%), rgb(255 255 255 / 18%));
-  border-color: rgb(255 255 255 / 75%);
-  box-shadow: 0 5px 18px rgb(60 1 115 / 8%), inset 0 1px 0 rgb(255 255 255 / 82%);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-}
-
-html:not([data-theme='dark']) .app-topbar .topbar-avatar {
-  color: #3c0173;
-  background-color: rgb(110 45 174 / 12%);
-  border: 1px solid rgb(110 45 174 / 16%);
-}
-
-html:not([data-theme='dark']) .bg-brand-900 {
-  background-color: rgb(255 255 255 / 36%);
-  background-image: none;
-  color: #334155;
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border-right: 1px solid #e2e8f0;
-  box-shadow: 12px 0 42px rgb(60 1 115 / 9%);
-}
-
-html:not([data-theme='dark']) .bg-brand-900 nav a,
-html:not([data-theme='dark']) .bg-brand-900 nav button {
-  color: #475569;
-}
-
-html:not([data-theme='dark']) .bg-brand-900 nav a:hover,
-html:not([data-theme='dark']) .bg-brand-900 nav button:hover {
-  background-color: rgb(110 45 174 / 8%);
-  color: #3c0173;
-}
-
-html:not([data-theme='dark']) .bg-brand-900 nav a[aria-current='page'] {
-  border: 1px solid rgb(110 45 174 / 22%);
-  background-color: rgb(110 45 174 / 13%);
-  color: #3c0173;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 65%);
-}
-
-html:not([data-theme='dark']) .bg-brand-900 nav a[aria-current='page'] svg {
-  color: #6e2dae;
-}
-
-html:not([data-theme='dark']) .bg-brand-900 nav span {
-  color: inherit;
-}
-
-/* Les panneaux de navigation et les formulaires gardent un fond opaque pour
-   éviter que le décor translucide réduise le contraste du texte. */
-html[data-theme='dark'] .bg-brand-900 {
-  background-color: #130025;
-  background-image: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html:not([data-theme='dark']) .dialog-panel.bg-white:not(.rounded-full):not(button):not(input):not(select):not(textarea) {
-  background-color: #ffffff;
-  background-image: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html[data-theme='dark'] .dialog-panel.bg-white:not(.rounded-full):not(button):not(input):not(select):not(textarea) {
-  background-color: #171820;
-  background-image: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html[data-theme='dark'] button.bg-white:not(.text-brand-700) {
-  color: #f0eef4;
-  background-color: #2b2b36;
-  border-color: #41414e;
-}
-
-html[data-theme='dark'] button.bg-white:not(.text-brand-700):hover:not(:disabled) {
-  background-color: #41414e;
-}
-
-html[data-theme='dark'] button.bg-white:not(.text-brand-700):disabled {
-  color: #c2bfcb;
-  background-color: #23232e;
-  border-color: #41414e;
-}
-
-html[data-theme='dark'] main :is(a, button)[class~='hover:text-brand-700']:hover:not(.bg-white) {
-  color: #d9c1f0;
-}
-
-html :where(form, [role='dialog']) :where(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']) {
-  color: #171820;
-  background-color: #ffffff;
-}
-
-html :where(form, [role='dialog']) :where(input, textarea)::placeholder {
-  color: #64748b;
-  opacity: 1;
-}
-
-/* Les listes déroulantes servent aussi hors des formulaires (par exemple dans
-   les tableaux de détails) : leur menu natif doit suivre le thème lui aussi. */
-html:not([data-theme='dark']) select,
-html:not([data-theme='dark']) select option {
-  color: #171820;
-  background-color: #ffffff;
-}
-
-html[data-theme='dark'] :where(form, [role='dialog']) :where(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']) {
-  color: #faf9fc;
-  background-color: #23232e;
-}
-
-html[data-theme='dark'] :where(form, [role='dialog']) :where(input, textarea)::placeholder {
-  color: #c2bfcb;
-}
-
-html[data-theme='dark'] select,
-html[data-theme='dark'] select option {
-  color: #f0eef4;
-  background-color: #23232e;
-  color-scheme: dark;
-}
-
-html[data-theme='dark'] :is(input, textarea).bg-white:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']) {
-  color: #f0eef4;
-  background-color: #23232e;
-}
-
-html[data-theme='dark'] :is(input, textarea).bg-white::placeholder {
-  color: #c2bfcb;
-  opacity: 1;
-}
-
-html:not([data-theme='dark']) .bg-brand-50 {
-  background-color: rgb(247 242 252 / 34%);
-  background-image: linear-gradient(135deg, rgb(255 255 255 / 24%), rgb(237 224 248 / 8%));
-}
-
-html:not([data-theme='dark']) .bg-amber-50 {
-  background-color: rgb(255 251 235 / 38%);
-}
-
-html:not([data-theme='dark']) .bg-red-50 {
-  background-color: rgb(254 242 242 / 38%);
-}
-
-html:not([data-theme='dark']) .bg-emerald-50 {
-  background-color: rgb(236 253 245 / 38%);
 }
 
 @keyframes page-enter {
@@ -480,44 +92,18 @@ html:not([data-theme='dark']) .bg-emerald-50 {
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
 @keyframes dialog-out {
   from {
     opacity: 1;
-    transform: none;
   }
   to {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-}
-
-@keyframes form-field-in {
-  from {
-    opacity: 0;
-    translate: 0 12px;
-  }
-  to {
-    opacity: 1;
-    translate: 0 0;
-  }
-}
-
-@keyframes form-error-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
   }
 }
 
@@ -574,54 +160,6 @@ html:not([data-theme='dark']) .bg-emerald-50 {
     grid-template-rows: 0fr;
     opacity: 0;
   }
-
-  .scroll-reveal {
-    opacity: 0;
-    transform: translateY(1.75rem);
-    transition:
-      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-    transition-delay: var(--reveal-delay, 0ms);
-  }
-
-  .scroll-reveal.is-visible {
-    opacity: 1;
-    transform: none;
-  }
-
-  form > :where(*) {
-    animation: form-field-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  form > :where(*):nth-child(2) { animation-delay: 60ms; }
-  form > :where(*):nth-child(3) { animation-delay: 110ms; }
-  form > :where(*):nth-child(4) { animation-delay: 160ms; }
-  form > :where(*):nth-child(5) { animation-delay: 210ms; }
-  form > :where(*):nth-child(6) { animation-delay: 260ms; }
-  form > :where(*):nth-child(7) { animation-delay: 310ms; }
-  form > :where(*):nth-child(8) { animation-delay: 360ms; }
-  form > :where(*):nth-child(n + 9) { animation-delay: 400ms; }
-
-  .form-error {
-    animation: form-error-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  form :where(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']) {
-    transition:
-      border-color 0.2s ease,
-      box-shadow 0.2s ease,
-      background-color 0.2s ease,
-      transform 0.2s ease;
-  }
-
-  form :where(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']):focus-visible {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 24px rgba(60, 1, 115, 0.1);
-  }
-
-  form :where(button):not(:disabled):active {
-    transform: scale(0.98);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -629,23 +167,12 @@ html:not([data-theme='dark']) .bg-emerald-50 {
   .nav-overlay,
   .nav-drawer,
   .dialog-overlay,
-  .dialog-panel,
-  form > :where(*),
-  .form-error {
+  .dialog-panel {
     animation: none !important;
   }
 
-  .nav-accordion,
-  .scroll-reveal,
-  form :where(input, select, textarea, button) {
-    transition: none !important;
-  }
-
-  .scroll-reveal,
-  form > :where(*) {
-    opacity: 1 !important;
-    transform: none !important;
-    translate: none !important;
+  .nav-accordion {
+    transition: none;
   }
 }
 
@@ -686,21 +213,4 @@ html:not([data-theme='dark']) .bg-emerald-50 {
   .dialog-panel {
     animation: none !important;
   }
-}
-
-.carte-osm {
-  z-index: 0;
-  isolation: isolate;
-  background: #f8fafc;
-}
-
-.carte-osm .maplibregl-ctrl-top-left,
-.carte-osm .maplibregl-ctrl-top-right,
-.carte-osm .maplibregl-ctrl-bottom-left,
-.carte-osm .maplibregl-ctrl-bottom-right {
-  z-index: 2;
-}
-
-.carte-osm-choix .maplibregl-canvas {
-  cursor: crosshair;
 }

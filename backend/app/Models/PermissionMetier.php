@@ -16,7 +16,7 @@ class PermissionMetier extends Model
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'id_permission', 'code', 'module', 'action', 'description', 'actif'
+        'code', 'module', 'action', 'description', 'actif'
     ];
 
     protected $casts = [

@@ -20,7 +20,6 @@ import {
 import { personneKeys } from '@/features/personnes/hooks'
 import { errorId } from '@/lib/form'
 import { ROLE_CODES } from '@/lib/roleCodes'
-import { showSuccessFeedback } from '@/lib/successFeedback'
 import { suggestedEgliseEmail } from './email'
 import {
   canReplyCirculation,
@@ -184,13 +183,10 @@ export function NotificationsPage() {
         fonction: selected.roleCible,
       })
 
-      if (!traiterDemandeSuperviseur(selected.id, email)) {
-        throw new Error('La demande a déjà été traitée ou ne peut plus être modifiée.')
-      }
+      traiterDemandeSuperviseur(selected.id, email)
       setSelected(null)
       void queryClient.invalidateQueries({ queryKey: personneKeys.affectations(selected.idPersonneCible) })
       void queryClient.invalidateQueries({ queryKey: ['comptes'] })
-      showSuccessFeedback('Le compte a été créé et la demande traitée avec succès.')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Traitement impossible.')
     } finally {
@@ -206,7 +202,7 @@ export function NotificationsPage() {
 
   const onReply = (id: string) => {
     if (!user) return
-    const sent = repondreCirculation(
+    repondreCirculation(
       id,
       {
         texte: reponses[id] ?? '',
@@ -215,17 +211,14 @@ export function NotificationsPage() {
       },
       chefDepartementIds,
     )
-    if (!sent) return
     setReponses((current) => ({ ...current, [id]: '' }))
-    showSuccessFeedback('Votre réponse a bien été envoyée.')
   }
 
   const onClearAll = () => {
-    let removed = deleteCirculations(circulationsBrutes.map((item) => item.id))
+    deleteCirculations(circulationsBrutes.map((item) => item.id))
     demandes.forEach((demande) => {
-      if (demande.statut !== 'en_attente' && deleteDemande(demande.id)) removed = true
+      if (demande.statut !== 'en_attente') deleteDemande(demande.id)
     })
-    if (removed) showSuccessFeedback('Les notifications ont bien été supprimées.')
   }
 
   return (
@@ -305,11 +298,7 @@ export function NotificationsPage() {
                       size="sm"
                       className="text-slate-500 hover:bg-red-50 hover:text-red-700"
                       aria-label={`Supprimer ${item.titre}`}
-                      onClick={() => {
-                        if (deleteCirculation(item.id)) {
-                          showSuccessFeedback('La notification a bien été supprimée.')
-                        }
-                      }}
+                      onClick={() => deleteCirculation(item.id)}
                     >
                       <Trash2 className="size-4" aria-hidden="true" />
                     </Button>
@@ -415,11 +404,7 @@ export function NotificationsPage() {
                           size="sm"
                           variant="ghost"
                           className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                          onClick={() => {
-                            if (refuserDemandeSuperviseur(demande.id)) {
-                              showSuccessFeedback('La demande a bien été refusée.')
-                            }
-                          }}
+                          onClick={() => refuserDemandeSuperviseur(demande.id)}
                         >
                           Refuser
                         </Button>
@@ -431,11 +416,7 @@ export function NotificationsPage() {
                         size="sm"
                         className="text-slate-500 hover:bg-red-50 hover:text-red-700"
                         aria-label={`Supprimer la demande ${demande.nomCible}`}
-                        onClick={() => {
-                          if (deleteDemande(demande.id)) {
-                            showSuccessFeedback('La demande a bien été supprimée.')
-                          }
-                        }}
+                        onClick={() => deleteDemande(demande.id)}
                       >
                         <Trash2 className="size-4" aria-hidden="true" />
                       </Button>

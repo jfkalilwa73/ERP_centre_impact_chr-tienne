@@ -1,5 +1,4 @@
 import { Outlet, useParams } from 'react-router-dom'
-import { ChargementCentre } from '@/components/ui/Chargement'
 import { canSeeAllUnits } from '@/features/auth/orgRoles'
 import { canAccessDepartementUnit } from '@/features/departements/roles'
 import { usePersonneAffectations } from '@/features/personnes/hooks'
@@ -18,7 +17,7 @@ export function DepartementAccessRoute() {
   const affectationsQuery = usePersonneAffectations(user?.personne.idPersonne)
 
   if (!canViewWide && affectationsQuery.isLoading) {
-    return <ChargementCentre label="Vérification de l'accès…" page />
+    return <p className="text-sm text-slate-500">Vérification de l'accès…</p>
   }
 
   const leadsThisDepartment = (affectationsQuery.data ?? []).some(

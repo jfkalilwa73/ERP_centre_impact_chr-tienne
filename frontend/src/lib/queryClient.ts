@@ -1,15 +1,7 @@
-import { MutationCache, QueryClient } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { ApiError } from './apiError'
-import { showSuccessFeedback } from './successFeedback'
 
 export const queryClient = new QueryClient({
-  mutationCache: new MutationCache({
-    onSuccess: (_data, _variables, _context, mutation) => {
-      const meta = mutation.meta as { successMessage?: string | false } | undefined
-      if (meta?.successMessage === false) return
-      showSuccessFeedback(typeof meta?.successMessage === 'string' ? meta.successMessage : undefined)
-    },
-  }),
   defaultOptions: {
     queries: {
       // Une erreur 4xx est définitive (droits, validation, session close) :

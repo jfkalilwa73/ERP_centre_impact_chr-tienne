@@ -1,23 +1,28 @@
 import axios from 'axios'
-import { useAuthStore } from '@/stores/authStore'
+import { hasValidSession, useAuthStore } from '@/stores/authStore'
 import { toApiError } from './apiError'
 
 const LOGIN_PATH = '/auth/login'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  withCredentials: true,
-  withXSRFToken: true,
-  xsrfCookieName: 'XSRF-TOKEN',
-  xsrfHeaderName: 'X-XSRF-TOKEN',
   headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
 })
 
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  const state = useAuthStore.getState()
+
+  // Sans route de renouvellement dans le contrat, un access token expiré est
+  // définitivement perdu : on ferme la session au lieu d'envoyer un token mort.
+  if (state.accessToken && !hasValidSession(state)) {
+    state.closeSession()
+    return config
   }
+
+  if (state.accessToken) {
+    config.headers.Authorization = `Bearer ${state.accessToken}`
+  }
+
   return config
 })
 
@@ -28,7 +33,11 @@ api.interceptors.response.use(
     const isLoginAttempt = axios.isAxiosError(error) && error.config?.url === LOGIN_PATH
 
     if (apiError.status === 401 && !isLoginAttempt) {
-      useAuthStore.getState().closeSession()
+      const used = axios.isAxiosError(error) ? String(error.config?.headers?.Authorization ?? '') : ''
+      const current = useAuthStore.getState().accessToken
+      if (!current || used === `Bearer ${current}`) {
+        useAuthStore.getState().closeSession()
+      }
     }
 
     return Promise.reject(apiError)

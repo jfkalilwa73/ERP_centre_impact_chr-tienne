@@ -1,7 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
-import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
@@ -11,7 +10,6 @@ import { useHasPermission } from '@/stores/authStore'
 import type { Permission } from '@/types'
 import { PermissionAccesDialog } from './PermissionAccesDialog'
 import { PermissionFormDialog } from './PermissionFormDialog'
-import { UnitPageAccessManager } from './UnitPageAccessManager'
 import {
   useCreatePermission,
   useDeletePermission,
@@ -22,13 +20,8 @@ import { actionLabel, moduleLabel, permissionLabel } from './labels'
 import { toPermissionCreate, toPermissionUpdate, type PermissionFormValues } from './schema'
 
 const PAGE_SIZE = 20
-const PAGE_SECTIONS = [
-  { id: 'liste', label: 'Liste' },
-  { id: 'acces-unite', label: 'Accès pages' },
-] as const
 
 export function PermissionsPage() {
-  const [section, setSection] = useState<(typeof PAGE_SECTIONS)[number]['id']>('liste')
   const [searchInput, setSearchInput] = useState('')
   const [submittedSearch, setSubmittedSearch] = useState('')
   const [moduleFilter, setModuleFilter] = useState('')
@@ -41,7 +34,6 @@ export function PermissionsPage() {
   const canManage = useHasPermission(PERMISSIONS.ROLES_MANAGE)
   const canReadCatalog = useHasPermission(PERMISSIONS.ROLES_READ)
   const canRead = canManage || canReadCatalog
-  const activeSection = canManage ? section : 'liste'
 
   const catalogQuery = usePermissions({ page: 1, limit: 100 }, canRead)
   const modules = useMemo(() => {
@@ -116,7 +108,7 @@ export function PermissionsPage() {
             retirer.
           </p>
         </div>
-        {canManage && activeSection === 'liste' && (
+        {canManage && (
           <Button onClick={openCreate}>
             <Plus className="size-4" aria-hidden="true" />
             Nouvelle permission
@@ -124,33 +116,6 @@ export function PermissionsPage() {
         )}
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Sections des permissions"
-        className="flex flex-wrap gap-6 border-b border-slate-200"
-      >
-        {(canManage ? PAGE_SECTIONS : PAGE_SECTIONS.slice(0, 1)).map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={activeSection === item.id}
-            className={`-mb-px border-b-2 pb-3 text-sm font-medium ${
-              activeSection === item.id
-                ? 'border-gerbe-or text-slate-900'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-            onClick={() => setSection(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {activeSection === 'acces-unite' ? (
-        canManage && <UnitPageAccessManager />
-      ) : (
-        <>
       <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
         <div className="relative max-w-sm flex-1">
           <Search
@@ -192,7 +157,9 @@ export function PermissionsPage() {
         </Alert>
       )}
 
-      {permissionsQuery.isLoading && <ChargementCentre label="Chargement des permissions…" />}
+      {permissionsQuery.isLoading && (
+        <p className="text-sm text-slate-500">Chargement des permissions…</p>
+      )}
 
       {permissionsQuery.isSuccess && permissions.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
@@ -207,16 +174,8 @@ export function PermissionsPage() {
 
       {permissions.length > 0 && (
         <>
-          <p className="text-xs text-slate-500 sm:hidden">
-            Faites glisser le tableau horizontalement pour voir toutes les colonnes.
-          </p>
-          <div
-            className="overflow-x-auto overscroll-x-contain rounded-xl border border-slate-200 bg-white"
-            role="region"
-            aria-label="Liste des permissions, défilement horizontal possible"
-            tabIndex={0}
-          >
-            <table className="w-full min-w-[38rem] text-left text-sm">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
                 <tr>
                   <th className="px-4 py-3 font-medium">Droit</th>
@@ -372,8 +331,6 @@ export function PermissionsPage() {
           </div>
         </DialogContent>
       </Dialog>
-        </>
-      )}
     </div>
   )
 }

@@ -2,37 +2,21 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
-import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import {
-  useAssignPersonneDepartement,
-  useUnassignPersonneDepartement,
-} from '@/features/departements/hooks'
-import { listPersonneDepartements } from '@/features/personnes/api'
 import { usePersonnes } from '@/features/personnes/hooks'
 import { useRoles } from '@/features/roles/hooks'
 import { PERMISSIONS } from '@/lib/permissions'
-import { canonicalRoleCode, ROLE_CODES } from '@/lib/roleCodes'
-import { showSuccessFeedback } from '@/lib/successFeedback'
 import { useHasPermission } from '@/stores/authStore'
 import type { Compte, CompteStatut } from '@/types'
 import { CompteFormDialog } from './CompteFormDialog'
-import { listCompteRoles } from './api'
 import { useComptes, useCreateCompte, useDeleteCompte, useUpdateCompte } from './hooks'
 import { toCompteCreate, toCompteUpdate, type CompteFormValues } from './schema'
 import { statutCompteBadgeClass, statutCompteLabels } from './statut'
 
 const PAGE_SIZE = 20
-
-function departmentAssignmentKind(fonction?: string): 'chef' | 'superviseur' | null {
-  const normalized = (fonction ?? '').trim().toLowerCase()
-  if (normalized.includes('superviseur')) return 'superviseur'
-  if (normalized.includes('chef') || normalized.includes('adjoint')) return 'chef'
-  return null
-}
 
 export function ComptesPage() {
   const [searchInput, setSearchInput] = useState('')
@@ -42,8 +26,6 @@ export function ComptesPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingCompte, setEditingCompte] = useState<Compte | null>(null)
   const [compteToDelete, setCompteToDelete] = useState<Compte | null>(null)
-  const [scopeSaveError, setScopeSaveError] = useState<string | null>(null)
-  const [savingScopes, setSavingScopes] = useState(false)
 
   const canCreate = useHasPermission(PERMISSIONS.COMPTES_CREATE)
   const canUpdate = useHasPermission(PERMISSIONS.COMPTES_UPDATE)
@@ -63,13 +45,9 @@ export function ComptesPage() {
   const comptesQuery = useComptes(listParams)
   const personnesQuery = usePersonnes({ page: 1, limit: 100 }, canReadPersonnes)
   const rolesQuery = useRoles({ page: 1, limit: 100 }, canManageRoles && (canCreate || canUpdate))
-  // Le formulaire enregistre aussi les affectations de département : le succès
-  // doit être annoncé une seule fois, après la fin de toute la séquence.
-  const createMutation = useCreateCompte(false)
-  const updateMutation = useUpdateCompte(false)
+  const createMutation = useCreateCompte()
+  const updateMutation = useUpdateCompte()
   const deleteMutation = useDeleteCompte()
-  const assignDepartmentMutation = useAssignPersonneDepartement(false)
-  const unassignDepartmentMutation = useUnassignPersonneDepartement(false)
 
   const comptes = comptesQuery.data?.data ?? []
   const pagination = comptesQuery.data?.pagination
@@ -84,11 +62,9 @@ export function ComptesPage() {
   const personnesDisponibles = personnes.filter(
     (personne) => !idsDejaLiees.has(personne.idPersonne),
   )
-  const roles = rolesQuery.data?.data ?? []
 
   const openCreate = () => {
     setEditingCompte(null)
-    setScopeSaveError(null)
     createMutation.reset()
     updateMutation.reset()
     setFormOpen(true)
@@ -96,7 +72,6 @@ export function ComptesPage() {
 
   const openEdit = (compte: Compte) => {
     setEditingCompte(compte)
-    setScopeSaveError(null)
     createMutation.reset()
     updateMutation.reset()
     setFormOpen(true)
@@ -108,115 +83,27 @@ export function ComptesPage() {
     setSubmittedSearch(searchInput.trim())
   }
 
-  const handleFormSubmit = async (values: CompteFormValues) => {
-    setScopeSaveError(null)
-    setSavingScopes(true)
-
-    const rolesById = new Map(roles.map((role) => [role.idRole, role]))
-    const selectedCodes = new Set(
-      values.idRoles
-        .map((roleId) => {
-          const role = rolesById.get(roleId)
-          return role ? canonicalRoleCode(role) : undefined
-        })
-        .filter((code): code is string => Boolean(code)),
-    )
-    let previousCodes = new Set<string>()
-    let savedCompte: Compte
-
-    try {
-      if (editingCompte) {
-        const previousAssignments = (await listCompteRoles(editingCompte.idCompte)).filter(
-          (assignment) => assignment.actif,
-        )
-        previousCodes = new Set(
-          previousAssignments
-            .map((assignment) => {
-              const role = rolesById.get(assignment.idRole)
-              return role ? canonicalRoleCode(role) : undefined
-            })
-            .filter((code): code is string => Boolean(code)),
-        )
-      }
-
-      savedCompte = editingCompte
-        ? await updateMutation.mutateAsync({
-            compteId: editingCompte.idCompte,
-            payload: toCompteUpdate(values),
-            idRoles: values.idRoles,
-          })
-        : await createMutation.mutateAsync({ payload: toCompteCreate(values), idRoles: values.idRoles })
-    } catch (error) {
-      if (editingCompte && !updateMutation.error) {
-        setScopeSaveError(error instanceof Error ? error.message : 'Impossible de charger les rôles actuels.')
-      }
-      setSavingScopes(false)
+  const handleFormSubmit = (values: CompteFormValues) => {
+    if (editingCompte) {
+      updateMutation.mutate(
+        {
+          compteId: editingCompte.idCompte,
+          payload: toCompteUpdate(values),
+          idRoles: values.idRoles,
+        },
+        { onSuccess: () => setFormOpen(false) },
+      )
       return
     }
 
-    const personneId = editingCompte?.idPersonne ?? values.idPersonne
-    const desiredFunctions = new Map<string, 'Chef' | 'Superviseur'>()
-    if (selectedCodes.has(ROLE_CODES.CHEF_DEPARTEMENT)) {
-      values.roleDepartments.chefDepartement.forEach((id) => desiredFunctions.set(id, 'Chef'))
-    }
-    if (selectedCodes.has(ROLE_CODES.SUPERVISEUR)) {
-      values.roleDepartments.superviseur.forEach((id) => desiredFunctions.set(id, 'Superviseur'))
-    }
-    const managesDepartmentScope = [ROLE_CODES.CHEF_DEPARTEMENT, ROLE_CODES.SUPERVISEUR].some(
-      (code) => selectedCodes.has(code) || previousCodes.has(code),
-    )
-
-    try {
-      const currentAssignments = (await listPersonneDepartements(personneId)).filter(
-        (assignment) => assignment.actif,
-      )
-      const toRemove = new Set<string>()
-
-      for (const assignment of currentAssignments) {
-        const kind = departmentAssignmentKind(assignment.fonction)
-        const desired = desiredFunctions.get(assignment.idDepartement)
-        if (desired && desired !== assignment.fonction) toRemove.add(assignment.idDepartement)
-        if (managesDepartmentScope && kind && !desired) toRemove.add(assignment.idDepartement)
-      }
-
-      for (const departementId of toRemove) {
-        await unassignDepartmentMutation.mutateAsync({ personneId, departementId })
-      }
-
-      const stillActive = new Map(
-        currentAssignments
-          .filter((assignment) => !toRemove.has(assignment.idDepartement))
-          .map((assignment) => [assignment.idDepartement, assignment]),
-      )
-      for (const [departementId, fonction] of desiredFunctions) {
-        if (stillActive.get(departementId)?.fonction === fonction) continue
-        await assignDepartmentMutation.mutateAsync({
-          personneId,
-          payload: { idDepartement: departementId, fonction },
-        })
-      }
-    } catch (error) {
-      if (!editingCompte) {
-        setEditingCompte(savedCompte)
-        createMutation.reset()
-      }
-      setScopeSaveError(
-        `Le compte est enregistré, mais l’affectation des départements a échoué : ${error instanceof Error ? error.message : 'erreur inconnue'}. Vérifiez les affectations de la personne avant de réessayer.`,
-      )
-      setSavingScopes(false)
-      return
-    }
-
-    setSavingScopes(false)
-    setFormOpen(false)
-    showSuccessFeedback(
-      editingCompte ? 'Le compte a bien été modifié.' : 'Le compte a bien été créé.',
+    createMutation.mutate(
+      { payload: toCompteCreate(values), idRoles: values.idRoles },
+      { onSuccess: () => setFormOpen(false) },
     )
   }
 
-  const formError =
-    scopeSaveError ?? (editingCompte ? updateMutation.error?.message : createMutation.error?.message)
-  const isSubmitting = createMutation.isPending || updateMutation.isPending || savingScopes
+  const formError = editingCompte ? updateMutation.error?.message : createMutation.error?.message
+  const isSubmitting = createMutation.isPending || updateMutation.isPending
 
   return (
     <div className="flex flex-col gap-6">
@@ -274,7 +161,7 @@ export function ComptesPage() {
         </Alert>
       )}
 
-      {comptesQuery.isLoading && <ChargementCentre label="Chargement des comptes…" />}
+      {comptesQuery.isLoading && <p className="text-sm text-slate-500">Chargement des comptes…</p>}
 
       {comptesQuery.isSuccess && comptes.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
@@ -289,16 +176,8 @@ export function ComptesPage() {
 
       {comptes.length > 0 && (
         <>
-          <p className="text-xs text-slate-500 sm:hidden">
-            Faites glisser le tableau horizontalement pour voir toutes les colonnes.
-          </p>
-          <div
-            className="overflow-x-auto overscroll-x-contain rounded-xl border border-slate-200 bg-white"
-            role="region"
-            aria-label="Liste des comptes, défilement horizontal possible"
-            tabIndex={0}
-          >
-            <table className="w-full min-w-[34rem] text-left text-sm">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
                 <tr>
                   <th className="px-4 py-3 font-medium">Adresse e-mail</th>

@@ -7,11 +7,9 @@ import type {
   Compte,
   CompteCreate,
   CompteUpdate,
-  PermissionCheck,
 } from '@/types'
 import {
   assignRoleToCompte,
-  checkComptePermission,
   createCompteWithRoles,
   deleteCompte,
   getCompte,
@@ -63,7 +61,7 @@ function invalidateComptes(queryClient: ReturnType<typeof useQueryClient>, compt
   invalidateCurrentUser(queryClient)
 }
 
-export function useCreateCompte(showSuccessMessage = true) {
+export function useCreateCompte() {
   const queryClient = useQueryClient()
 
   return useMutation<Compte, ApiError, { payload: CompteCreate; idRoles: string[] }>({
@@ -71,13 +69,12 @@ export function useCreateCompte(showSuccessMessage = true) {
       const created = await createCompteWithRoles(payload, idRoles)
       return created
     },
-    meta: showSuccessMessage ? undefined : { successMessage: false },
     onSuccess: (created) => invalidateComptes(queryClient, created.idCompte),
     onError: () => invalidateComptes(queryClient),
   })
 }
 
-export function useUpdateCompte(showSuccessMessage = true) {
+export function useUpdateCompte() {
   const queryClient = useQueryClient()
 
   return useMutation<
@@ -90,7 +87,6 @@ export function useUpdateCompte(showSuccessMessage = true) {
       if (idRoles) await syncCompteRoles(compteId, idRoles)
       return updated
     },
-    meta: showSuccessMessage ? undefined : { successMessage: false },
     onSuccess: (_data, variables) => invalidateComptes(queryClient, variables.compteId),
   })
 }
@@ -119,12 +115,5 @@ export function useUnassignRole(compteId: string) {
   return useMutation<void, ApiError, string>({
     mutationFn: (roleId) => unassignRoleFromCompte(compteId, roleId),
     onSuccess: () => invalidateComptes(queryClient, compteId),
-  })
-}
-
-export function useCheckComptePermission(compteId: string) {
-  return useMutation<PermissionCheck, ApiError, string>({
-    mutationFn: (permissionCode) => checkComptePermission(compteId, permissionCode),
-    meta: { successMessage: false },
   })
 }

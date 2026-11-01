@@ -22,16 +22,14 @@ import { compteHandlers } from './compteHandlers'
 import { roleHandlers } from './roleHandlers'
 import { permissionHandlers } from './permissionHandlers'
 import { auditHandlers } from './auditHandlers'
-import { sprint1Handlers } from './sprint1Handlers'
 
 const authHandlers = [
   http.post(apiUrl('auth/login'), async ({ request }) => {
     await delay(500)
 
-    const payload = (await request.json()) as Partial<LoginRequest> & { password?: string }
-    const motDePasse = payload.motDePasse || payload.password
+    const payload = (await request.json()) as Partial<LoginRequest>
 
-    if (!payload.email || !motDePasse) {
+    if (!payload.email || !payload.motDePasse) {
       return errorResponse(422, 'VALIDATION_ERROR', 'Données non conformes.', [
         { field: !payload.email ? 'email' : 'motDePasse', rule: 'required' },
       ])
@@ -44,7 +42,7 @@ const authHandlers = [
     const account = mockAccounts.find(
       (candidate) =>
         candidate.utilisateur.compte.email.toLowerCase() === payload.email?.toLowerCase() &&
-        candidate.motDePasse === motDePasse,
+        candidate.motDePasse === payload.motDePasse,
     )
 
     if (!account) {
@@ -119,5 +117,4 @@ export const handlers = [
   ...roleHandlers,
   ...permissionHandlers,
   ...auditHandlers,
-  ...sprint1Handlers,
 ]

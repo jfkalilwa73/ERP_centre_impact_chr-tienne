@@ -26,30 +26,3 @@ export const ROLE_CODES = {
   RESPONSABLE_ACCUEIL: 'RESPONSABLE_ACCUEIL',
   CHEF_FAMILLE: 'CHEF_FAMILLE',
 } as const
-
-function normalizedRoleName(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLowerCase()
-}
-
-/** Maps legacy ADMIN_* names to the canonical scoped role used by the UI. */
-export function canonicalRoleCode(role: { code: string; nom: string }) {
-  const normalizedName = normalizedRoleName(role.nom)
-  if (
-    role.code === ROLE_CODES.CHEF_DEPARTEMENT ||
-    (role.code.toUpperCase().startsWith('ADMIN_') && normalizedName === 'chef de departement')
-  ) {
-    return ROLE_CODES.CHEF_DEPARTEMENT
-  }
-  if (
-    role.code === ROLE_CODES.SUPERVISEUR ||
-    (role.code.toUpperCase().startsWith('ADMIN_') && normalizedName === 'superviseur')
-  ) {
-    return ROLE_CODES.SUPERVISEUR
-  }
-  return role.code
-}

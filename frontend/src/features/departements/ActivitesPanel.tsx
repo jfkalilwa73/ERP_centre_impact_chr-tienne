@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { showSuccessFeedback } from '@/lib/successFeedback'
 import type { Personne } from '@/types'
 import { createCirculation } from '@/features/notifications/circulation'
 import { notifyMembresActivite, retirerRappelActivite } from './activiteNotifications'
@@ -408,7 +407,6 @@ export function ActivitesPanel({
       auteur,
     })
     setDraft(emptyDraft())
-    showSuccessFeedback("L’activité a bien été créée.")
   }
 
   const openEdit = (activite: Activite) => {
@@ -428,9 +426,8 @@ export function ActivitesPanel({
         membreIds,
         auteur,
       })
-      showSuccessFeedback("L’activité a bien été modifiée.")
-      setEditing(null)
     }
+    setEditing(null)
   }
 
   const openRendu = (activite: Activite) => {
@@ -448,13 +445,11 @@ export function ActivitesPanel({
   const onRendu = (event: FormEvent) => {
     event.preventDefault()
     if (!rendu || !deroulement.trim()) return
-    const updated = store.enregistrerCompteRendu(departementId, rendu.id, {
+    store.enregistrerCompteRendu(departementId, rendu.id, {
       presence,
       deroulement,
       date: new Date().toISOString().slice(0, 10),
     })
-    if (!updated) return
-    showSuccessFeedback('Le compte rendu a bien été enregistré.')
     setRendu(null)
   }
 
@@ -572,10 +567,8 @@ export function ActivitesPanel({
                         className="text-red-600 hover:bg-red-50 hover:text-red-700"
                         aria-label="Supprimer l'activité"
                         onClick={() => {
-                          const removed = store.remove(departementId, activite.id)
-                          if (!removed) return
+                          store.remove(departementId, activite.id)
                           retirerRappelActivite(departementId, activite.id)
-                          showSuccessFeedback("L’activité a bien été supprimée.")
                         }}
                       >
                         <Trash2 className="size-4" aria-hidden="true" />

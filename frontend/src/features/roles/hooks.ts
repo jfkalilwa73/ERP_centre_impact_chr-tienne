@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { invalidateCurrentUser } from '@/features/auth/hooks'
 import type { ApiError } from '@/lib/apiError'
 import type { Permission, Role, RoleCreate, RolePermissionCreate, RoleUpdate } from '@/types'
-import { installDefaultRoles } from './installDefaults'
 import {
   assignPermissionToRole,
   createRole,
@@ -101,18 +100,6 @@ export function useUnassignPermission(roleId: string) {
     mutationFn: (permissionId) => unassignPermissionFromRole(roleId, permissionId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: roleKeys.permissions(roleId) })
-      invalidateCurrentUser(queryClient)
-    },
-  })
-}
-
-export function useInstallDefaultRoles() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: installDefaultRoles,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: roleKeys.all })
       invalidateCurrentUser(queryClient)
     },
   })

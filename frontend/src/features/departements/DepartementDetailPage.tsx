@@ -1,5 +1,5 @@
 import { useMemo, useState, useSyncExternalStore, type FormEvent } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarDays, User, UserPlus, UserRound, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
@@ -7,7 +7,6 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useAccessScope } from '@/features/auth/accessScope'
-import { useUnitPageAccess } from '@/features/auth/unitPageAccess'
 import { usePersonnes, usePersonnesAffectations } from '@/features/personnes/hooks'
 import { cn } from '@/lib/cn'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -33,10 +32,9 @@ import { personneName } from './personneName'
 import { RapportsPanel } from './RapportsPanel'
 import { isLeadershipRole, roleDepartement, ROLES_EQUIPE, type RoleDepartement } from './roles'
 import { StatCard } from './StatCard'
-import { ForbiddenPage } from '@/pages/ForbiddenPage'
 
 const TABS = [
-  { id: 'tableau', label: 'Synthèse' },
+  { id: 'tableau', label: 'Tableau de bord' },
   { id: 'membres', label: 'Membres' },
   { id: 'activites', label: 'Activités' },
   { id: 'budget', label: 'Budget', permission: PERMISSIONS.BUDGET_READ },
@@ -45,17 +43,9 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
-function ongletInitial(valeur: string | null): TabId {
-  if (valeur === 'membres' || valeur === 'activites' || valeur === 'budget' || valeur === 'rapports') {
-    return valeur
-  }
-  return 'tableau'
-}
-
 export function DepartementDetailPage() {
   const { departementId } = useParams<{ departementId: string }>()
-  const [searchParams] = useSearchParams()
-  const [tab, setTab] = useState<TabId>(() => ongletInitial(searchParams.get('onglet')))
+  const [tab, setTab] = useState<TabId>('tableau')
   const [assignOpen, setAssignOpen] = useState(false)
   const [membreSearch, setMembreSearch] = useState('')
   const [roleDraft, setRoleDraft] = useState<RoleDepartement>('Responsable')
@@ -66,7 +56,6 @@ export function DepartementDetailPage() {
   const user = useCurrentUser()
   const permissions = user?.permissions ?? []
   const { isScoped, ledDepartementIds } = useAccessScope()
-  const pageAccess = useUnitPageAccess('departement', departementId, user?.personne.idPersonne)
   const canManageDepartements = useHasPermission(PERMISSIONS.DEPARTEMENTS_UPDATE)
 
   const departementQuery = useDepartement(departementId)
@@ -120,18 +109,18 @@ export function DepartementDetailPage() {
     : departementId && departementQuery.data
       ? [{ idDepartement: departementId, nom: departementQuery.data.nom }]
       : []
+  const canAssign = leadsHere || (canManageDepartements && !isScoped)
   const canManageEquipe = useHasPermission(PERMISSIONS.EQUIPES_MANAGE) || leadsHere
-  const canAssign = canManageEquipe || (canManageDepartements && !isScoped)
   const canWriteActivites =
     useHasPermission(PERMISSIONS.ACTIVITES_CREATE) ||
     useHasPermission(PERMISSIONS.ACTIVITES_UPDATE) ||
     leadsHere
   const canRequestBudget = useHasPermission(PERMISSIONS.BUDGET_REQUEST)
-  const canWriteRapports = useHasPermission(PERMISSIONS.RAPPORTS_CREATE)
-  const visibleTabs = TABS.filter((item) =>
-    pageAccess.canView(item.id, !('permission' in item) || permissions.includes(item.permission)),
-  )
-  const activeTab = visibleTabs.some((item) => item.id === tab) ? tab : visibleTabs[0]?.id
+  const canWriteRapports =
+    useHasPermission(PERMISSIONS.RAPPORTS_CREATE) ||
+    useHasPermission(PERMISSIONS.OBJECTIFS_MANAGE) ||
+    leadsHere
+  const visibleTabs = TABS.filter((item) => !('permission' in item) || permissions.includes(item.permission))
   const activites = departementId ? listActivites(departementId) : []
   const evolution = evolutionDepartement(allAffectations)
   const evolutionActs = evolutionActivites(activites)
@@ -176,8 +165,6 @@ export function DepartementDetailPage() {
     if (!selectedPersonneId) return
     void applyRole(selectedPersonneId, roleDraft)
   }
-
-  if (!activeTab) return <ForbiddenPage />
 
   if (departementQuery.isLoading) {
     return (
@@ -261,10 +248,10 @@ export function DepartementDetailPage() {
             key={item.id}
             type="button"
             role="tab"
-            aria-selected={activeTab === item.id}
+            aria-selected={tab === item.id}
             className={cn(
               '-mb-px border-b-2 pb-3 text-sm font-medium',
-              activeTab === item.id
+              tab === item.id
                 ? 'border-gerbe-or text-slate-900'
                 : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
@@ -275,9 +262,9 @@ export function DepartementDetailPage() {
         ))}
       </div>
 
-      {activeTab === 'tableau' && (
+      {tab === 'tableau' && (
         <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Membres affectés"
               value={actives.length}
@@ -329,7 +316,7 @@ export function DepartementDetailPage() {
         </div>
       )}
 
-      {activeTab === 'membres' && departementId && (
+      {tab === 'membres' && departementId && (
         <EquipePanel
           departementId={departementId}
           membres={membres}
@@ -350,7 +337,7 @@ export function DepartementDetailPage() {
         />
       )}
 
-      {activeTab === 'activites' && departementId && (
+      {tab === 'activites' && departementId && (
         <ActivitesPanel
           departementId={departementId}
           nomDepartement={departement.nom}
@@ -361,7 +348,7 @@ export function DepartementDetailPage() {
         />
       )}
 
-      {activeTab === 'budget' && departementId && (
+      {tab === 'budget' && departementId && (
         <BudgetPanel
           departementId={departementId}
           nomDepartement={departement.nom}
@@ -370,7 +357,7 @@ export function DepartementDetailPage() {
         />
       )}
 
-      {activeTab === 'rapports' && departementId && (
+      {tab === 'rapports' && departementId && (
         <RapportsPanel
           departementId={departementId}
           nomDepartement={departement.nom}

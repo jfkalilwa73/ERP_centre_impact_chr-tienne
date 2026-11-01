@@ -1,26 +1,18 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Alert } from '@/components/ui/Alert'
-import { ChargementCentre } from '@/components/ui/Chargement'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { useDepartements } from '@/features/departements/hooks'
-import { usePersonneAffectations } from '@/features/personnes/hooks'
 import { errorId } from '@/lib/form'
-import { canonicalRoleCode, ROLE_CODES } from '@/lib/roleCodes'
+import { ROLE_CODES } from '@/lib/roleCodes'
 import { useCurrentUser } from '@/stores/authStore'
 import type { Compte, Personne, Role } from '@/types'
 import { useCompteRoles } from './hooks'
 import { compteSchema, emptyCompteForm, type CompteFormValues } from './schema'
-
-function isChefAssignment(fonction?: string) {
-  const normalized = (fonction ?? '').trim().toLowerCase()
-  return normalized === 'chef' || normalized.includes('chef de département')
-}
 
 type CompteFormDialogProps = {
   open: boolean
@@ -31,7 +23,7 @@ type CompteFormDialogProps = {
   errorMessage?: string
   isSubmitting: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (values: CompteFormValues) => void | Promise<void>
+  onSubmit: (values: CompteFormValues) => void
 }
 
 export function CompteFormDialog({
@@ -48,16 +40,7 @@ export function CompteFormDialog({
   const isEditing = Boolean(compte)
   const user = useCurrentUser()
   const assignedQuery = useCompteRoles(open && isEditing ? compte?.idCompte : undefined)
-  const chefRoleId = roles.find((role) => canonicalRoleCode(role) === ROLE_CODES.CHEF_DEPARTEMENT)?.idRole
-  const superviseurRoleId = roles.find((role) => canonicalRoleCode(role) === ROLE_CODES.SUPERVISEUR)?.idRole
-  const scopedRoleIds = useMemo(
-    () => ({ chefDepartement: chefRoleId, superviseur: superviseurRoleId }),
-    [chefRoleId, superviseurRoleId],
-  )
-  const resolver = useMemo(
-    () => zodResolver(compteSchema(isEditing, scopedRoleIds)),
-    [isEditing, scopedRoleIds],
-  )
+  const resolver = useMemo(() => zodResolver(compteSchema(isEditing)), [isEditing])
   const {
     register,
     handleSubmit,
@@ -71,102 +54,31 @@ export function CompteFormDialog({
   })
 
   const idRoles = watch('idRoles')
-  const targetPersonId = isEditing ? compte?.idPersonne : watch('idPersonne')
-  const affectationsQuery = usePersonneAffectations(open ? targetPersonId : undefined)
-  const wantsChefRole = Boolean(chefRoleId && idRoles.includes(chefRoleId))
-  const wantsSuperviseurRole = Boolean(superviseurRoleId && idRoles.includes(superviseurRoleId))
-  const departementsQuery = useDepartements(
-    { page: 1, limit: 100 },
-    open && (wantsChefRole || wantsSuperviseurRole),
-  )
-  const createPersonneInitialisee = useRef<string | null>(null)
-  const roleDepartments = watch('roleDepartments')
-  const departementsChef = roleDepartments?.chefDepartement ?? []
-  const departementsSuperviseur = roleDepartments?.superviseur ?? []
-  const departementsDisponibles = (departementsQuery.data?.data ?? []).filter((departement) => departement.actif)
 
   useEffect(() => {
-    if (!open) {
-      createPersonneInitialisee.current = null
-      return
-    }
-    if (!isEditing) {
-      reset(emptyCompteForm)
-    }
-  }, [isEditing, open, reset])
-
-  useEffect(() => {
-    if (!open || !compte) return
-    if (assignedQuery.isLoading || affectationsQuery.isLoading) return
+    if (!open) return
+    if (compte && assignedQuery.isLoading) return
     const idRolesActifs = (assignedQuery.data ?? [])
       .filter((affectation) => affectation.actif)
       .map((affectation) => affectation.idRole)
-    const affectationsActives = (affectationsQuery.data ?? []).filter(
-      (affectation) => affectation.actif,
+    reset(
+      compte
+        ? {
+            idPersonne: compte.idPersonne,
+            email: compte.email,
+            motDePasse: '',
+            confirmationMotDePasse: '',
+            statut: compte.statut,
+            mfaActive: compte.mfaActive ? 'true' : 'false',
+            idRoles: idRolesActifs,
+          }
+        : emptyCompteForm,
     )
-    reset({
-      idPersonne: compte.idPersonne,
-      email: compte.email,
-      motDePasse: '',
-      confirmationMotDePasse: '',
-      statut: compte.statut,
-      mfaActive: compte.mfaActive ? 'true' : 'false',
-      idRoles: idRolesActifs,
-      roleDepartments: {
-        chefDepartement: affectationsActives
-          .filter((affectation) => isChefAssignment(affectation.fonction))
-          .map((affectation) => affectation.idDepartement),
-        superviseur: affectationsActives
-          .filter((affectation) =>
-            (affectation.fonction ?? '').trim().toLowerCase().includes('superviseur'),
-          )
-          .map((affectation) => affectation.idDepartement),
-      },
-    })
-  }, [
-    affectationsQuery.data,
-    affectationsQuery.isLoading,
-    assignedQuery.data,
-    assignedQuery.isLoading,
-    compte,
-    open,
-    reset,
-  ])
-
-  useEffect(() => {
-    if (!open || isEditing || !targetPersonId || affectationsQuery.isLoading) return
-    if (createPersonneInitialisee.current === targetPersonId) return
-    createPersonneInitialisee.current = targetPersonId
-    const affectationsActives = (affectationsQuery.data ?? []).filter(
-      (affectation) => affectation.actif,
-    )
-    setValue(
-      'roleDepartments',
-      {
-        chefDepartement: affectationsActives
-          .filter((affectation) => isChefAssignment(affectation.fonction))
-          .map((affectation) => affectation.idDepartement),
-        superviseur: affectationsActives
-          .filter((affectation) =>
-            (affectation.fonction ?? '').trim().toLowerCase().includes('superviseur'),
-          )
-          .map((affectation) => affectation.idDepartement),
-      },
-      { shouldValidate: true },
-    )
-  }, [affectationsQuery.data, affectationsQuery.isLoading, isEditing, open, setValue, targetPersonId])
+  }, [assignedQuery.data, assignedQuery.isLoading, compte, open, reset])
 
   const toggleRole = (idRole: string, checked: boolean) => {
     const next = checked ? [...idRoles, idRole] : idRoles.filter((id) => id !== idRole)
     setValue('idRoles', next, { shouldDirty: true, shouldValidate: true })
-  }
-
-  const toggleDepartment = (kind: 'chefDepartement' | 'superviseur', departmentId: string) => {
-    const selected = kind === 'chefDepartement' ? departementsChef : departementsSuperviseur
-    const next = selected.includes(departmentId)
-      ? selected.filter((id) => id !== departmentId)
-      : [...selected, departmentId]
-    setValue(`roleDepartments.${kind}`, next, { shouldDirty: true, shouldValidate: true })
   }
 
   const rolesActifs = [...roles]
@@ -297,7 +209,7 @@ export function CompteFormDialog({
               </Alert>
             )}
             {isEditing && assignedQuery.isLoading && (
-              <ChargementCentre label="Chargement des rôles actuels…" compact />
+              <p className="text-sm text-slate-500">Chargement des rôles actuels…</p>
             )}
             {isEditing && assignedQuery.isError && (
               <Alert variant="error" title="Impossible de charger les rôles du compte">
@@ -348,69 +260,6 @@ export function CompteFormDialog({
               )}
             </div>
           </fieldset>
-
-          {(wantsChefRole || wantsSuperviseurRole) && (
-            <section className="flex flex-col gap-3 rounded-lg border border-brand-200 bg-brand-50/40 p-4">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">Départements à gérer</h3>
-                <p className="mt-1 text-xs text-slate-600">
-                  Sélection obligatoire : ces rôles s’appliquent uniquement aux départements cochés.
-                </p>
-              </div>
-
-              {departementsQuery.isLoading && <ChargementCentre label="Chargement des départements…" compact />}
-              {departementsQuery.isError && (
-                <Alert variant="error" title="Départements indisponibles">
-                  {departementsQuery.error.message}
-                </Alert>
-              )}
-              {departementsQuery.isSuccess && departementsDisponibles.length === 0 && (
-                <p className="text-sm text-slate-600">Aucun département actif n’est disponible.</p>
-              )}
-
-              {departementsDisponibles.map((departement) => (
-                <label
-                  key={`scope-${departement.idDepartement}`}
-                  className="flex items-start gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="font-medium text-slate-900">{departement.nom}</span>
-                    <span className="ml-2 text-xs text-slate-500">{departement.code}</span>
-                  </span>
-                  {wantsChefRole && (
-                    <span className="flex items-center gap-1.5 text-xs text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={departementsChef.includes(departement.idDepartement)}
-                        onChange={() => toggleDepartment('chefDepartement', departement.idDepartement)}
-                        className="size-4 rounded border-slate-300 text-brand-600"
-                        aria-label={`${departement.nom} — Chef de département`}
-                      />
-                      Chef
-                    </span>
-                  )}
-                  {wantsSuperviseurRole && (
-                    <span className="flex items-center gap-1.5 text-xs text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={departementsSuperviseur.includes(departement.idDepartement)}
-                        onChange={() => toggleDepartment('superviseur', departement.idDepartement)}
-                        className="size-4 rounded border-slate-300 text-brand-600"
-                        aria-label={`${departement.nom} — Superviseur`}
-                      />
-                      Superviseur
-                    </span>
-                  )}
-                </label>
-              ))}
-              {errors.roleDepartments?.chefDepartement?.message && (
-                <p role="alert" className="text-sm text-red-600">{errors.roleDepartments.chefDepartement.message}</p>
-              )}
-              {errors.roleDepartments?.superviseur?.message && (
-                <p role="alert" className="text-sm text-red-600">{errors.roleDepartments.superviseur.message}</p>
-              )}
-            </section>
-          )}
 
           <div className="mt-2 flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>

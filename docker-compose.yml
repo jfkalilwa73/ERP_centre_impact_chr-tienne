@@ -1,135 +1,122 @@
-name: erp_centre_impact_chr-tienne
+version: '3.9'
 
 services:
+  # 1. Base de données (PostgreSQL)
   postgres:
     image: postgres:16-alpine
-    container_name: erp_centre_impact_chr-tienne-postgres
+    container_name: erp-postgres
     environment:
       POSTGRES_USER: erp_user
       POSTGRES_PASSWORD: erp_password
       POSTGRES_DB: erp_eglise
-    # 5432 est déjà pris sur l'hôte : la base n'est joignable que dans le réseau du projet.
+    ports:
+      - "5432:5432"
     volumes:
-      - erp_centre_impact_chr-tienne_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - net_laravel
+      - erp-network
 
+  # pgAdmin - Interface de gestion PostgreSQL
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: erp_centre_impact_chr-tienne-pgadmin
+    container_name: erp-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@erp-eglise.com
       PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     ports:
-      - "8088:80"
+      - "5050:80"
     depends_on:
       - postgres
-    volumes:
-      - erp_centre_impact_chr-tienne_pgadmin_data:/var/lib/pgadmin
     networks:
-      - net_laravel
+      - erp-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
 
+  # 2. Cache et Sessions (Redis)
   redis:
     image: redis:7-alpine
-    container_name: erp_centre_impact_chr-tienne-redis
+    container_name: erp-redis
     ports:
       - "6379:6379"
     command: redis-server --requirepass redis_password
     volumes:
-      - erp_centre_impact_chr-tienne_redis_data:/data
+      - redis_data:/data
     networks:
-      - net_laravel
+      - erp-network
 
+  # 3. Stockage de fichiers (MinIO - S3 compatible)
   minio:
-    image: cgr.dev/chainguard/minio:latest
-    container_name: erp_centre_impact_chr-tienne-minio
+    image: quay.io/minio/minio:latest
+    container_name: erp-minio
     environment:
       MINIO_ROOT_USER: minio_access
       MINIO_ROOT_PASSWORD: minio_secret
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Interface Web (Console)
     volumes:
-      - erp_centre_impact_chr-tienne_minio_data:/data
+      - minio_data:/data
     command: server /data --console-address ":9001"
     networks:
-      - net_laravel
+      - erp-network
 
+  # 4. Serveur de test d'emails (Mailpit)
   mailpit:
     image: axllent/mailpit
-    container_name: erp_centre_impact_chr-tienne-mailpit
+    container_name: erp-mailpit
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "1025:1025" # Port SMTP pour Laravel
+      - "8025:8025" # Port pour l'interface web de visualisation
     networks:
-      - net_laravel
+      - erp-network
 
+  # 5. Backend Laravel (API)
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: erp_centre_impact_chr-tienne-backend
+    container_name: erp-backend
     ports:
-      - "8000:80"
+      - "8000:8000"
     volumes:
       - ./backend:/var/www/html
     environment:
-      APP_ENV: local
-      APP_DEBUG: "true"
-      APP_URL: http://localhost:8000
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_DATABASE: erp_eglise
-      DB_USERNAME: erp_user
-      DB_PASSWORD: erp_password
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: redis_password
-      MAIL_HOST: mailpit
-      MAIL_PORT: "1025"
-      AWS_ENDPOINT: http://minio:9000
+      - APP_ENV=local
+      - APP_DEBUG=true
     depends_on:
       - postgres
       - redis
       - minio
       - mailpit
     networks:
-      - net_laravel
+      - erp-network
 
+  # 6. Frontend React (Interface Utilisateur)
   frontend:
-    image: node:22-alpine
-    container_name: erp_centre_impact_chr-tienne-frontend
+    image: node:20-alpine
+    container_name: erp-frontend
     working_dir: /app
     volumes:
       - ./frontend:/app
-      - erp_centre_impact_chr-tienne_frontend_node_modules:/app/node_modules
     ports:
-      - "3000:3000"
-    environment:
-      BACKEND_PROXY_TARGET: http://backend:80
-      CHOKIDAR_USEPOLLING: "true"
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+      - "5173:5173"
+    # Installe les dépendances et lance le serveur Vite
+    command: sh -c "npm install && npm run dev -- --host"
     depends_on:
       - backend
     networks:
-      - net_laravel
+      - erp-network
 
+# Volumes persistants
 volumes:
-  erp_centre_impact_chr-tienne_postgres_data:
-    name: erp_centre_impact_chr-tienne_postgres_data
-  erp_centre_impact_chr-tienne_redis_data:
-    name: erp_centre_impact_chr-tienne_redis_data
-  erp_centre_impact_chr-tienne_minio_data:
-    name: erp_centre_impact_chr-tienne_minio_data
-  erp_centre_impact_chr-tienne_pgadmin_data:
-    name: erp_centre_impact_chr-tienne_pgadmin_data
-  erp_centre_impact_chr-tienne_frontend_node_modules:
-    name: erp_centre_impact_chr-tienne_frontend_node_modules
+  postgres_data:
+  redis_data:
+  minio_data:
+  pgadmin_data:
 
+# Réseau privé
 networks:
-  net_laravel:
-    name: erp_centre_impact_chr-tienne_net_laravel
+  erp-network:
     driver: bridge

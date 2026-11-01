@@ -2,18 +2,10 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { CurrentUser, LoginResponse } from '@/types'
 
-type SessionProfil = {
-  id: number
-  name: string
-  email: string
-  statut: string
-  permissions?: string[]
-}
-
 type AuthState = {
-  authenticated: boolean
   accessToken: string | null
-  profil: SessionProfil | null
+  /** Instant d'expiration de l'access token, en millisecondes epoch. */
+  accessTokenExpiresAt: number | null
   user: CurrentUser | null
   openSession: (response: LoginResponse) => void
   setUser: (user: CurrentUser) => void
@@ -21,22 +13,9 @@ type AuthState = {
 }
 
 const emptySession = {
-  authenticated: false,
   accessToken: null,
-  profil: null,
+  accessTokenExpiresAt: null,
   user: null,
-}
-
-function profilFromUser(user: CurrentUser): SessionProfil {
-  const prenom = user.personne.prenom?.trim() ?? ''
-  const nom = user.personne.nom?.trim() ?? ''
-  return {
-    id: Number(user.compte.idCompte) || 0,
-    name: `${prenom} ${nom}`.trim() || user.compte.email,
-    email: user.compte.email,
-    statut: user.compte.statut,
-    permissions: [...user.permissions],
-  }
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -44,28 +23,17 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       ...emptySession,
 
+      // Le refresh token n'est volontairement ni stocké ni persisté : le contrat
+      // n'expose aucune route de renouvellement, il serait donc inutilisable côté
+      // navigateur tout en restant un secret valable 7 jours.
       openSession: (response) =>
         set({
-          authenticated: true,
-          accessToken: response.accessToken || null,
+          accessToken: response.accessToken,
+          accessTokenExpiresAt: Date.now() + response.accessTokenExpiresIn * 1000,
           user: response.utilisateur,
-          profil: profilFromUser(response.utilisateur),
         }),
 
-      setUser: (user) =>
-        set((state) => ({
-          user,
-          authenticated: true,
-          profil: state.profil
-            ? {
-                ...state.profil,
-                email: user.compte.email,
-                statut: user.compte.statut,
-                permissions: [...user.permissions],
-                name: profilFromUser(user).name,
-              }
-            : profilFromUser(user),
-        })),
+      setUser: (user) => set({ user }),
 
       closeSession: () => set(emptySession),
     }),
@@ -74,29 +42,27 @@ export const useAuthStore = create<AuthState>()(
       storage: createJSONStorage(() => sessionStorage),
       skipHydration: import.meta.env.MODE === 'test',
       partialize: (state) => ({
-        authenticated: state.authenticated,
         accessToken: state.accessToken,
-        profil: state.profil,
+        accessTokenExpiresAt: state.accessTokenExpiresAt,
         user: state.user,
       }),
     },
   ),
 )
 
-export function hasValidSession(state: Pick<AuthState, 'authenticated'>): boolean {
-  return state.authenticated
+export function isSessionExpired(expiresAt: number | null): boolean {
+  return expiresAt === null || Date.now() >= expiresAt
+}
+
+export function hasValidSession(state: Pick<AuthState, 'accessToken' | 'accessTokenExpiresAt'>) {
+  return state.accessToken !== null && !isSessionExpired(state.accessTokenExpiresAt)
 }
 
 export const useIsAuthenticated = () => useAuthStore(hasValidSession)
 
 export const useCurrentUser = () => useAuthStore((state) => state.user)
 
-export const useSessionProfil = () => useAuthStore((state) => state.profil)
-
+/** Vérifie une permission effective telle que renvoyée par /auth/me. */
 export function useHasPermission(code: string): boolean {
-  return useAuthStore((state) => {
-    const fromUser = state.user?.permissions
-    if (fromUser && fromUser.length > 0) return fromUser.includes(code)
-    return state.profil?.permissions?.includes(code) ?? false
-  })
+  return useAuthStore((state) => state.user?.permissions?.includes(code) ?? false)
 }

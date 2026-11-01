@@ -15,7 +15,7 @@ export function BudgetCards({
   const synthese = syntheseBudget(departementId)
 
   return (
-    <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard label="Budget alloué" value={formatMontant(synthese.alloue)} hint={hintEnveloppe} />
       <StatCard
         label="Rentrées d'argent"

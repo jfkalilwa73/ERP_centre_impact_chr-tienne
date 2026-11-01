@@ -12,7 +12,7 @@ import {
   projetStatutLabel,
   subscribeProjets,
 } from './projets'
-import { getRapportsVersion, listAllObjectifs, listRapportsConsolides, subscribeRapports } from './rapports'
+import { getRapportsVersion, listAllObjectifs, subscribeRapports } from './rapports'
 import { StatCard } from './StatCard'
 
 export type UnitePilotage = { id: string; nom: string }
@@ -21,12 +21,10 @@ export function PilotageConsolide({
   unites,
   chefs = {},
   titre = 'Vue consolidée',
-  entete = true,
 }: {
   unites: UnitePilotage[]
   chefs?: Record<string, string>
   titre?: string
-  entete?: boolean
 }) {
   useSyncExternalStore(subscribeRapports, getRapportsVersion, getRapportsVersion)
   useSyncExternalStore(subscribeProjets, getProjetsVersion, getProjetsVersion)
@@ -49,21 +47,18 @@ export function PilotageConsolide({
   )
   const alertes = circulations.filter((item) => item.kind === 'alerte' || item.kind === 'rappel')
   const demandes = circulations.filter((item) => item.kind === 'demande' || item.kind === 'budget')
-  const rapports = listRapportsConsolides(ids)
   const finances = unites
     .map((unite) => ({ unite, budget: syntheseBudget(unite.id) }))
     .filter((item) => item.budget.alloue > 0 || item.budget.depense > 0 || item.budget.rentrees > 0)
 
   return (
     <section className="flex flex-col gap-6">
-      {entete && (
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">{titre}</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Activités, finances, projets, décisions, risques, alertes, objectifs, rapports et indicateurs.
-          </p>
-        </div>
-      )}
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">{titre}</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Activités, finances, projets, décisions, risques, alertes, objectifs et indicateurs du périmètre.
+        </p>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -149,16 +144,6 @@ export function PilotageConsolide({
               id: item.id,
               titre: `${item.reference} — ${item.texte}`,
               meta: `${item.instance} · ${decisionStatutLabel(item.statut)} · ${item.echeance}`,
-            }))}
-          />
-        </PilotageBloc>
-        <PilotageBloc title="Rapports" hint="Comptes rendus transmis ou encore en brouillon.">
-          <Liste
-            empty="Aucun rapport dans ce périmètre."
-            rows={rapports.map((item) => ({
-              id: item.id,
-              titre: item.titre,
-              meta: `${item.nomDepartementSource} · ${item.statut === 'transmis' ? 'Transmis' : 'Brouillon'} · ${item.date}`,
             }))}
           />
         </PilotageBloc>

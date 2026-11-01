@@ -190,16 +190,6 @@ export function graviteLabel(value: Gravite) {
   return 'Faible'
 }
 
-export function snapshotProjets() {
-  return structuredClone({ projets, risques })
-}
-
-export function replaceProjets(next: { projets?: Projet[]; risques?: Risque[] }) {
-  if (next.projets) projets = structuredClone(next.projets)
-  if (next.risques) risques = structuredClone(next.risques)
-  emit()
-}
-
 export function resetProjets() {
   projets = seedProjets.map((item) => ({ ...item }))
   risques = seedRisques.map((item) => ({ ...item }))

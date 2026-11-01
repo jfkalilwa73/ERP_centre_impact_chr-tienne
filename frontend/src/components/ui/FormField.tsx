@@ -29,7 +29,7 @@ export function FormField({ id, label, error, tone = 'default', children }: Form
       </label>
       {children}
       {error && (
-        <p id={errorId(id)} role="alert" className={cn('form-error text-sm', errorClasses[tone])}>
+        <p id={errorId(id)} role="alert" className={cn('text-sm', errorClasses[tone])}>
           {error}
         </p>
       )}

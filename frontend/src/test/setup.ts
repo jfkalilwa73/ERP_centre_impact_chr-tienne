@@ -3,9 +3,7 @@ import { cleanup } from '@testing-library/react'
 import { setupServer } from 'msw/node'
 import { resetActivites } from '@/features/departements/activites'
 import { resetBudget } from '@/features/departements/budget'
-import { resetDecisions } from '@/features/departements/decisions'
 import { resetEquipe } from '@/features/departements/equipe'
-import { resetProjets } from '@/features/departements/projets'
 import { resetRapports } from '@/features/departements/rapports'
 import { resetCirculations } from '@/features/notifications/circulation'
 import { resetDemandes } from '@/features/notifications/store'
@@ -38,8 +36,6 @@ afterEach(() => {
   resetEquipe()
   resetBudget()
   resetRapports()
-  resetProjets()
-  resetDecisions()
   resetDemandes()
   resetCirculations()
   useAuthStore.getState().closeSession()

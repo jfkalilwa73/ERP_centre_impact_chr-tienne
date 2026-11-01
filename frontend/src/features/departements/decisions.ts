@@ -80,15 +80,6 @@ export function decisionStatutLabel(statut: DecisionStatut) {
   return 'En cours'
 }
 
-export function snapshotDecisions() {
-  return structuredClone(decisions)
-}
-
-export function replaceDecisions(next: Decision[]) {
-  decisions = structuredClone(next)
-  emit()
-}
-
 export function resetDecisions() {
   decisions = seedDecisions.map((item) => ({ ...item }))
   emit()

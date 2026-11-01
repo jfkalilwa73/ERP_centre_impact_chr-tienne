@@ -1,16 +1,15 @@
 import {
+  Bell,
   Heart,
   KeyRound,
   LayoutDashboard,
   Layers,
-  MapPin,
   List,
   ScrollText,
   Settings,
   Shield,
   ShieldCheck,
   Users,
-  UsersRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { PERMISSIONS, type PermissionCode } from '@/lib/permissions'
@@ -41,8 +40,8 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
 
 export const navigation: NavEntry[] = [
   { to: '/', label: 'Accueil', icon: LayoutDashboard },
+  { to: '/notifications', label: 'Notifications', icon: Bell, permission: PERMISSIONS.DEMANDES_READ },
   { to: '/personnes', label: 'Personnes', icon: Users, permission: PERMISSIONS.MEMBRES_READ },
-  { to: '/familles-disciples', label: 'Familles des Disciples', icon: UsersRound, permission: PERMISSIONS.FAMILLES_READ },
   {
     id: 'departements',
     label: 'Départements',
@@ -77,15 +76,14 @@ export const navigation: NavEntry[] = [
     icon: Settings,
     children: [
       { to: '/comptes', label: 'Comptes', icon: KeyRound, permission: PERMISSIONS.COMPTES_READ },
-      { to: '/sites', label: 'Sites', icon: MapPin, permission: PERMISSIONS.ROLES_MANAGE },
-      { to: '/roles', label: 'Rôles', icon: Shield, permission: PERMISSIONS.ROLES_MANAGE },
+      { to: '/roles', label: 'Rôles', icon: Shield, permission: PERMISSIONS.ROLES_READ },
       {
         to: '/permissions',
         label: 'Permissions',
         icon: ShieldCheck,
-        permission: PERMISSIONS.ROLES_MANAGE,
+        permission: PERMISSIONS.ROLES_READ,
       },
-      { to: '/audit', label: 'Audit', icon: ScrollText, permission: PERMISSIONS.ROLES_MANAGE },
+      { to: '/audit', label: 'Audit', icon: ScrollText, permission: PERMISSIONS.AUDIT_READ },
     ],
   },
 ]
