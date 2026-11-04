@@ -5,7 +5,6 @@ namespace App\Services\Famille;
 use App\Models\AppartenirFamille;
 use App\Models\FamilleImpact;
 use App\Models\Personne;
-use App\Services\Sprint1\SuiviMembreService;
 use Illuminate\Support\Facades\DB;
 
 class AffectationFamilleService
@@ -38,7 +37,6 @@ class AffectationFamilleService
                 'date_fin' => $data['date_fin'] ?? null,
                 'actif' => true,
             ]);
-            app(SuiviMembreService::class)->ouvrir($personneId, $famille->id_famille, $affectation->date_debut);
 
             return $affectation;
         });
@@ -52,7 +50,6 @@ class AffectationFamilleService
         DB::transaction(function () use ($personneId, $familleId, $affectation) {
             AppartenirFamille::query()->where('id_personne', $personneId)->where('id_famille', $familleId)
                 ->where('date_debut', $affectation->date_debut)->update(['actif' => false, 'date_fin' => now()]);
-            app(SuiviMembreService::class)->cloturer($personneId, $familleId);
         });
     }
 }

@@ -15,10 +15,8 @@ use App\Http\Controllers\Api\V1\Audit\AuditLogController;
 use App\Http\Controllers\Api\V1\Acces\VerifierDroitController;
 use App\Http\Controllers\Api\V1\Famille\FamilleImpactController;
 use App\Http\Controllers\Api\V1\Famille\AffectationFamilleController;
+use App\Http\Controllers\Api\V1\Identite\MembreController;
 use App\Http\Controllers\Api\V1\Pilotage\PilotageController;
-use App\Http\Controllers\Api\V1\Sprint1\MembreController;
-use App\Http\Controllers\Api\V1\Sprint1\PresenceFamilleController;
-use App\Http\Controllers\Api\V1\Sprint1\RegroupementController;
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [SessionController::class, 'login'])
@@ -85,23 +83,12 @@ Route::prefix('v1')->group(function () {
         Route::delete('/personnes/{personneId}/familles-impact/{familleId}', [AffectationFamilleController::class, 'destroy']);
         Route::delete('/personnes/{personneId}/departements/{departementId}', [AffectationDepartementController::class, 'destroy']);
 
+        
         Route::get('/pilotage', [PilotageController::class, 'show']);
         Route::put('/pilotage', [PilotageController::class, 'update']);
 
-        Route::get('/membres', [MembreController::class, 'index']);
         Route::get('/personnes/{personneId}/membre', [MembreController::class, 'showPourPersonne']);
         Route::post('/personnes/{personneId}/membre', [MembreController::class, 'store']);
-        Route::patch('/membres/{membreId}', [MembreController::class, 'updateStatut']);
-        Route::get('/membres/{membreId}/historique', [MembreController::class, 'historique']);
 
-        Route::get('/personnes/{personneId}/regroupement', [RegroupementController::class, 'showPourPersonne']);
-        Route::post('/regroupements', [RegroupementController::class, 'store']);
-        Route::patch('/regroupements/{regroupementId}', [RegroupementController::class, 'update']);
-        Route::post('/regroupements/{regroupementId}/relations', [RegroupementController::class, 'storeRelation']);
-        Route::delete('/regroupements/{regroupementId}/relations/{relationId}', [RegroupementController::class, 'destroyRelation']);
-
-        Route::post('/familles-impact/{familleId}/suivi', [PresenceFamilleController::class, 'synchroniser']);
-        Route::get('/familles-impact/{familleId}/presences', [PresenceFamilleController::class, 'index']);
-        Route::put('/familles-impact/{familleId}/presences', [PresenceFamilleController::class, 'store']);
     });
 });

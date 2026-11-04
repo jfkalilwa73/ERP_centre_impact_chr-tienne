@@ -22,13 +22,6 @@ export const sprint1Handlers = [
     return HttpResponse.json({ data: [], pagination: { page: 1, limit: 20, total: 0 } })
   }),
 
-  http.get(apiUrl('personnes/:personneId/membre'), async ({ request }) => {
-    await delay(20)
-    const refus = await exigerSession(request, 'GET /personnes/:id/membre')
-    if (refus) return refus
-    return errorResponse(404, 'NOT_FOUND', 'Cette personne n’est pas encore enregistrée comme membre.')
-  }),
-
   http.get(apiUrl('personnes/:personneId/regroupement'), async ({ request }) => {
     await delay(20)
     const refus = await exigerSession(request, 'GET /personnes/:id/regroupement')

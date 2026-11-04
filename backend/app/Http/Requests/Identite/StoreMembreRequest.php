@@ -1,28 +1,31 @@
 <?php
 
-namespace App\Http\Requests\Sprint1;
+namespace App\Http\Requests\Identite;
 
-use App\Services\Sprint1\MembreService;
+use App\Services\Identite\MembreService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreMembreRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     protected function prepareForValidation(): void
     {
-        $values = [];
+        $valeurs = [];
         foreach ([
             'dateIntegration' => 'date_integration',
             'statutMembre' => 'statut_membre',
             'familleImpactId' => 'famille_impact_id',
-        ] as $alias => $field) {
+        ] as $alias => $champ) {
             if ($this->exists($alias)) {
-                $values[$field] = $this->input($alias);
+                $valeurs[$champ] = $this->input($alias);
             }
         }
-        $this->merge($values);
+        $this->merge($valeurs);
     }
 
     public function rules(): array

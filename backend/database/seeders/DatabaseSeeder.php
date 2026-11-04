@@ -14,10 +14,5 @@ class DatabaseSeeder extends Seeder
         $this->call([
             Phase0ScenarioSeeder::class,
         ]);
-
-        // Appel du seeder de test du Sprint 1 — Membres & Familles
-        $this->call([
-            Sprint1MembresFamillesSeeder::class,
-        ]);
     }
 }
