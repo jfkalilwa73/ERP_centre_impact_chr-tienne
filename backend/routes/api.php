@@ -89,6 +89,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/personnes/{personneId}/membre', [MembreController::class, 'showPourPersonne']);
         Route::post('/personnes/{personneId}/membre', [MembreController::class, 'store']);
+        Route::patch('/membres/{membreId}', [MembreController::class, 'updateStatut']);
+        Route::get('/membres/{membreId}/historique', [MembreController::class, 'historique']);
 
     });
 });

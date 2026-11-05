@@ -29,13 +29,6 @@ export const sprint1Handlers = [
     return errorResponse(404, 'NOT_FOUND', 'Aucun regroupement familial pour cette personne.')
   }),
 
-  http.get(apiUrl('membres/:membreId/historique'), async ({ request }) => {
-    await delay(20)
-    const refus = await exigerSession(request, 'GET /membres/:id/historique')
-    if (refus) return refus
-    return HttpResponse.json([])
-  }),
-
   http.post(apiUrl('familles-impact/:familleId/suivi'), async ({ request }) => {
     await delay(20)
     const refus = await exigerSession(request, 'POST /familles-impact/:id/suivi')

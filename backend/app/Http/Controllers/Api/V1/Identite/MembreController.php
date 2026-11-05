@@ -9,6 +9,8 @@ use App\Services\Audit\AuditLogService;
 use App\Services\Identite\MembreService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
+use App\Http\Requests\Identite\UpdateMembreStatutRequest;
+use App\Http\Resources\Identite\HistoriqueStatutResource;
 use OpenApi\Attributes as OA;
 
 class MembreController extends Controller
@@ -78,5 +80,42 @@ class MembreController extends Controller
         $membre = $this->membres->pourPersonne($personneId)->load('personne');
 
         return response()->json((new MembreResource($membre))->resolve());
+    }
+
+    public function updateStatut(UpdateMembreStatutRequest $request, string $membreId): JsonResponse
+    {
+        $donnees = $request->validated();
+        $membre = $this->membres->trouver($membreId);
+        $ancien = $membre->statut_membre;
+
+        $membre = $this->membres->changerStatut(
+            $membre,
+            $donnees['statut_membre'],
+            $donnees['motif'] ?? null,
+            $request->user()?->id,
+        )->load('personne');
+
+        $this->audits->enregistrer([
+            'user_id' => $request->user()?->id,
+            'action' => 'MEMBRE_STATUS_CHANGED',
+            'entite_type' => 'membre',
+            'id_entite' => $membre->id_membre,
+            'anciennes_valeurs' => ['statutMembre' => $ancien],
+            'nouvelles_valeurs' => [
+                'statutMembre' => $membre->statut_membre,
+                'motif' => $membre->motif_changement_statut,
+            ],
+            'adresse_ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->json((new MembreResource($membre))->resolve());
+    }
+
+    public function historique(string $membreId): JsonResponse
+    {
+        $lignes = $this->membres->historique($this->membres->trouver($membreId));
+
+        return response()->json(HistoriqueStatutResource::collection($lignes)->resolve());
     }
 }
