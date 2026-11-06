@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\Acces\VerifierDroitController;
 use App\Http\Controllers\Api\V1\Famille\FamilleImpactController;
 use App\Http\Controllers\Api\V1\Famille\AffectationFamilleController;
 use App\Http\Controllers\Api\V1\Identite\MembreController;
+use App\Http\Controllers\Api\V1\Famille\RegroupementController;
 use App\Http\Controllers\Api\V1\Pilotage\PilotageController;
 
 Route::prefix('v1')->group(function () {
@@ -91,6 +92,11 @@ Route::prefix('v1')->group(function () {
         Route::post('/personnes/{personneId}/membre', [MembreController::class, 'store']);
         Route::patch('/membres/{membreId}', [MembreController::class, 'updateStatut']);
         Route::get('/membres/{membreId}/historique', [MembreController::class, 'historique']);
+
+        Route::get('/personnes/{personneId}/regroupement', [RegroupementController::class, 'showPourPersonne']);
+        Route::post('/regroupements', [RegroupementController::class, 'store']);
+        Route::post('/regroupements/{regroupementId}/relations', [RegroupementController::class, 'storeRelation']);
+        Route::delete('/regroupements/{regroupementId}/relations/{relationId}', [RegroupementController::class, 'destroyRelation']);
 
     });
 });

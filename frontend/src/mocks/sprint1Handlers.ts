@@ -22,12 +22,6 @@ export const sprint1Handlers = [
     return HttpResponse.json({ data: [], pagination: { page: 1, limit: 20, total: 0 } })
   }),
 
-  http.get(apiUrl('personnes/:personneId/regroupement'), async ({ request }) => {
-    await delay(20)
-    const refus = await exigerSession(request, 'GET /personnes/:id/regroupement')
-    if (refus) return refus
-    return errorResponse(404, 'NOT_FOUND', 'Aucun regroupement familial pour cette personne.')
-  }),
 
   http.post(apiUrl('familles-impact/:familleId/suivi'), async ({ request }) => {
     await delay(20)
