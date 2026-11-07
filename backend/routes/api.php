@@ -89,6 +89,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/pilotage', [PilotageController::class, 'show']);
         Route::put('/pilotage', [PilotageController::class, 'update']);
 
+        Route::get('/membres', [MembreController::class, 'index']);
+
         Route::get('/personnes/{personneId}/membre', [MembreController::class, 'showPourPersonne']);
         Route::post('/personnes/{personneId}/membre', [MembreController::class, 'store']);
         Route::patch('/membres/{membreId}', [MembreController::class, 'updateStatut']);

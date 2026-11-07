@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use App\Http\Requests\Identite\UpdateMembreStatutRequest;
 use App\Http\Resources\Identite\HistoriqueStatutResource;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class MembreController extends Controller
@@ -19,6 +20,48 @@ class MembreController extends Controller
         private MembreService $membres,
         private AuditLogService $audits,
     ) {}
+
+    #[OA\Get(
+        path: '/api/v1/membres',
+        summary: 'Lister les membres',
+        description: 'Liste paginée. Filtres : q (nom, prénom, numéro), statut ou statutMembre. Session cookie Sanctum.',
+        tags: ['Identité'],
+        security: [['cookieAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', example: 1)),
+            new OA\Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', example: 20)),
+            new OA\Parameter(name: 'q', in: 'query', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'statut', in: 'query', schema: new OA\Schema(type: 'string', enum: ['actif', 'inactif', 'en_attente', 'archive'])),
+            new OA\Parameter(name: 'statutMembre', in: 'query', schema: new OA\Schema(type: 'string', enum: ['actif', 'inactif', 'en_attente', 'archive'])),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Liste paginée'),
+            new OA\Response(response: 401, description: 'Non authentifié'),
+            new OA\Response(response: 422, description: 'Statut inconnu'),
+        ]
+    )]
+    public function index(Request $request): JsonResponse
+    {
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = min(100, max(1, (int) $request->query('limit', 20)));
+        $statut = $request->query('statutMembre') ?? $request->query('statut');
+
+        $resultat = $this->membres->lister(
+            $page,
+            $limit,
+            $request->query('q'),
+            is_string($statut) ? $statut : null,
+        );
+
+        return response()->json([
+            'data' => MembreResource::collection($resultat->items())->resolve(),
+            'pagination' => [
+                'page' => $resultat->currentPage(),
+                'limit' => $resultat->perPage(),
+                'total' => $resultat->total(),
+            ],
+        ]);
+    }
 
     #[OA\Post(
         path: '/api/v1/personnes/{personneId}/membre',

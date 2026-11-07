@@ -22,16 +22,21 @@ class MembreService
             abort(409, 'Cette personne est déjà enregistrée comme membre.');
         }
 
+        $valeurs = [
+            'id_membre' => (string) Str::uuid(),
+            'id_personne' => $personneId,
+            'numero_membre' => '',
+            'date_integration' => $donnees['date_integration'],
+            'statut_membre' => $donnees['statut_membre'] ?? 'en_attente',
+        ];
+
+        if (! empty($donnees['famille_impact_id'])) {
+            $valeurs['famille_impact_id'] = $donnees['famille_impact_id'];
+        }
+
         try {
             // numero_membre vide : le trigger PostgreSQL génère MEM-AAAA-NNNN.
-            $membre = Membre::query()->create([
-                'id_membre' => (string) Str::uuid(),
-                'id_personne' => $personneId,
-                'numero_membre' => '',
-                'date_integration' => $donnees['date_integration'],
-                'statut_membre' => $donnees['statut_membre'] ?? 'en_attente',
-                'famille_impact_id' => $donnees['famille_impact_id'] ?? null,
-            ]);
+            $membre = Membre::query()->create($valeurs);
         } catch (QueryException $e) {
             if (($e->errorInfo[0] ?? null) === '23505' || str_contains($e->getMessage(), 'unique')) {
                 abort(409, 'Cette personne est déjà enregistrée comme membre.');
@@ -94,5 +99,33 @@ class MembreService
             ->where('id_membre', $membre->id_membre)
             ->orderByDesc('date_changement')
             ->get();
+    }
+
+    public function lister(int $page, int $limit, ?string $recherche, ?string $statut)
+    {
+        $requete = Membre::query()
+            ->with('personne')
+            ->orderByDesc('date_integration')
+            ->orderBy('numero_membre');
+
+        if ($statut) {
+            if (! in_array($statut, self::STATUTS, true)) {
+                abort(422, 'Statut de membre inconnu.');
+            }
+            $requete->where('statut_membre', $statut);
+        }
+
+        if ($recherche) {
+            $terme = '%'.$recherche.'%';
+            $requete->where(function ($q) use ($terme) {
+                $q->where('numero_membre', 'ilike', $terme)
+                    ->orWhereHas('personne', function ($personne) use ($terme) {
+                        $personne->where('nom', 'ilike', $terme)
+                            ->orWhere('prenom', 'ilike', $terme);
+                    });
+            });
+        }
+
+        return $requete->paginate($limit, ['*'], 'page', $page);
     }
 }
