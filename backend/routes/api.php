@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Famille\FamilleImpactController;
 use App\Http\Controllers\Api\V1\Famille\AffectationFamilleController;
 use App\Http\Controllers\Api\V1\Identite\MembreController;
 use App\Http\Controllers\Api\V1\Famille\RegroupementController;
+use App\Http\Controllers\Api\V1\Famille\PresenceFamilleController;
 use App\Http\Controllers\Api\V1\Pilotage\PilotageController;
 
 Route::prefix('v1')->group(function () {
@@ -97,6 +98,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/regroupements', [RegroupementController::class, 'store']);
         Route::post('/regroupements/{regroupementId}/relations', [RegroupementController::class, 'storeRelation']);
         Route::delete('/regroupements/{regroupementId}/relations/{relationId}', [RegroupementController::class, 'destroyRelation']);
+
+        Route::post('/familles-impact/{familleId}/suivi', [PresenceFamilleController::class, 'synchroniser']);
+        Route::get('/familles-impact/{familleId}/presences', [PresenceFamilleController::class, 'index']);
+        Route::put('/familles-impact/{familleId}/presences', [PresenceFamilleController::class, 'store']);
 
     });
 });
