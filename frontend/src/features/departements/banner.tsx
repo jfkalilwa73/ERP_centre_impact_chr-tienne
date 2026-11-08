@@ -122,7 +122,7 @@ export function DepartementBanner({
           <h1 className={cn('font-semibold tracking-tight', compact ? 'text-xl' : 'text-2xl')}>Bonjour {prenom}</h1>
           <p className="mt-1 text-sm text-white/80">Paix et grâce à vous.</p>
           {titre && <h2 className={cn('font-medium text-white', compact ? 'mt-2 text-sm' : 'mt-3 text-base')}>{titre}</h2>}
-          <p className={cn('text-sm text-white/90', titre ? 'mt-1' : compact ? 'mt-2' : 'mt-3')}>{message}</p>
+          {message && <p className={cn('text-sm text-white/90', titre ? 'mt-1' : compact ? 'mt-2' : 'mt-3')}>{message}</p>}
           {action && <div className="mt-4">{action}</div>}
           {progressions && progressions.length > 0 && (
             <div className={cn('flex w-full flex-col', compact ? 'mt-3 gap-2' : 'mt-6 gap-4')}>

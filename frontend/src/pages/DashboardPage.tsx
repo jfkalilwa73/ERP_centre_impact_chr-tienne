@@ -1,4 +1,5 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useSyncExternalStore, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, Navigate } from 'react-router-dom'
 import { Coins, Crown, HandCoins, Heart, Layers, Users } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
@@ -19,6 +20,8 @@ import { DepartementBanner } from '@/features/departements/banner'
 import { formatMontant } from '@/features/departements/budget'
 import { useDepartements } from '@/features/departements/hooks'
 import { PilotageConsolide } from '@/features/departements/PilotageConsolide'
+import { getChecklistPreparationCulte, listFamillesDisciples } from '@/features/familles-disciples/api'
+import { getDateChecklistCulte, subscribeDateChecklistCulte } from '@/features/familles-disciples/checklistDate'
 import { useFamilles } from '@/features/familles/hooks'
 import { usePersonnes, usePersonnesAffectations, usePersonnesFamilles } from '@/features/personnes/hooks'
 import { cn } from '@/lib/cn'
@@ -40,9 +43,30 @@ export function DashboardPage() {
   const contributions = useContributionsAccueil()
   const departementsQuery = useDepartements(
     { page: 1, limit: 100 },
-    voitPilotage && canDepartements,
+    voitPilotage && (canDepartements || canFamilles),
   )
   const famillesQuery = useFamilles({ page: 1, limit: 100 }, voitPilotage && canFamilles)
+  const famillesDisciplesQuery = useQuery({
+    queryKey: ['familles-disciples'],
+    queryFn: listFamillesDisciples,
+    enabled: canFamilles,
+    staleTime: 30_000,
+  })
+  const famillesDisciples = famillesDisciplesQuery.data?.data ?? []
+  const familleDiscipleCourante = famillesDisciples.find(
+    (famille) => famille.nom.trim().toLocaleLowerCase('fr-FR') === 'famille royal',
+  ) ?? famillesDisciples[0]
+  const datePreparationCulte = useSyncExternalStore(
+    subscribeDateChecklistCulte,
+    getDateChecklistCulte,
+    getDateChecklistCulte,
+  )
+  const checklistFamilleQuery = useQuery({
+    queryKey: ['familles-disciples', familleDiscipleCourante?.idFamilleDisciple, 'checklist', datePreparationCulte],
+    queryFn: () => getChecklistPreparationCulte(familleDiscipleCourante!.idFamilleDisciple, datePreparationCulte),
+    enabled: canFamilles && Boolean(familleDiscipleCourante),
+    staleTime: 30_000,
+  })
   const personnesQuery = usePersonnes({ page: 1, limit: 100 }, voitPilotage && canMembres)
   const personnes = personnesQuery.data?.data ?? AUCUNE_PERSONNE
   const personneIds = useMemo(() => personnes.map((personne) => personne.idPersonne), [personnes])
@@ -64,7 +88,32 @@ export function DashboardPage() {
       vers: `/departements/${ligne.id}?onglet=activites`,
     })),
   )
-  const premierePreparation = pointsCultes.find((point) => !point.fait)
+  const checklistParDepartement = new Map(
+    (checklistFamilleQuery.data?.departements ?? []).map((departement) => [departement.idDepartement, departement]),
+  )
+  const pointsChecklistFamille = familleDiscipleCourante
+    ? departementsActifs.map((departement) => ({
+        id: `famille-${familleDiscipleCourante.idFamilleDisciple}-${departement.idDepartement}`,
+        titre: departement.nom,
+        fait: checklistParDepartement.get(departement.idDepartement)?.pret ?? false,
+        contexte: familleDiscipleCourante.nom,
+        vers: '/familles-disciples',
+      }))
+    : []
+  const tousLesPointsCultes = familleDiscipleCourante ? pointsChecklistFamille : pointsCultes
+  const totalPointsCultes = tousLesPointsCultes.length
+  const pointsCultesFaits = tousLesPointsCultes.filter((point) => point.fait).length
+  const progressionCultes = totalPointsCultes === 0
+    ? 0
+    : Math.round((pointsCultesFaits / totalPointsCultes) * 100)
+  const datePreparationCulteLabel = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' })
+    .format(new Date(`${datePreparationCulte}T00:00:00`))
+  const checklistsFamillesEnChargement = canFamilles && (
+    famillesDisciplesQuery.isLoading || Boolean(familleDiscipleCourante && (checklistFamilleQuery.isLoading || departementsQuery.isLoading))
+  )
+  const checklistsFamillesEnErreur = canFamilles && (
+    famillesDisciplesQuery.isError || Boolean(familleDiscipleCourante && (checklistFamilleQuery.isError || departementsQuery.isError))
+  )
 
   if (!user && !profil) {
     return <ChargementCentre label="Chargement de votre session…" page />
@@ -112,17 +161,15 @@ export function DashboardPage() {
             {
               id: 'cultes',
               label: 'Préparation des cultes',
-              valeur: cultes.valeur,
+              valeur: progressionCultes,
               detail:
-                cultes.total === 0
+                checklistsFamillesEnChargement
+                  ? 'Chargement des checklists des familles…'
+                  : checklistsFamillesEnErreur
+                  ? 'Checklist de la famille momentanément indisponible.'
+                  : totalPointsCultes === 0
                   ? 'Aucun point à cocher pour le moment.'
-                  : cultes.faits === cultes.total
-                    ? 'Toutes les préparations sont cochées.'
-                    : undefined,
-              points: pointsCultes,
-              action: premierePreparation
-                ? { label: 'Compléter la préparation', to: premierePreparation.vers }
-                : undefined,
+                  : `${pointsCultesFaits} / ${totalPointsCultes} départements prêts pour le culte du ${datePreparationCulteLabel}.`,
             },
           ]}
         />

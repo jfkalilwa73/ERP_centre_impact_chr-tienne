@@ -1,11 +1,22 @@
 import { api } from '@/lib/apiClient'
-import { listSites } from '@/features/sites/api'
+import { createSite, listSites } from '@/features/sites/api'
 import type { Departement, DepartementCreate, DepartementPage, DepartementUpdate } from '@/types'
 
-/** Le contrat OpenAPI exige encore un site ; l'UI n'en expose plus. */
+/** Le contrat exige un site, mais le formulaire de département n'en demande plus. */
 export async function defaultSiteId() {
   const page = await listSites({ page: 1, limit: 100 })
-  return page.data.find((site) => site.actif)?.idSite ?? page.data[0]?.idSite
+  const existant = page.data.find((site) => site.actif)?.idSite ?? page.data[0]?.idSite
+  if (existant) return existant
+
+  const cree = await createSite({
+    code: 'ICC',
+    nom: 'Impact Centre Chrétien',
+    ville: 'Kinshasa',
+    pays: 'RDC',
+    telephone: '+243000000000',
+    actif: true,
+  })
+  return cree.idSite
 }
 
 export type ListDepartementsParams = {

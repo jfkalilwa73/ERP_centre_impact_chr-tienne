@@ -23,6 +23,10 @@ export default defineConfig({
     host: true,
     watch: {
       usePolling: true,
+      awaitWriteFinish: {
+        stabilityThreshold: 300,
+        pollInterval: 100,
+      },
     },
     // Dans Compose, BACKEND_PROXY_TARGET vaut http://backend:80.
     proxy: {

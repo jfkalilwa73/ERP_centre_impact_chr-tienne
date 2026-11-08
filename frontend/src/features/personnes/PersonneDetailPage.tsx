@@ -54,6 +54,7 @@ import {
 } from './hooks'
 import { ROLES_DEPARTEMENT, roleDepartement } from '@/features/departements/roles'
 import { MembrePanel } from '@/features/sprint1/MembrePanel'
+import { FamilleDisciplePersonneCard } from '@/features/familles-disciples/FamilleDiscipleOperations'
 import { useEnregistrerLien, useMembre, useRegroupement } from '@/features/sprint1/hooks'
 import { TYPE_RELATION_LABELS } from '@/features/sprint1/types'
 import { formatDate, formatDateLong, STATUT_LABELS, statutBadgeClass } from './labels'
@@ -634,6 +635,7 @@ export function PersonneDetailPage() {
         {tab === 'general' && (
           <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(18rem,1fr)]">
             <div className="flex flex-col gap-4">
+              <FamilleDisciplePersonneCard personneId={personne.idPersonne} />
               <MembrePanel personneId={personne.idPersonne} canUpdate={canUpdate} />
               <Card title="Coordonnées">
                 <div className="grid gap-4 sm:grid-cols-2">
