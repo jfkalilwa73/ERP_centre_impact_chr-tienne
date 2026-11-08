@@ -179,7 +179,7 @@ export function LoginPage() {
                     aria-label={
                       isPasswordVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
                     }
-                    className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-white/60 transition-colors hover:text-white focus-visible:outline-white"
+                    className="absolute inset-y-0 right-1 my-auto flex size-8 items-center justify-center rounded-md bg-white text-brand-900 shadow-sm transition-colors hover:bg-white/90 focus-visible:outline-2 focus-visible:outline-brand-700"
                   >
                     {isPasswordVisible ? (
                       <EyeOff className="size-4" aria-hidden="true" />
@@ -195,7 +195,7 @@ export function LoginPage() {
                 variant="glass"
                 size="lg"
                 isLoading={loginMutation.isPending}
-                className="mt-3 rounded-xl"
+                className="mt-3 rounded-xl bg-white font-semibold text-brand-900 shadow-md shadow-brand-950/30 hover:bg-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-900"
               >
                 {loginMutation.isPending ? 'Connexion…' : 'Se connecter'}
               </Button>
