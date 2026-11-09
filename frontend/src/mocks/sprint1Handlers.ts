@@ -2,7 +2,6 @@ import {
   apiUrl,
   authenticate,
   delay,
-  errorResponse,
   http,
   HttpResponse,
   unauthenticated,
