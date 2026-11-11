@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   # 1. Base de données (PostgreSQL)
@@ -9,8 +9,6 @@ services:
       POSTGRES_USER: erp_user
       POSTGRES_PASSWORD: erp_password
       POSTGRES_DB: erp_eglise
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -23,8 +21,8 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@erp-eglise.com
       PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:
       - "5050:80"
     depends_on:
@@ -34,7 +32,7 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
-  # 2. Cache et Sessions (Redis)
+  # 2. Cache et sessions (Redis)
   redis:
     image: redis:7-alpine
     container_name: erp-redis
@@ -46,7 +44,7 @@ services:
     networks:
       - erp-network
 
-  # 3. Stockage de fichiers (MinIO - S3 compatible)
+  # 3. Stockage de fichiers (Silo, compatible S3)
   minio:
     image: docker.io/pgsty/silo:latest
     container_name: erp-minio
@@ -54,8 +52,8 @@ services:
       MINIO_ROOT_USER: minio_access
       MINIO_ROOT_PASSWORD: minio_secret
     ports:
-      - "9000:9000"   # API S3
-      - "9001:9001"   # Interface Web (Console)
+      - "9000:9000" # API S3
+      - "9001:9001" # Console Web
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -67,8 +65,8 @@ services:
     image: axllent/mailpit
     container_name: erp-mailpit
     ports:
-      - "1025:1025" # Port SMTP pour Laravel
-      - "8025:8025" # Port pour l'interface web de visualisation
+      - "1025:1025" # SMTP
+      - "8025:8025" # Interface Web
     networks:
       - erp-network
 
@@ -93,7 +91,7 @@ services:
     networks:
       - erp-network
 
-  # 6. Frontend React (Interface Utilisateur)
+  # 6. Frontend React (interface utilisateur)
   frontend:
     image: node:20-alpine
     container_name: erp-frontend
@@ -102,7 +100,6 @@ services:
       - ./frontend:/app
     ports:
       - "5173:5173"
-    # Installe les dépendances et lance le serveur Vite
     command: sh -c "npm install && npm run dev -- --host"
     depends_on:
       - backend
