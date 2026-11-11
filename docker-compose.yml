@@ -77,7 +77,7 @@ services:
       dockerfile: Dockerfile
     container_name: erp-backend
     ports:
-      - "8000:8000"
+      - "8000:80"
     volumes:
       - ./backend:/var/www/html
     environment:
