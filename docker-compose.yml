@@ -48,7 +48,7 @@ services:
 
   # 3. Stockage de fichiers (MinIO - S3 compatible)
   minio:
-    image: quay.io/minio/minio:latest
+    image: docker.io/pgsty/silo:latest
     container_name: erp-minio
     environment:
       MINIO_ROOT_USER: minio_access
