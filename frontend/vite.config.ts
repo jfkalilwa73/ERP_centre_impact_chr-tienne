@@ -18,6 +18,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    allowedHosts: ['icc-erp-icc-erp-akypi4-54d8f5-185-164-111-168.sslip.io'],
     // Proxy vers le backend Laravel pour éviter les erreurs CORS en développement.
     // Le navigateur envoie les requêtes au serveur Vite qui les retransmet à Laravel.
     proxy: {
