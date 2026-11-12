@@ -1,7 +1,7 @@
-# Utiliser l'image PHP CLI (et non FPM) pour le serveur de développement artisan
+# PHP CLI image for the Laravel API
 FROM php:8.4-cli-alpine
 
-# Installer les dépendances système et extensions PHP requises pour Laravel + PostgreSQL
+# System libraries and PHP extensions required by Laravel and PostgreSQL
 RUN apk add --no-cache \
     git \
     curl \
@@ -20,14 +20,14 @@ RUN apk add --no-cache \
     && docker-php-ext-enable redis \
     && apk del $PHPIZE_DEPS
 
-# Installer Composer globalement
+# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Définir le répertoire de travail
 WORKDIR /var/www/html
 
-# Exposer le port utilisé par php artisan serve
-EXPOSE 8000
+# Include the Laravel application and install its production dependencies
+COPY . .
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
-# Commande pour lancer le serveur de développement Laravel
+EXPOSE 8000
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

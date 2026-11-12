@@ -23,7 +23,7 @@ export default defineConfig({
     // Le navigateur envoie les requêtes au serveur Vite qui les retransmet à Laravel.
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.BACKEND_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },
