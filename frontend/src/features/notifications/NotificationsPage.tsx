@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { Link } from 'react-router-dom'
 import { Search, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
@@ -77,7 +78,7 @@ function statutLabel(statut: DemandeSuperviseur['statut']) {
 
 export function NotificationsPage() {
   const queryClient = useQueryClient()
-  const { user, isAdmin, isPasteur, isDge, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
+  const { user, isAdmin, isPasteur, isDge, isConseilPastoral, isGestionPersonnes, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
   const canTreat = isAdmin
   useSyncAlertes()
   useSyncExternalStore(subscribeDemandes, getDemandesVersion, getDemandesVersion)
@@ -101,6 +102,8 @@ export function NotificationsPage() {
         isAdmin,
         isPasteur,
         isDge,
+        isConseilPastoral,
+        isGestionPersonnes,
         superviseurDepartementIds,
         chefDepartementIds,
       })
@@ -319,6 +322,9 @@ export function NotificationsPage() {
                     {formatDate(item.dateCreation)}
                   </p>
                   <p className="mt-2 text-sm text-slate-600">{item.description}</p>
+                  {item.sourceKey?.startsWith('nouvelle-adhesion:') && isGestionPersonnes && (
+                    <Link to="/personnes" className="mt-3 inline-flex text-sm font-semibold text-brand-700 underline underline-offset-2">Ouvrir le répertoire Personnes</Link>
+                  )}
                   {item.reponses.length > 0 && (
                     <ul className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3">
                       {item.reponses.map((reponse) => (

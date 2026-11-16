@@ -168,11 +168,15 @@ export function visibleCirculations(input: {
   isAdmin: boolean
   isPasteur: boolean
   isDge?: boolean
+  isConseilPastoral?: boolean
+  isGestionPersonnes?: boolean
   superviseurDepartementIds: string[]
   chefDepartementIds: string[]
 }) {
   return listCirculations().filter((item) => {
     if (input.isAdmin || input.isPasteur || input.isDge) return true
+    if (input.isConseilPastoral && item.sourceKey?.startsWith('checklist-culte:')) return true
+    if (input.isGestionPersonnes && item.sourceKey?.startsWith('nouvelle-adhesion:')) return true
     if (input.idPersonne && item.idPersonnesNotifiees?.includes(input.idPersonne)) return true
     if (item.idAuteur === input.idPersonne) return true
     if (input.chefDepartementIds.includes(item.idDepartementCible)) return true

@@ -8,6 +8,10 @@ import {
   syntheseBudget,
 } from '@/features/departements/budget'
 import { replaceAlertes, type Circulation } from './circulation'
+import { listerChecklistsSimulees } from '@/features/familles-disciples/simulation'
+import { dateVerrouillageChecklist, estChecklistVerrouillee } from '@/features/familles-disciples/checklistDeadline'
+import { listerNouveauxIntegres } from '@/features/familles-disciples/integrationNouveaux'
+import { getDepartementGestionPersonnes } from '@/features/departements/integrationDepartment'
 
 const NOMS: Record<string, string> = {
   'd4f6b8c0-0006-4000-8000-000000000001': 'Département Accueil',
@@ -109,6 +113,59 @@ export function syncAlertes() {
         }),
       )
     }
+  })
+
+  listerChecklistsSimulees().forEach(({ familleId, checklist }) => {
+    if (!estChecklistVerrouillee(checklist.dateCulte)) return
+    checklist.departements.filter((departement) => !departement.pret).forEach((departement) => {
+      const sourceKey = `checklist-culte:${familleId}:${checklist.dateCulte}:${departement.idDepartement}`
+      const commentaire = departement.commentaire?.trim()
+      draft.push({
+        id: sourceKey,
+        kind: 'alerte',
+        titre: `Checklist du culte incomplète : ${departement.nomDepartement}`,
+        description: `${departement.nomDepartement} n’était pas prêt à 8 h le dimanche ${checklist.dateCulte}.${commentaire ? ` Point à consulter : ${commentaire}` : ''}`,
+        idDepartementSource: departement.idDepartement,
+        nomDepartementSource: departement.nomDepartement,
+        idDepartementCible: departement.idDepartement,
+        nomDepartementCible: departement.nomDepartement,
+        idAuteur: 'systeme',
+        nomAuteur: 'Système',
+        dateCreation: dateVerrouillageChecklist(checklist.dateCulte),
+        reponses: [],
+        luPar: [],
+        sourceKey,
+      })
+    })
+  })
+
+  listerNouveauxIntegres().filter((nouveau) => nouveau.adhesionConfirmee).forEach((nouveau) => {
+    const sourceKey = `nouvelle-adhesion:${nouveau.id}`
+    const departementPersonnes = getDepartementGestionPersonnes()
+    const idDepartementCible = departementPersonnes?.id ?? nouveau.idDepartementIntegration
+    const nomDepartementCible = departementPersonnes?.nom ?? nouveau.nomDepartementIntegration
+    draft.push({
+      id: sourceKey,
+      kind: 'alerte',
+      titre: `Adhésion à enregistrer dans Personnes : ${nouveau.prenom} ${nouveau.nom}`,
+      description: [
+        `La famille ${nouveau.nomFamille} confirme que cette personne souhaite devenir membre de l’église.`,
+        `Téléphone : ${nouveau.telephone || 'non renseigné'}.`,
+        `Premier accueil : ${nouveau.dateAccueil}.`,
+        nouveau.commentaire ? `Note d’intégration : ${nouveau.commentaire}.` : '',
+        `Créer sa fiche dans Personnes${departementPersonnes ? ` avec le département ${departementPersonnes.nom}` : ''}, puis rattacher son identité à la famille.`,
+      ].filter(Boolean).join(' '),
+      idDepartementSource: nouveau.idDepartementIntegration,
+      nomDepartementSource: nouveau.nomDepartementIntegration,
+      idDepartementCible,
+      nomDepartementCible,
+      idAuteur: 'systeme',
+      nomAuteur: 'Système',
+      dateCreation: new Date().toISOString(),
+      reponses: [],
+      luPar: [],
+      sourceKey,
+    })
   })
 
   replaceAlertes(draft)

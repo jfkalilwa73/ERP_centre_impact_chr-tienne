@@ -20,6 +20,7 @@ import { BudgetCards } from './BudgetCards'
 import { BudgetPanel } from './BudgetPanel'
 import { ChartPanel, EvolutionActivitesChart, EvolutionMembresChart, PresenceMembresChart } from './charts'
 import { EquipePanel } from './EquipePanel'
+import { IntegrationAccueilPanel } from './IntegrationAccueilPanel'
 import { evolutionActivites, evolutionDepartement } from './evolution'
 import { tauxPresenceMembres } from './presence'
 import {
@@ -330,24 +331,31 @@ export function DepartementDetailPage() {
       )}
 
       {activeTab === 'membres' && departementId && (
-        <EquipePanel
-          departementId={departementId}
-          membres={membres}
-          canAssign={canAssign}
-          canManage={canManageEquipe}
-          isScoped={isScoped}
-          busy={busy}
-          unassigningId={
-            unassignMutation.isPending ? unassignMutation.variables?.personneId : undefined
-          }
-          onApplyRole={(personneId, role) => void applyRole(personneId, role)}
-          onUnassign={(personneId) =>
-            unassignMutation.mutate({
-              personneId,
-              departementId: departement.idDepartement,
-            })
-          }
-        />
+        <>
+          <EquipePanel
+            departementId={departementId}
+            membres={membres}
+            canAssign={canAssign}
+            canManage={canManageEquipe}
+            isScoped={isScoped}
+            busy={busy}
+            unassigningId={
+              unassignMutation.isPending ? unassignMutation.variables?.personneId : undefined
+            }
+            onApplyRole={(personneId, role) => void applyRole(personneId, role)}
+            onUnassign={(personneId) =>
+              unassignMutation.mutate({
+                personneId,
+                departementId: departement.idDepartement,
+              })
+            }
+          />
+          <IntegrationAccueilPanel
+            departementId={departement.idDepartement}
+            departementNom={departement.nom}
+            canConfigure={canManageDepartements && !isScoped}
+          />
+        </>
       )}
 
       {activeTab === 'activites' && departementId && (

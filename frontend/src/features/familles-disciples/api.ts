@@ -20,6 +20,9 @@ export type CompositionFamilleDisciple = {
   numeroMembre?: string | null
   prenom?: string | null
   nom?: string | null
+  telephone?: string | null
+  commentaireIntegration?: string | null
+  adhesionConfirmee?: boolean
   nouveauVenu?: boolean
   dateAccueil?: string | null
   departementOrigineId: string

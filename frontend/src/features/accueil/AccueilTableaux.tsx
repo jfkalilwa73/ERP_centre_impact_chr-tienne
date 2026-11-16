@@ -358,7 +358,7 @@ export function AccueilTableaux({
 }
 
 function VueNotifications() {
-  const { user, isAdmin, isPasteur, isDge, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
+  const { user, isAdmin, isPasteur, isDge, isConseilPastoral, isGestionPersonnes, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
   useSyncExternalStore(subscribeDemandes, getDemandesVersion, getDemandesVersion)
   useSyncExternalStore(subscribeCirculations, getCirculationsVersion, getCirculationsVersion)
 
@@ -372,6 +372,8 @@ function VueNotifications() {
         isAdmin,
         isPasteur,
         isDge,
+        isConseilPastoral,
+        isGestionPersonnes,
         superviseurDepartementIds,
         chefDepartementIds,
       })

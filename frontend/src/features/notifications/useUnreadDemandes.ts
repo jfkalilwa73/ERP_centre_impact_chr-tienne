@@ -17,10 +17,14 @@ export function useSyncAlertes() {
   useEffect(() => {
     syncAlertes()
   }, [activitesVersion, budgetVersion])
+  useEffect(() => {
+    const intervalle = window.setInterval(syncAlertes, 5_000)
+    return () => window.clearInterval(intervalle)
+  }, [])
 }
 
 export function useUnreadDemandes() {
-  const { user, isAdmin, isPasteur, isDge, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
+  const { user, isAdmin, isPasteur, isDge, isConseilPastoral, isGestionPersonnes, chefDepartementIds, superviseurDepartementIds } = useInboxScope()
   useSyncAlertes()
   useSyncExternalStore(subscribeDemandes, getDemandesVersion, getDemandesVersion)
   useSyncExternalStore(subscribeCirculations, getCirculationsVersion, getCirculationsVersion)
@@ -33,6 +37,8 @@ export function useUnreadDemandes() {
     isAdmin,
     isPasteur,
     isDge,
+    isConseilPastoral,
+    isGestionPersonnes,
     superviseurDepartementIds,
     chefDepartementIds,
   })

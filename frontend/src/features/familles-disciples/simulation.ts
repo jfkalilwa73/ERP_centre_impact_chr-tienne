@@ -284,3 +284,10 @@ export function enregistrerChecklistSimulee(familleId: string, checklist: Checkl
   checklists.set(cleChecklist(familleId, checklist.dateCulte), copie(valeur))
   return copie(valeur)
 }
+
+export function listerChecklistsSimulees() {
+  return [...checklists.entries()].map(([cle, checklist]) => ({
+    familleId: cle.slice(0, cle.lastIndexOf(':')),
+    checklist: copie(checklist),
+  }))
+}

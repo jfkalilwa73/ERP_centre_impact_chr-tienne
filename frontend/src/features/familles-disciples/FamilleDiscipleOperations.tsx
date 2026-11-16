@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, Check, ChevronLeft, ChevronRight, ClipboardCheck, Pencil, Save, UserMinus, UserPlus, UsersRound } from 'lucide-react'
@@ -12,6 +12,8 @@ import { Select } from '@/components/ui/Select'
 import { useFamilles } from '@/features/familles/hooks'
 import { usePersonnes, usePersonnesFamilles } from '@/features/personnes/hooks'
 import { useDepartements } from '@/features/departements/hooks'
+import { syncAlertes } from '@/features/notifications/alertes'
+import { confirmerAdhesionNouveauIntegre, listerNouveauxIntegres, subscribeNouveauxIntegres, versionNouveauxIntegres } from './integrationNouveaux'
 import type { Personne } from '@/types'
 import {
   admettreNouveauVenu,
@@ -31,6 +33,7 @@ import {
   type TypeCulte,
   retirerMembreFamille,
 } from './api'
+import { estChecklistVerrouillee } from './checklistDeadline'
 
 const SERVICES_CULTE: { id: TypeCulte; label: string }[] = [
   { id: 'dimanche', label: 'Dimanche' },
@@ -103,7 +106,6 @@ function AdmissionNouveauVenuDialog({
   const [search, setSearch] = useState('')
   const [personneId, setPersonneId] = useState('')
   const [dateAccueil, setDateAccueil] = useState(dateLocale())
-  const [nouveauVenu, setNouveauVenu] = useState(true)
   const personnesQuery = usePersonnes({ page: 1, limit: 100 }, open)
   const personnes = personnesQuery.data?.data ?? [
     { idPersonne: 'simulation-personne-mireille', prenom: 'Mireille', nom: 'Kalala' },
@@ -116,7 +118,7 @@ function AdmissionNouveauVenuDialog({
       return admettreNouveauVenu(famille.idFamilleDisciple, {
         idPersonne: personneId,
         dateAccueil,
-        nouveauVenu,
+        nouveauVenu: false,
         prenom: personne?.prenom,
         nom: personne?.nom,
       })
@@ -126,7 +128,7 @@ function AdmissionNouveauVenuDialog({
       void queryClient.invalidateQueries({ queryKey: ['personnes', 'famille-disciple', personneId] })
       onOpenChange(false)
       setPersonneId('')
-      setNouveauVenu(true)
+      setSearch('')
     },
   })
   const dejaDansFamille = new Set(famille.compositions?.map((composition) => composition.idPersonne).filter(Boolean))
@@ -138,8 +140,8 @@ function AdmissionNouveauVenuDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title="Ajouter une personne à la famille"
-        description={`Indiquez si la personne est nouvelle à l’église ou si elle en est déjà membre. Elle sera rattachée à « ${famille.nom} ».`}
+        title="Rattacher un membre de l’église"
+        description={`Choisissez une personne déjà enregistrée dans le répertoire. Elle sera rattachée à « ${famille.nom} ».`}
       >
         <form
           className="flex flex-col gap-4"
@@ -158,29 +160,18 @@ function AdmissionNouveauVenuDialog({
             Personne à rattacher
             <Select value={personneId} onChange={(event) => setPersonneId(event.target.value)} required>
               <option value="">Choisir une personne</option>
-              {choix.map((personne) => (
-                <option key={personne.idPersonne} value={personne.idPersonne}>{nomPersonne(personne)}</option>
-              ))}
+              {choix.map((personne) => <option key={personne.idPersonne} value={personne.idPersonne}>{nomPersonne(personne)}</option>)}
             </Select>
           </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-800">
-            Situation à l’église
-            <Select value={nouveauVenu ? 'nouveau' : 'membre'} onChange={(event) => setNouveauVenu(event.target.value === 'nouveau')}>
-              <option value="nouveau">Nouveau venu</option>
-              <option value="membre">Membre déjà inscrit à l’église</option>
-            </Select>
-          </label>
+          {personnesQuery.isSuccess && choix.length === 0 && <p className="text-sm text-slate-600">Aucune personne disponible. Créez d’abord sa fiche dans <Link className="font-semibold text-brand-700 underline" to="/personnes" onClick={() => onOpenChange(false)}>Personnes</Link>.</p>}
           <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-800">
             Date d’entrée dans la famille
             <Input type="date" value={dateAccueil} onChange={(event) => setDateAccueil(event.target.value)} required />
           </label>
-          {personnesQuery.isSuccess && choix.length === 0 && (
-            <p className="text-sm text-slate-600">Aucune personne disponible. Créez d’abord sa fiche dans <Link className="font-semibold text-brand-700 underline" to="/personnes" onClick={() => onOpenChange(false)}>Personnes</Link>.</p>
-          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Annuler</Button>
-            <Button type="submit" isLoading={admission.isPending} disabled={!personneId || !dateAccueil}>
-              <UserPlus className="size-4" />Ajouter à cette famille
+            <Button type="submit" isLoading={admission.isPending} disabled={!dateAccueil || !personneId}>
+              <UserPlus className="size-4" />Rattacher le membre
             </Button>
           </div>
         </form>
@@ -192,6 +183,7 @@ function AdmissionNouveauVenuDialog({
 function FamilleMembresPanel({ famille, onAdmettre }: { famille: FamilleDisciple; onAdmettre: () => void }) {
   const membres = famille.compositions ?? []
   const queryClient = useQueryClient()
+  const [vue, setVue] = useState<'eglise' | 'integration'>('eglise')
   const [membreARetirer, setMembreARetirer] = useState<CompositionFamilleDisciple | null>(null)
   const [membreAEditer, setMembreAEditer] = useState<CompositionFamilleDisciple | null>(null)
   const [nouveauVenuEdition, setNouveauVenuEdition] = useState(true)
@@ -200,6 +192,25 @@ function FamilleMembresPanel({ famille, onAdmettre }: { famille: FamilleDisciple
   const [departementFiltre, setDepartementFiltre] = useState('')
   const [familleImpactFiltre, setFamilleImpactFiltre] = useState('')
   const [situationEgliseFiltre, setSituationEgliseFiltre] = useState('')
+  useSyncExternalStore(subscribeNouveauxIntegres, versionNouveauxIntegres, versionNouveauxIntegres)
+  const nouveauxIntegres = listerNouveauxIntegres(famille.idFamilleDisciple)
+  const lignesIntegrees: CompositionFamilleDisciple[] = nouveauxIntegres.map((nouveau) => ({
+    idComposition: nouveau.id,
+    idMembre: nouveau.id,
+    prenom: nouveau.prenom,
+    nom: nouveau.nom,
+    telephone: nouveau.telephone,
+    nouveauVenu: true,
+    dateAccueil: nouveau.dateAccueil,
+    commentaireIntegration: nouveau.commentaire,
+    adhesionConfirmee: nouveau.adhesionConfirmee,
+    departementOrigineId: nouveau.idDepartementIntegration,
+    departementOrigineNom: nouveau.nomDepartementIntegration,
+    actif: true,
+  }))
+  const lignesDeLaVue = vue === 'eglise'
+    ? membres.filter((membre) => !membre.nouveauVenu)
+    : [...membres.filter((membre) => membre.nouveauVenu), ...lignesIntegrees]
   const personneIds = [...new Set(membres.map((membre) => membre.idPersonne).filter((id): id is string => Boolean(id)))]
   const affectationsFamilleQueries = usePersonnesFamilles(personneIds, false)
   const affectationsFamille = affectationsFamilleQueries.flatMap((query) => query.data ?? [])
@@ -217,13 +228,15 @@ function FamilleMembresPanel({ famille, onAdmettre }: { famille: FamilleDisciple
     .map(([id, nom]) => ({ id, nom }))
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
   const termeRecherche = normaliserRecherche(recherche)
-  const membresFiltres = membres.filter((membre) => {
+  const membresFiltres = lignesDeLaVue.filter((membre) => {
     const famillesMembre = famillesImpactParPersonne.get(membre.idPersonne ?? '') ?? []
     const texteRecherche = normaliserRecherche([
       membre.prenom,
       membre.nom,
       membre.numeroMembre,
       membre.departementOrigineNom,
+      membre.telephone,
+      membre.commentaireIntegration,
       ...famillesMembre.map((id) => nomsFamillesImpact.get(id)),
     ].filter(Boolean).join(' '))
     return (!termeRecherche || texteRecherche.includes(termeRecherche))
@@ -255,7 +268,16 @@ function FamilleMembresPanel({ famille, onAdmettre }: { famille: FamilleDisciple
   return (
     <>
       <section className="overflow-hidden border border-slate-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <div className="grid min-w-0 gap-3 border-b border-slate-100 bg-slate-50/50 px-5 py-4 sm:grid-cols-2 2xl:grid-cols-[minmax(11rem,1.2fr)_minmax(10rem,1fr)_minmax(16rem,1.5fr)_minmax(10rem,1fr)_auto]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-3">
+          <div role="tablist" aria-label="Type de personne suivie" className="flex flex-wrap gap-2">
+            <button type="button" role="tab" aria-selected={vue === 'eglise'} onClick={() => { setVue('eglise'); setSituationEgliseFiltre('') }} className={`rounded-lg px-3 py-2 text-sm font-medium ${vue === 'eglise' ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-50'}`}>Membres déjà à l’église ({membres.filter((item) => !item.nouveauVenu).length})</button>
+            <button type="button" role="tab" aria-selected={vue === 'integration'} onClick={() => { setVue('integration'); setSituationEgliseFiltre('') }} className={`rounded-lg px-3 py-2 text-sm font-medium ${vue === 'integration' ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-50'}`}>Nouveaux accueillis par l’Intégration ({membres.filter((item) => item.nouveauVenu).length + lignesIntegrees.length})</button>
+          </div>
+          {vue === 'eglise' && <Button type="button" size="sm" className="h-10 whitespace-nowrap px-3 text-sm" onClick={onAdmettre}>
+            <UserPlus className="size-4" />Rattacher un membre
+          </Button>}
+        </div>
+        <div className="grid min-w-0 gap-3 border-b border-slate-100 bg-slate-50/50 px-5 py-4 sm:grid-cols-2 2xl:grid-cols-[minmax(11rem,1.2fr)_minmax(10rem,1fr)_minmax(16rem,1.5fr)_minmax(10rem,1fr)]">
           <label className="flex flex-col gap-1.5 text-xs font-medium text-slate-600">
             Rechercher un membre
             <Input
@@ -287,15 +309,12 @@ function FamilleMembresPanel({ famille, onAdmettre }: { famille: FamilleDisciple
               <option value="membre">Déjà membres de l’église</option>
             </Select>
           </label>
-          <Button type="button" size="sm" className="h-10 min-w-0 self-end whitespace-nowrap px-3 text-sm" onClick={onAdmettre}>
-            <UserPlus className="size-4" />Ajouter une personne
-          </Button>
         </div>
         {retrait.isError && <div className="p-4"><Alert variant="error" title="Impossible de retirer ce membre">{retrait.error.message}</Alert></div>}
-        {membres.length === 0 ? (
+        {membresFiltres.length === 0 ? (
           <div className="p-8 text-center">
             <UsersRound className="mx-auto size-8 text-slate-400" aria-hidden="true" />
-            <p className="mt-3 text-sm text-slate-600">Aucun membre suivi dans cette famille.</p>
+            <p className="mt-3 text-sm text-slate-600">{vue === 'eglise' ? 'Aucun membre de l’église ne correspond à ces critères.' : 'Aucun nouveau accueilli par l’Intégration ne correspond à ces critères.'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -311,8 +330,11 @@ function FamilleMembresPanel({ famille, onAdmettre }: { famille: FamilleDisciple
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {membresFiltres.length === 0 ? (
-                  <tr><td colSpan={5} className="px-5 py-8 text-center text-sm text-slate-500">Aucun membre ne correspond à ces critères.</td></tr>
+                  <tr><td colSpan={5} className="px-5 py-8 text-center text-sm text-slate-500">Aucun résultat dans cette liste.</td></tr>
                 ) : membresFiltres.map((membre) => (
+                  (() => {
+                    const visiteur = nouveauxIntegres.find((item) => item.id === membre.idComposition)
+                    return (
                   <tr key={membre.idComposition}>
                     <td className="whitespace-nowrap px-4 py-4 font-medium text-slate-900">
                       {membre.idPersonne ? <Link className="hover:text-brand-700 hover:underline" to={`/personnes/${membre.idPersonne}`}>{[membre.prenom, membre.nom].filter(Boolean).join(' ') || membre.numeroMembre || 'Membre'}</Link> : [membre.prenom, membre.nom].filter(Boolean).join(' ') || membre.numeroMembre || 'Membre'}
@@ -325,26 +347,34 @@ function FamilleMembresPanel({ famille, onAdmettre }: { famille: FamilleDisciple
                         .join(', ') || 'Aucune famille d’impact'}
                     </td>
                     <td className="px-4 py-4">
-                      {membre.nouveauVenu
-                        ? <div className="flex flex-col items-start gap-1"><Tag tone="green">Nouveau venu</Tag><span className="text-xs text-slate-500">Entrée dans la famille : {membre.dateAccueil || 'date à préciser'}</span></div>
+                      {visiteur
+                        ? <div className="flex flex-col items-start gap-1"><Tag tone={visiteur.adhesionConfirmee ? 'blue' : 'green'}>{visiteur.adhesionConfirmee ? 'Adhésion confirmée · fiche à créer' : 'Nouveau accueilli par l’Intégration'}</Tag><span className="text-xs text-slate-500">Premier accueil : {visiteur.dateAccueil}</span>{visiteur.telephone && <span className="text-xs text-slate-500">{visiteur.telephone}</span>}{visiteur.commentaire && <span className="max-w-xs text-xs text-slate-500">{visiteur.commentaire}</span>}</div>
+                        : membre.nouveauVenu
+                          ? <div className="flex flex-col items-start gap-1"><Tag tone="green">Nouveau venu</Tag><span className="text-xs text-slate-500">Entrée dans la famille : {membre.dateAccueil || 'date à préciser'}</span></div>
                         : <Tag title="Personne déjà membre de l’église avant son rattachement à cette famille.">Déjà membre de l’église</Tag>}
                     </td>
                     <td className="px-3 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                        <Button type="button" size="sm" className="px-2" variant="secondary" title="Modifier la situation à l’église et le suivi familial" aria-label={`Modifier les statuts de ${membre.prenom ?? ''} ${membre.nom ?? ''}`} onClick={() => {
-                          setMembreAEditer(membre)
-                          setNouveauVenuEdition(Boolean(membre.nouveauVenu))
-                          setSuiviFamilialActifEdition(membre.actif)
-                          modifierStatut.reset()
-                        }}>
-                          <Pencil className="size-4" />Modifier
-                        </Button>
-                        <Button type="button" size="sm" className="px-2" variant="secondary" title="Retirer de la famille" aria-label={`Retirer ${membre.prenom ?? ''} ${membre.nom ?? ''} de la famille`} onClick={() => { setMembreARetirer(membre); retrait.reset() }}>
-                          <UserMinus className="size-4" />Retirer
-                        </Button>
+                        {visiteur ? (visiteur.adhesionConfirmee
+                          ? <span className="text-xs font-medium text-amber-800">Notification envoyée</span>
+                          : <Button type="button" size="sm" className="px-2" onClick={() => { confirmerAdhesionNouveauIntegre(visiteur.id); syncAlertes() }}><Check className="size-4" />Confirme devenir membre</Button>) : <>
+                          <Button type="button" size="sm" className="px-2" variant="secondary" title="Modifier la situation à l’église et le suivi familial" aria-label={`Modifier les statuts de ${membre.prenom ?? ''} ${membre.nom ?? ''}`} onClick={() => {
+                            setMembreAEditer(membre)
+                            setNouveauVenuEdition(Boolean(membre.nouveauVenu))
+                            setSuiviFamilialActifEdition(membre.actif)
+                            modifierStatut.reset()
+                          }}>
+                            <Pencil className="size-4" />Modifier
+                          </Button>
+                          <Button type="button" size="sm" className="px-2" variant="secondary" title="Retirer de la famille" aria-label={`Retirer ${membre.prenom ?? ''} ${membre.nom ?? ''} de la famille`} onClick={() => { setMembreARetirer(membre); retrait.reset() }}>
+                            <UserMinus className="size-4" />Retirer
+                          </Button>
+                        </>}
                       </div>
                     </td>
                   </tr>
+                    )
+                  })()
                 ))}
               </tbody>
             </table>
@@ -941,6 +971,8 @@ function PreparationCultePanel({
 }) {
   const queryClient = useQueryClient()
   const [departements, setDepartements] = useState<ChecklistDepartementCulte[]>([])
+  const [maintenant, setMaintenant] = useState(() => new Date())
+  const verrouillee = estChecklistVerrouillee(dateCulte, maintenant)
   const checklistQueryKey = ['familles-disciples', familleId, 'checklist', dateCulte] as const
   const checklistQuery = useQuery({
     queryKey: checklistQueryKey,
@@ -948,6 +980,10 @@ function PreparationCultePanel({
     enabled: Boolean(dateCulte),
   })
   const departementsQuery = useDepartements({ page: 1, limit: 100 })
+  useEffect(() => {
+    const intervalle = window.setInterval(() => setMaintenant(new Date()), 1_000)
+    return () => window.clearInterval(intervalle)
+  }, [])
   useEffect(() => {
     if (!checklistQuery.data) return
     const sauvegardes = new Map(checklistQuery.data.departements.map((item) => [item.idDepartement, item]))
@@ -957,6 +993,9 @@ function PreparationCultePanel({
     })
     setDepartements(lignes)
   }, [checklistQuery.data, departementsQuery.data])
+  useEffect(() => {
+    if (checklistQuery.data) syncAlertes()
+  }, [checklistQuery.data, verrouillee])
   const enregistrer = useMutation({
     mutationFn: () => enregistrerChecklistPreparationCulte(familleId, { dateCulte, departements }),
     onSuccess: (resultat) => {
@@ -966,6 +1005,7 @@ function PreparationCultePanel({
     },
   })
   function modifier(idDepartement: string, update: Partial<ChecklistDepartementCulte>) {
+    if (estChecklistVerrouillee(dateCulte)) return
     const actualises = departements.map((item) => item.idDepartement === idDepartement ? { ...item, ...update } : item)
     setDepartements(actualises)
     queryClient.setQueryData<ChecklistPreparationCulte>(checklistQueryKey, (courante) => ({
@@ -989,6 +1029,10 @@ function PreparationCultePanel({
       {checklistQuery.isError && <Alert variant="error" title="Impossible de charger la checklist">{checklistQuery.error.message}</Alert>}
       {departementsQuery.isError && <Alert variant="error" title="Impossible de charger les départements">{departementsQuery.error.message}</Alert>}
       {enregistrer.isError && <Alert variant="error" title="Checklist non enregistrée">{enregistrer.error.message}</Alert>}
+      {verrouillee && !checklistQuery.isLoading && !departementsQuery.isLoading && <Alert variant={departements.some((item) => !item.pret) ? 'warning' : 'success'} title="Checklist en consultation seule">
+        <p>La checklist est verrouillée depuis 8 h (heure de Kinshasa). Les éléments ne peuvent plus être modifiés.</p>
+        {departements.some((item) => !item.pret) && <p className="mt-1">Départements non prêts : {departements.filter((item) => !item.pret).map((item) => item.nomDepartement).join(', ')}. Une alerte leur a été associée pour les responsables concernés.</p>}
+      </Alert>}
       {checklistQuery.isLoading || departementsQuery.isLoading ? <p className="py-6 text-center text-sm text-slate-500">Chargement des départements…</p> : departements.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-600">Aucun département actif à préparer.</p>
       ) : (
@@ -996,17 +1040,17 @@ function PreparationCultePanel({
           {departements.map((item) => (
             <div key={item.idDepartement} className="grid gap-3 p-4 sm:grid-cols-[minmax(14rem,1fr)_minmax(16rem,1.4fr)] sm:items-center">
               <label className="flex items-center gap-3 text-sm font-medium text-slate-900">
-                <input type="checkbox" checked={item.pret} onChange={(event) => modifier(item.idDepartement, { pret: event.target.checked })} className="size-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                <input type="checkbox" checked={item.pret} disabled={verrouillee} onChange={(event) => modifier(item.idDepartement, { pret: event.target.checked })} className="size-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60" />
                 <span>{item.nomDepartement}</span>
                 {item.pret && <Check className="size-4 text-emerald-700" aria-hidden="true" />}
               </label>
-              <Input aria-label={`Commentaire ${item.nomDepartement}`} value={item.commentaire ?? ''} onChange={(event) => modifier(item.idDepartement, { commentaire: event.target.value })} placeholder="Commentaire ou point à régler" />
+              <Input aria-label={`Commentaire ${item.nomDepartement}`} value={item.commentaire ?? ''} disabled={verrouillee} onChange={(event) => modifier(item.idDepartement, { commentaire: event.target.value })} placeholder="Commentaire ou point à régler" />
             </div>
           ))}
         </div>
       )}
       <div className="flex justify-end">
-        <Button type="button" onClick={() => enregistrer.mutate()} isLoading={enregistrer.isPending} disabled={departements.length === 0}><ClipboardCheck className="size-4" />Enregistrer la checklist</Button>
+        {!verrouillee && <Button type="button" onClick={() => enregistrer.mutate()} isLoading={enregistrer.isPending} disabled={departements.length === 0}><ClipboardCheck className="size-4" />Enregistrer la checklist</Button>}
       </div>
     </section>
   )
