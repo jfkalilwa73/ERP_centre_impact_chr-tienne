@@ -97,6 +97,24 @@ class RegroupementService
         $relation->save();
     }
 
+    public function lister(int $page, int $limit, ?string $recherche)
+    {
+        $requete = Famille::query()
+            ->with(['relations' => fn ($query) => $query->where('actif', true)->with(['personne1', 'personne2'])])
+            ->orderBy('nom_famille');
+
+        if ($recherche) {
+            $terme = '%'.$recherche.'%';
+            $requete->where(function ($q) use ($terme) {
+                $q->where('nom_famille', 'ilike', $terme)
+                    ->orWhere('adresse', 'ilike', $terme)
+                    ->orWhere('telephone_principal', 'ilike', $terme);
+            });
+        }
+
+        return $requete->paginate($limit, ['*'], 'page', $page);
+    }
+
     private function charger(?string $id): ?Famille
     {
         if (! $id) {

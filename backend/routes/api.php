@@ -101,6 +101,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/membres/{membreId}/historique', [MembreController::class, 'historique']);
 
         Route::get('/personnes/{personneId}/regroupement', [RegroupementController::class, 'showPourPersonne']);
+        Route::get('/regroupements', [RegroupementController::class, 'index']);
+        Route::get('/regroupements/{regroupementId}', [RegroupementController::class, 'show']);
         Route::post('/regroupements', [RegroupementController::class, 'store']);
         Route::post('/regroupements/{regroupementId}/relations', [RegroupementController::class, 'storeRelation']);
         Route::delete('/regroupements/{regroupementId}/relations/{relationId}', [RegroupementController::class, 'destroyRelation']);
