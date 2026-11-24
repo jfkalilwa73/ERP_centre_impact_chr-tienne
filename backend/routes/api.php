@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\Organisation\SiteController;
 use App\Http\Controllers\Api\V1\Organisation\DepartementController;
 use App\Http\Controllers\Api\V1\Organisation\AffectationDepartementController;
 use App\Http\Controllers\Api\V1\Audit\AuditLogController;
+use App\Http\Controllers\Api\V1\Famille\FamilleDiscipleController;
 use App\Http\Controllers\Api\V1\Acces\VerifierDroitController;
 use App\Http\Controllers\Api\V1\Famille\FamilleImpactController;
 use App\Http\Controllers\Api\V1\Famille\AffectationFamilleController;
@@ -111,6 +112,14 @@ Route::prefix('v1')->group(function () {
         Route::post('/familles-impact/{familleId}/suivi', [PresenceFamilleController::class, 'synchroniser']);
         Route::get('/familles-impact/{familleId}/presences', [PresenceFamilleController::class, 'index']);
         Route::put('/familles-impact/{familleId}/presences', [PresenceFamilleController::class, 'store']);
+
+        Route::get('/familles-disciples', [FamilleDiscipleController::class, 'index']);
+        Route::post('/familles-disciples', [FamilleDiscipleController::class, 'store']);
+        Route::get('/familles-disciples/{familleDiscipleId}', [FamilleDiscipleController::class, 'show']);
+        Route::post('/familles-disciples/{familleDiscipleId}/membres', [FamilleDiscipleController::class, 'storeMembre']);
+        Route::patch('/familles-disciples/{familleDiscipleId}/membres/{compositionId}', [FamilleDiscipleController::class, 'updateMembre']);
+        Route::delete('/familles-disciples/{familleDiscipleId}/membres/{compositionId}', [FamilleDiscipleController::class, 'destroyMembre']);
+        Route::get('/personnes/{personneId}/famille-disciple', [FamilleDiscipleController::class, 'showPourPersonne']);
 
     });
 });
