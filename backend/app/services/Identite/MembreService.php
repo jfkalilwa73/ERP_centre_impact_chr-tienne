@@ -7,6 +7,7 @@ use App\Models\Personne;
 use Illuminate\Database\QueryException;
 use App\Models\HistoriqueStatutMembre;
 use App\Models\AffecterFamilleImpact;
+use App\Models\CompositionFamilleDisciple;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -137,6 +138,89 @@ class MembreService
 
             throw $e;
         }
+    }
+
+
+    public function fusionner(Membre $cible, string $sourceId): Membre
+    {
+        $source = $this->trouver($sourceId);
+
+        if ($cible->id_membre === $source->id_membre) {
+            abort(422, 'Impossible de fusionner un membre avec lui-même.');
+        }
+
+        return DB::transaction(function () use ($cible, $source) {
+            $cibleAUneAffectationActive = AffecterFamilleImpact::query()
+                ->where('id_membre', $cible->id_membre)
+                ->where('actif', true)
+                ->exists();
+
+            $affectations = AffecterFamilleImpact::query()
+                ->where('id_membre', $source->id_membre)
+                ->get();
+
+            foreach ($affectations as $affectation) {
+                if ($affectation->actif && $cibleAUneAffectationActive) {
+                    $affectation->actif = false;
+                    $affectation->date_fin = now();
+                    $affectation->motif_fin = 'Fusion de doublon';
+                }
+                $affectation->id_membre = $cible->id_membre;
+                $affectation->save();
+
+                if ($affectation->actif) {
+                    $cibleAUneAffectationActive = true;
+                }
+            }
+
+            HistoriqueStatutMembre::query()
+                ->where('id_membre', $source->id_membre)
+                ->update(['id_membre' => $cible->id_membre]);
+
+            $compositions = CompositionFamilleDisciple::query()
+                ->where('id_membre', $source->id_membre)
+                ->get();
+
+            foreach ($compositions as $composition) {
+                $deja = CompositionFamilleDisciple::query()
+                    ->where('id_famille_disciple', $composition->id_famille_disciple)
+                    ->where('id_membre', $cible->id_membre)
+                    ->exists();
+
+                if ($deja) {
+                    $composition->actif = false;
+                    $composition->date_fin = now();
+                    $composition->save();
+                    $composition->delete();
+                } else {
+                    $composition->id_membre = $cible->id_membre;
+                    $composition->save();
+                }
+            }
+
+            $dateCible = $cible->date_integration?->toDateString();
+            $dateSource = $source->date_integration?->toDateString();
+            if ($dateSource && (! $dateCible || $dateSource < $dateCible)) {
+                $cible->date_integration = $source->date_integration;
+                $cible->save();
+            }
+
+            // Le trigger interdit la suppression d'un membre actif.
+            if ($source->statut_membre === 'actif') {
+                $source->statut_membre = 'archive';
+                $source->motif_changement_statut = 'Fusion de doublon';
+                $source->date_changement_statut = now();
+                $source->save();
+            }
+
+            HistoriqueStatutMembre::query()
+                ->where('id_membre', $source->id_membre)
+                ->delete();
+
+            $source->delete();
+
+            return $cible->refresh()->load('personne');
+        });
     }
 
     public function lister(int $page, int $limit, ?string $recherche, ?string $statut)

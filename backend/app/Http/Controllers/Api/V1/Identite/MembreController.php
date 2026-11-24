@@ -13,6 +13,7 @@ use App\Http\Requests\Identite\UpdateMembreStatutRequest;
 use App\Http\Resources\Identite\HistoriqueStatutResource;
 use Illuminate\Http\Request;
 use App\Http\Requests\Identite\UpdateMembreRequest;
+use App\Http\Requests\Identite\MergeMembreRequest;
 use OpenApi\Attributes as OA;
 
 class MembreController extends Controller
@@ -175,6 +176,35 @@ class MembreController extends Controller
         $this->membres->supprimer($membre);
 
         return response()->noContent();
+    }
+
+    public function merge(MergeMembreRequest $request, string $membreId): JsonResponse
+    {
+        $cible = $this->membres->trouver($membreId);
+        $sourceId = $request->validated()['id_membre_source'];
+        $source = $this->membres->trouver($sourceId);
+
+        $membre = $this->membres->fusionner($cible, $sourceId);
+
+        $this->audits->enregistrer([
+            'user_id' => $request->user()?->id,
+            'action' => 'MEMBRE_MERGED',
+            'entite_type' => 'membre',
+            'id_entite' => $membre->id_membre,
+            'anciennes_valeurs' => [
+                'idMembreSource' => $source->id_membre,
+                'numeroMembreSource' => $source->numero_membre,
+                'idPersonneSource' => $source->id_personne,
+            ],
+            'nouvelles_valeurs' => [
+                'idMembreConserve' => $membre->id_membre,
+                'numeroMembreConserve' => $membre->numero_membre,
+            ],
+            'adresse_ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->json((new MembreResource($membre))->resolve());
     }
 
     public function updateStatut(UpdateMembreStatutRequest $request, string $membreId): JsonResponse
