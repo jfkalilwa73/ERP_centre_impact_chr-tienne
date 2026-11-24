@@ -91,17 +91,14 @@ services:
 
   # 6. Frontend React (interface utilisateur)
   frontend:
-    image: node:22-alpine
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: erp-frontend
-    working_dir: /app
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-    ports:
-      - "5173:5173"
+    expose:
+      - "80"
     environment:
-      - BACKEND_PROXY_TARGET=http://backend:8000
-    command: sh -c "npm install && npm run dev -- --host"
+      BACKEND_PROXY_TARGET: http://backend:8000
     depends_on:
       - backend
     networks:
@@ -113,7 +110,6 @@ volumes:
   redis_data:
   minio_data:
   pgadmin_data:
-  frontend_node_modules:
 
 # Réseau privé
 networks:
