@@ -12,6 +12,7 @@ use Illuminate\Http\Response;
 use App\Http\Requests\Identite\UpdateMembreStatutRequest;
 use App\Http\Resources\Identite\HistoriqueStatutResource;
 use Illuminate\Http\Request;
+use App\Http\Requests\Identite\UpdateMembreRequest;
 use OpenApi\Attributes as OA;
 
 class MembreController extends Controller
@@ -121,6 +122,34 @@ class MembreController extends Controller
     public function showPourPersonne(string $personneId): JsonResponse
     {
         $membre = $this->membres->pourPersonne($personneId)->load('personne');
+
+        return response()->json((new MembreResource($membre))->resolve());
+    }
+
+    public function show(string $membreId): JsonResponse
+{
+    $membre = $this->membres->trouver($membreId)->load('personne');
+
+    return response()->json((new MembreResource($membre))->resolve());
+}
+
+    public function update(UpdateMembreRequest $request, string $membreId): JsonResponse
+    {
+        $membre = $this->membres->trouver($membreId);
+        $ancien = $membre->date_integration?->toDateString();
+
+        $membre = $this->membres->modifier($membre, $request->validated())->load('personne');
+
+        $this->audits->enregistrer([
+            'user_id' => $request->user()?->id,
+            'action' => 'MEMBRE_UPDATED',
+            'entite_type' => 'membre',
+            'id_entite' => $membre->id_membre,
+            'anciennes_valeurs' => ['dateIntegration' => $ancien],
+            'nouvelles_valeurs' => ['dateIntegration' => $membre->date_integration?->toDateString()],
+            'adresse_ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
         return response()->json((new MembreResource($membre))->resolve());
     }

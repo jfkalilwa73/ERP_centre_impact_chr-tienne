@@ -91,6 +91,9 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/membres', [MembreController::class, 'index']);
 
+        Route::get('/membres/{membreId}', [MembreController::class, 'show']);
+        Route::put('/membres/{membreId}', [MembreController::class, 'update']);
+
         Route::get('/personnes/{personneId}/membre', [MembreController::class, 'showPourPersonne']);
         Route::post('/personnes/{personneId}/membre', [MembreController::class, 'store']);
         Route::patch('/membres/{membreId}', [MembreController::class, 'updateStatut']);

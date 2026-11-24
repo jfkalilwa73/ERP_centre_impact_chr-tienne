@@ -101,6 +101,15 @@ class MembreService
             ->get();
     }
 
+
+    public function modifier(Membre $membre, array $donnees): Membre
+    {
+        $membre->date_integration = $donnees['date_integration'];
+        $membre->save();
+
+        return $membre->refresh();
+    }
+
     public function lister(int $page, int $limit, ?string $recherche, ?string $statut)
     {
         $requete = Membre::query()
