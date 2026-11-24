@@ -33,14 +33,11 @@ class SuiviMembreService
         $this->famille($familleId);
         $membre = Membre::query()->where('id_personne', $personneId)->first();
         if (! $membre) {
+            // Source de vérité = affecter_famille_impact (plus de colonne membre.famille_impact_id)
             $membre = app(MembreService::class)->creer($personneId, [
                 'date_integration' => $dateDebut ? Carbon::parse($dateDebut)->toDateString() : now()->toDateString(),
                 'statut_membre' => 'actif',
-                'famille_impact_id' => $familleId,
             ]);
-        } else {
-            $membre->famille_impact_id = $familleId;
-            $membre->save();
         }
 
         AffecterFamilleImpact::query()
@@ -93,7 +90,63 @@ class SuiviMembreService
             ->orderByDesc('date_reunion')
             ->get();
 
-        return ['affectations' => $affectations, 'presences' => $presences];
+        return [
+            'affectations' => $affectations,
+            'presences' => $presences,
+            'tauxParticipation' => $this->calculerTauxParticipation($presences),
+            'tauxParMembre' => $this->calculerTauxParMembre($presences),
+        ];
+    }
+
+    private function calculerTauxParticipation($presences): array
+    {
+        $total = $presences->count();
+        $presents = $presences->where('present', true)->count();
+
+        return [
+            'totalReunions' => $total,
+            'presences' => $presents,
+            'taux' => $total > 0 ? round(($presents / $total) * 100, 2) : 0.0,
+        ];
+    }
+
+    private function calculerTauxParMembre($presences): array
+    {
+        $parPersonne = [];
+
+        foreach ($presences as $ligne) {
+            $personne = $ligne->affectation?->membre?->personne;
+            $idPersonne = $ligne->affectation?->membre?->id_personne
+                ?? $ligne->id_affectation;
+
+            if (! isset($parPersonne[$idPersonne])) {
+                $parPersonne[$idPersonne] = [
+                    'idPersonne' => $idPersonne,
+                    'idAffectation' => $ligne->id_affectation,
+                    'nom' => trim(($personne?->prenom ?? '').' '.($personne?->nom ?? '')) ?: 'Membre',
+                    'presents' => 0,
+                    'convocations' => 0,
+                    'taux' => 0,
+                ];
+            }
+
+            $parPersonne[$idPersonne]['convocations']++;
+            if ($ligne->present) {
+                $parPersonne[$idPersonne]['presents']++;
+            }
+        }
+
+        return collect($parPersonne)
+            ->map(function (array $item) {
+                $item['taux'] = $item['convocations'] > 0
+                    ? (int) round(($item['presents'] / $item['convocations']) * 100)
+                    : 0;
+
+                return $item;
+            })
+            ->sortBy('nom', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
     }
 
     public function enregistrerPresences(string $familleId, string $dateReunion, array $lignes, ?int $userId)

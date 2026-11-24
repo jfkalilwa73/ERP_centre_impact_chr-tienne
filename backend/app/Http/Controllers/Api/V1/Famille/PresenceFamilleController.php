@@ -29,6 +29,8 @@ class PresenceFamilleController extends Controller
         return response()->json([
             'affectations' => AffectationMembreResource::collection($resultat['affectations'])->resolve(),
             'presences' => PresenceResource::collection($resultat['presences'])->resolve(),
+            'tauxParticipation' => $resultat['tauxParticipation'],
+            'tauxParMembre' => $resultat['tauxParMembre'],
         ]);
     }
 
@@ -45,6 +47,8 @@ class PresenceFamilleController extends Controller
         return response()->json([
             'affectations' => AffectationMembreResource::collection($resultat['affectations'])->resolve(),
             'presences' => PresenceResource::collection($resultat['presences'])->resolve(),
+            'tauxParticipation' => $resultat['tauxParticipation'],
+            'tauxParMembre' => $resultat['tauxParMembre'],
         ]);
     }
 }
