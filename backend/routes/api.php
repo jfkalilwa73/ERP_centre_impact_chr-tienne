@@ -93,6 +93,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/membres/{membreId}', [MembreController::class, 'show']);
         Route::put('/membres/{membreId}', [MembreController::class, 'update']);
+        Route::delete('/membres/{membreId}', [MembreController::class, 'destroy']);
 
         Route::get('/personnes/{personneId}/membre', [MembreController::class, 'showPourPersonne']);
         Route::post('/personnes/{personneId}/membre', [MembreController::class, 'store']);

@@ -30,8 +30,28 @@ class PersonneService
                 $personne->delete();
             });
         } catch (QueryException $e) {
-            if (str_contains($e->getMessage(), 'Impossible de supprimer une personne active')) {
-                abort(409, 'Impossible de supprimer une personne active.');
+            $message = $e->getMessage();
+
+            if (str_contains($message, 'Impossible de supprimer une personne active')) {
+                abort(409, 'Impossible de supprimer une personne active. Passez d’abord son statut à inactif ou archivé.');
+            }
+
+            // Violations FK (23503) : message métier, sans SQL technique.
+            if (($e->errorInfo[0] ?? null) === '23503' || str_contains($message, 'Foreign key violation')) {
+                if (str_contains($message, 'affecter_departement')) {
+                    abort(409, 'Impossible de supprimer cette personne : elle est encore affectée à un département. Retirez d’abord l’affectation.');
+                }
+                if (str_contains($message, 'appartenir_famille') || str_contains($message, 'affecter_famille')) {
+                    abort(409, 'Impossible de supprimer cette personne : elle est encore liée à une famille d’impact. Retirez d’abord le lien.');
+                }
+                if (str_contains($message, 'membre')) {
+                    abort(409, 'Impossible de supprimer cette personne : un dossier membre y est encore lié. Supprimez d’abord le membre.');
+                }
+                if (str_contains($message, 'relation_familiale')) {
+                    abort(409, 'Impossible de supprimer cette personne : elle apparaît encore dans des liens familiaux. Retirez d’abord ces relations.');
+                }
+
+                abort(409, 'Impossible de supprimer cette personne : des données y sont encore liées. Retirez d’abord ses affectations et liens.');
             }
 
             throw $e;

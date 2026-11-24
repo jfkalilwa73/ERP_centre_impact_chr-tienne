@@ -154,6 +154,29 @@ class MembreController extends Controller
         return response()->json((new MembreResource($membre))->resolve());
     }
 
+    public function destroy(\Illuminate\Http\Request $request, string $membreId): Response
+    {
+        $membre = $this->membres->trouver($membreId);
+
+        $this->audits->enregistrer([
+            'user_id' => $request->user()?->id,
+            'action' => 'MEMBRE_DELETED',
+            'entite_type' => 'membre',
+            'id_entite' => $membre->id_membre,
+            'anciennes_valeurs' => [
+                'idPersonne' => $membre->id_personne,
+                'numeroMembre' => $membre->numero_membre,
+                'statutMembre' => $membre->statut_membre,
+            ],
+            'adresse_ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        $this->membres->supprimer($membre);
+
+        return response()->noContent();
+    }
+
     public function updateStatut(UpdateMembreStatutRequest $request, string $membreId): JsonResponse
     {
         $donnees = $request->validated();

@@ -6,6 +6,8 @@ use App\Models\Membre;
 use App\Models\Personne;
 use Illuminate\Database\QueryException;
 use App\Models\HistoriqueStatutMembre;
+use App\Models\AffecterFamilleImpact;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class MembreService
@@ -108,6 +110,33 @@ class MembreService
         $membre->save();
 
         return $membre->refresh();
+    }
+
+    public function supprimer(Membre $membre): void
+    {
+        if ($membre->statut_membre === 'actif') {
+            abort(409, 'Impossible de supprimer un membre actif. Passer le statut à inactif ou archive d’abord.');
+        }
+
+        if (AffecterFamilleImpact::query()->where('id_membre', $membre->id_membre)->exists()) {
+            abort(409, 'Impossible de supprimer un membre encore lié à une famille d’impact.');
+        }
+
+        try {
+            DB::transaction(function () use ($membre) {
+                HistoriqueStatutMembre::query()
+                    ->where('id_membre', $membre->id_membre)
+                    ->delete();
+
+                $membre->delete();
+            });
+        } catch (QueryException $e) {
+            if (str_contains($e->getMessage(), 'Impossible de supprimer un membre actif')) {
+                abort(409, 'Impossible de supprimer un membre actif. Passer le statut à inactif ou archive d’abord.');
+            }
+
+            throw $e;
+        }
     }
 
     public function lister(int $page, int $limit, ?string $recherche, ?string $statut)
