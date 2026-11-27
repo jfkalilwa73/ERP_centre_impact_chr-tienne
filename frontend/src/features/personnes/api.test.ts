@@ -9,6 +9,7 @@ import {
   listPersonnes,
   unassignPersonneDepartement,
   updatePersonne,
+  uploadPersonnePhoto,
 } from './api'
 
 async function ouvrirSession(email = 'admin@eglise.org', motDePasse = 'SecurePass123!') {
@@ -43,11 +44,13 @@ describe('API personnes', () => {
     const created = await createPersonne({
       nom: 'MBALA',
       prenom: 'Sarah',
+      postnom: 'Nzuzi',
       telephone: '+243810000050',
       statut: 'actif',
     })
 
     expect(created.prenom).toBe('Sarah')
+    expect(created.postnom).toBe('Nzuzi')
 
     await expect(
       createPersonne({
@@ -67,6 +70,19 @@ describe('API personnes', () => {
     const updated = await updatePersonne(cible.idPersonne, { adresse: 'Gombe' })
 
     expect(updated.adresse).toBe('Gombe')
+  })
+
+  it('téléverse et persiste la photo de profil de la personne', async () => {
+    await ouvrirSession()
+    const personne = seedPersonnes[0]
+    if (!personne) throw new Error('Jean absent du jeu de démonstration')
+
+    const updated = await uploadPersonnePhoto(
+      personne.idPersonne,
+      new File(['image'], 'portrait.png', { type: 'image/png' }),
+    )
+
+    expect(updated.photoUrl).toContain(personne.idPersonne)
   })
 
   it("refuse la suppression d'une personne active", async () => {

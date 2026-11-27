@@ -1,0 +1,1452 @@
+================================================================================
+AUDIT TECHNIQUE — PÉRIMÈTRE BIENVENU
+ERP Église — Centre Impact Chrétien
+================================================================================
+Date de l'audit        : 31 octobre 2026
+Nature                 : audit en lecture seule (aucune correction appliquée)
+Périmètre audité        : base de données, migrations, modèles Eloquent métier,
+                         seeders, contraintes, index, triggers/fonctions/vues
+                         PostgreSQL, tests de la couche données, documentation
+                         technique DB, configuration Docker/PostgreSQL associée.
+Dépôt                  : C:/Users/hp/Documents/M_NURU_Tech/ERP_centre_impact_chr-tienne
+Branche                : develop
+Commit HEAD            : 33cf5fdacc12077a637eaa59b95541d53d2bbbd5
+Auteur du commit HEAD  : Bienvenu Karagi — 2026-10-31 10:46:31 +0100
+Titre du commit HEAD   : "Corrections effectuées (périmètre Bienvenu uniquement)"
+
+Rappel de la règle de mission : aucune modification du projet n'a été effectuée
+hormis la création de ce rapport. Aucune migration, aucun seeder, aucun test
+applicatif, aucune commande destructive, aucune installation n'a été lancée.
+
+================================================================================
+1. RÉSUMÉ EXÉCUTIF
+================================================================================
+
+État général
+------------
+Le périmètre « base de données » est structurellement prometteur : le schéma est
+lisible, les entités métier sont correctement modélisées, les contraintes CHECK
+et les clés étrangères sont nombreuses, les index sont ciblés et les triggers
+sont documentés. Le travail de fond (Phase 0 + Sprint 1) est réel.
+
+En revanche, l'état livré n'est PAS reconstructible ni cohérent de bout en bout :
+
+  * le schéma de la base de développement a divergé du code (migration 000010
+    modifiée après avoir été appliquée ; migration 000017 non appliquée) ;
+  * la suppression annoncée de `membre.famille_impact_id` n'est faite qu'à
+    moitié : la colonne est retirée du fichier de migration mais reste dans le
+    modèle `Membre`, dans le seeder et dans trois services de l'API ;
+  * `php artisan migrate:fresh --seed` est cassé sur une base neuve ;
+  * l'étape « Familles des Disciples » du seeder est un no-op sur base neuve,
+    faute de départements créés par les seeders ;
+  * l'auteur des changements de statut n'est jamais enregistré (12/12 lignes
+    d'historique ont `change_par = NULL`) ;
+  * la règle métier « au moins 1 membre de chaque département actif » n'est pas
+    garantie : elle repose sur un département déclaré librement, jamais recoupé
+    avec `affecter_departement` ;
+  * aucun test automatisé ne couvre les triggers, contraintes, vues, migrations
+    ou seeders ; il n'existe aucune CI ;
+  * la documentation Sprint 1 contredit le schéma et annonce des validations
+    qui n'ont pas de preuve.
+
+Principaux points forts
+-----------------------
+  * Modélisation relationnelle cohérente et normalisée (personne / membre /
+    famille / famille d'impact / affectation / présence / historique).
+  * Contraintes d'intégrité nombreuses : UNIQUE, CHECK, FK, index partiel
+    unique `uq_affectation_membre_active`.
+  * Triggers PostgreSQL pertinents et correctement séparés (BEFORE INSERT pour
+    le numéro, AFTER UPDATE pour l'historique, BEFORE DELETE pour la protection,
+    BEFORE UPDATE pour `date_modification`).
+  * Modèles Eloquent alignés sur le schéma, avec casts explicites et UUID
+    générés côté application (contourne le problème de récupération des UUID
+    par défaut PostgreSQL).
+  * Seeder Sprint 1 désormais enveloppé dans `DB::transaction`.
+  * `tests/TestCase.php` protège la base de développement en forçant
+    `erp_eglise_test`.
+
+Principaux risques
+------------------
+  1. Reconstruction impossible : ni `migrate:fresh --seed`, ni `db:seed` sur la
+     base existante, ni `migrate` seul ne produisent un état conforme.
+  2. Régression fonctionnelle : après migration fraîche, `POST /api/v1/.../membre`
+     et l'affectation à une famille d'impact échouent (colonne inexistante).
+  3. Intégrité métier : la règle des Familles des Disciples est déclarative et
+     contournable.
+  4. Sécurité : l'application et les tests utilisent un rôle PostgreSQL
+     SUPERUSER avec BYPASSRLS.
+  5. Traçabilité : l'auteur des changements de statut est perdu.
+
+Problèmes les plus urgents (P0)
+-------------------------------
+  * Aligner modèle `Membre` / seeder / services sur la suppression de
+    `famille_impact_id` (ou revenir sur la suppression), et fournir une
+    migration de convergence non destructive.
+  * Rendre la migration 000017 réellement applicable (elle ne l'est pas sur la
+    base de dev) et rétablir un chemin de reconstruction vert.
+  * Créer les données de référence (site + départements) avant l'étape 8 du
+    seeder.
+
+Limites de l'audit
+------------------
+  * Aucune migration, aucun seeder, aucun test applicatif n'a été exécuté
+    (interdiction explicite + risque d'altération). Les conclusions de
+    reconstruction sont donc issues de l'analyse statique, du schéma réellement
+    présent dans les bases `erp_eglise` et `erp_eglise_test`, et de requêtes SQL
+    en lecture seule.
+  * Le comportement exact de `migrate:fresh` vis-à-vis de la séquence autonome
+    n'a pas été observé (déduit du comportement PostgreSQL).
+  * Aucun accès à un environnement isolé de test n'a été utilisé.
+
+================================================================================
+2. PÉRIMÈTRE ET MÉTHODE
+================================================================================
+
+Responsabilités retenues (Bienvenu)
+-----------------------------------
+D'après le README racine (« Bienvenu : PostgreSQL et modèle métier »), les
+documents `backend/docs/PHASE0_DOCUMENTATION_EQUIPE.md` et
+`backend/docs/SPRINT1_DOCUMENTATION_EQUIPE.md` (« Auteur : Bienvenu (Lead
+Database & Business Backend) »), et les commits de migrations/seeders, le
+périmètre réel est :
+
+  * schéma PostgreSQL et migrations (backend/database/migrations) ;
+  * modèles Eloquent de la couche métier (backend/app/Models) ;
+  * seeders et données de test (backend/database/seeders) ;
+  * triggers, fonctions, séquences, vues et contraintes PostgreSQL ;
+  * tests de la couche base de données ;
+  * documentation technique DB (backend/docs) ;
+  * configuration Docker/PostgreSQL nécessaire à ce périmètre.
+
+Le frontend et l'API HTTP relèvent d'Elie et de Jean François. Ils n'ont été
+examinés que comme dépendances de contrat de données (impact de la suppression
+d'une colonne sur les services et ressources de l'API).
+
+Fichiers et composants examinés
+-------------------------------
+Migrations :
+  2026_09_15_000001_create_erp_core_functions.php
+  2026_09_15_000007_create_erp_organisation.php
+  2026_09_15_000008_create_erp_audit_logs.php
+  2026_09_15_000009_create_erp_familles_impact.php
+  2026_09_15_000010_create_erp_membre_table.php
+  2026_09_15_000014_create_erp_presence_famille_impact_table.php
+  2026_09_15_000015_create_erp_historique_statut_membre_table.php
+  2026_09_15_000016_alter_erp_famille_impact_columns.php
+  2026_09_15_000017_create_familles_disciples.php
+  2026_10_18_000010_create_erp_pilotage.php
+  2026_10_23_000011_add_position_famille_impact.php
+
+Modèles :
+  Membre.php, FamilleImpact.php, Famille.php, Departement.php,
+  AppartenirFamille.php, AffecterFamilleImpact.php, PresenceFamilleImpact.php,
+  HistoriqueStatutMembre.php, Personne.php, User.php,
+  FamilleDisciple.php, CompositionFamilleDisciple.php
+
+Seeders :
+  DatabaseSeeder.php, Phase0ScenarioSeeder.php,
+  Sprint1MembresFamillesSeeder.php
+
+Dépendances de contrat examinées :
+  app/services/Sprint1/MembreService.php
+  app/services/Sprint1/SuiviMembreService.php
+  app/services/Famille/AffectationFamilleService.php
+  app/Http/Resources/Sprint1/MembreResource.php
+  app/Http/Requests/Sprint1/StoreMembreRequest.php
+
+Tests :
+  inventaire complet de backend/tests (16 fichiers, 69 méthodes)
+  backend/tests/Feature/Sprint1/Sprint1Test.php
+  backend/tests/TestCase.php
+  backend/phpunit.xml
+
+Documentation :
+  backend/docs/SPRINT1_DOCUMENTATION_EQUIPE.md
+  backend/docs/PHASE0_DOCUMENTATION_EQUIPE.md
+  README.md (racine)
+
+Configuration :
+  docker-compose.yml, backend/.env.example, backend/phpunit.xml,
+  backend/tests/TestCase.php, backend/composer.json
+
+Commandes exécutées (toutes en lecture seule)
+---------------------------------------------
+  git rev-parse --show-toplevel
+  git branch --show-current
+  git rev-parse HEAD
+  git log / git show (lecture de l'historique et des diffs)
+  git status --porcelain=v1
+  php -l (contrôle syntaxique de 7 fichiers)
+  php -r (instanciation d'un modèle Eloquent sans connexion, contrôle des
+         attributs conservés par le mass assignment)
+  docker ps / docker compose ps / docker inspect (lecture seule)
+  docker exec erp-postgres psql -U erp_user -d erp_eglise -c "SELECT ..." / "\d ..."
+  docker exec erp-postgres psql -U erp_user -d erp_eglise_test -c "SELECT ..." / "\d ..."
+
+Commandes volontairement NON exécutées
+-------------------------------------
+  php artisan migrate
+  php artisan migrate:fresh
+  php artisan migrate:fresh --seed
+  php artisan migrate:refresh
+  php artisan db:seed
+  php artisan db:wipe
+  php artisan test / vendor/bin/phpunit (RefreshDatabase = réinitialisation de
+      la base erp_eglise_test)
+  toute commande DDL/DML
+  toute installation ou mise à jour de dépendance
+  toute commande git destructive (checkout/reset/clean/commit)
+
+Méthode de vérification
+-----------------------
+  1. Analyse statique des fichiers (lecture ligne à ligne, recherche ciblée).
+  2. Vérification de cohérence code <-> schéma réel via les catalogues
+     PostgreSQL (`\d`, information_schema, pg_proc, pg_sequences, pg_roles).
+  3. Vérification de la dérive entre le code et les deux bases existantes
+     (`erp_eglise`, `erp_eglise_test`).
+  4. Vérification de l'historique Git (commit rétroactif de migration).
+  5. Contrôle syntaxique PHP.
+  6. Contrôle d'exécution PHP ciblé, sans base de données.
+
+================================================================================
+3. ÉTAT INITIAL DU PROJET
+================================================================================
+
+Branche Git
+  develop
+
+Commit HEAD
+  33cf5fdacc12077a637eaa59b95541d53d2bbbd5
+  « Corrections effectuées (périmètre Bienvenu uniquement) »
+  Auteur : Bienvenu Karagi — 2026-10-31 10:46:31 +0100
+
+État Git initial
+  Arbre de travail PROPRE (`git status --porcelain=v1` ne renvoie rien).
+  Aucun fichier non suivi, aucune modification non commitée.
+
+Contenu du commit HEAD (15 fichiers)
+  A backend/.mcp.json
+  M backend/AGENTS.md
+  M backend/CLAUDE.md
+  A backend/app/Models/CompositionFamilleDisciple.php
+  A backend/app/Models/FamilleDisciple.php
+  M backend/app/Models/FamilleImpact.php
+  A backend/boost.json
+  M backend/composer.json
+  M backend/composer.lock
+  M backend/database/migrations/2026_09_15_000010_create_erp_membre_table.php
+  A backend/database/migrations/2026_09_15_000017_create_familles_disciples.php
+  M backend/database/seeders/Sprint1MembresFamillesSeeder.php
+  A backend/docs/PHASE0_DOCUMENTATION_EQUIPE.md
+  M backend/docs/SPRINT1_DOCUMENTATION_EQUIPE.md
+  A backend/opencode.json
+
+Modifications préexistantes
+  Aucune modification non commitée au début de l'audit. Le commit HEAD contient
+  lui-même les corrections à auditer (dont la modification rétroactive de la
+  migration 000010).
+
+État Git final
+  Identique à l'état initial, à l'exception de ce rapport non suivi :
+  `?? docs/`
+  Aucun autre fichier n'a été créé, modifié ou supprimé par l'audit.
+
+Limites
+  L'audit n'a pas pu distinguer d'éventuelles modifications antérieures du
+  contenu des migrations au-delà de ce que l'historique Git expose. L'historique
+  montre bien un commit dédié (33cf5fd) modifiant 000010 après son application.
+
+================================================================================
+4. ARCHITECTURE ET CONCEPTION DES DONNÉES
+================================================================================
+
+Points forts
+------------
+  * Séparation claire identité (`personne`) / appartenance ecclésiale
+    (`membre`) / regroupement (`famille`, `relation_familiale`) / groupe
+    communautaire (`famille_impact`, `affecter_famille_impact`) /
+    présence (`presence_famille_impact`) / historisation.
+  * Clés primaires UUID cohérentes (`gen_random_uuid()`), clés étrangères
+    nommées, index sur les colonnes de jointure et de filtre.
+  * Contrainte UNIQUE sur `membre.id_personne` (une personne = un membre max).
+  * Index partiel unique `uq_affectation_membre_active` : un membre n'a qu'une
+    affectation active — correctement défini et effectivement présent en base.
+  * CHECK sur `statut_membre`, `type_relation`, `nouveau_statut`, `sexe`,
+    `statut` de `personne`.
+  * Triggers PostgreSQL isolés dans des fonctions nommées, avec messages
+    d'erreur explicites.
+
+Incohérences et défauts confirmés
+---------------------------------
+  1. Triple source de vérité pour l'appartenance à une famille d'impact :
+     `membre.famille_impact_id` (héritage Phase 0), `appartenir_famille`
+     (Phase 0, encore utilisé par l'API) et `affecter_famille_impact`
+     (Sprint 1). La suppression de `membre.famille_impact_id` est annoncée mais
+     non appliquée en base, et le code continue de l'utiliser.
+  2. `famille_disciple` / `composition_famille_disciple` ne portent aucune
+     contrainte de cohérence temporelle (`periode_fin >= periode_debut`,
+     `date_fin >= date_debut`).
+  3. `composition_famille_disciple.departement_origine_id` est une déclaration
+     libre : rien ne garantit que le membre est réellement affecté à ce
+     département (`affecter_departement` n'est jamais consulté).
+  4. `famille_disciple.responsable_id` n'est pas obligatoire et n'est pas
+     contraint à appartenir à la composition du groupe.
+  5. `presence_famille_impact` n'a aucune unicité sur
+     (`id_affectation`, `date_reunion`) : doublons possibles et observés.
+  6. `relation_familiale` n'interdit pas l'auto-relation, les doublons ni les
+     incohérences de dates.
+  7. `personne` ne possède pas de colonne email ; le dédoublonnage annoncé
+     (nom, téléphone, email) n'est pas outillé.
+  8. `membre` conserve un index `idx_membre_personne` redondant avec la
+     contrainte UNIQUE (`membre_id_personne_key`).
+
+Risques
+-------
+  * Corruption logique par déclaration d'un département non réel.
+  * Historique de composition perdu en cas de suppression d'un groupe
+    (`ON DELETE CASCADE`).
+  * Perte de traçabilité de l'affectation famille d'impact (deux tables
+    alimentées de façon partiellement indépendante).
+  * Croissance non maîtrisée des doublons de présence.
+
+Améliorations recommandées
+--------------------------
+  * Choisir UNE source de vérité pour l'appartenance famille d'impact et
+    supprimer/archiver les deux autres (avec migration de convergence).
+  * Ajouter les CHECK temporels et un index partiel d'unicité sur les
+    compositions actives.
+  * Vérifier le département via `affecter_departement` (contrainte applicative
+    ou vue corrigée).
+  * Ajouter UNIQUE (`id_affectation`, `date_reunion`) sur les présences.
+  * Documenter et appliquer une politique de suppression unique (RESTRICT
+    partout ou CASCADE justifié).
+
+================================================================================
+5. AUDIT DES MIGRATIONS
+================================================================================
+
+Résultats détaillés
+-------------------
+  * 18 migrations sont présentes dans backend/database/migrations.
+  * 17 sont enregistrées dans la base `erp_eglise` (batch 1).
+  * 18 sont enregistrées dans la base `erp_eglise_test`.
+
+Dépendances et ordre d'exécution
+--------------------------------
+  * 000010 (table `membre`) crée un trigger `trg_historique_statut_membre` qui
+    insère dans `historique_statut_membre`, table créée seulement par 000015.
+    La création du trigger réussit, mais toute mise à jour de `membre` entre
+    000010 et 000015 échouerait. CONFIRMÉ par lecture, NON REPRODUIT.
+  * 000010 crée la séquence `seq_numero_membre_2026` ; cette séquence n'est ni
+    possédée par la table ni supprimée par `down()`.
+
+Cohérence du schéma et reproductibilité
+---------------------------------------
+  * PROBLÈME MAJEUR : la migration 000010 a été modifiée APRÈS son application.
+    Preuve dans la base `erp_eglise` :
+      - `membre.famille_impact_id` existe encore ;
+      - `idx_membre_famille_impact` existe encore ;
+      - la séquence `seq_numero_membre_2026` est ABSENTE de `pg_sequences` ;
+      - `pg_proc.generer_numero_membre` contient encore `SELECT COUNT(*) FROM
+        membre`, et non `NEXTVAL`.
+    Conséquence : `php artisan migrate` ne rejouera pas 000010 ; la base de
+    développement restera dans un état hybride.
+  * PROBLÈME MAJEUR : la migration 000017 n'est PAS appliquée dans `erp_eglise`
+    (`to_regclass('public.famille_disciple')` = NULL,
+    `composition_famille_disciple` = NULL, vue = NULL), alors qu'elle EST
+    appliquée dans `erp_eglise_test`. Le code des nouveaux modèles échouera donc
+    sur l'environnement de développement courant.
+  * La base `erp_eglise_test` a bien le schéma cible (colonne `famille_impact_id`
+    absente, tables et vue présentes), ce qui prouve que le fichier de migration
+    produit le bon schéma sur une base neuve — mais aussi que la base de dev est
+    en dérive.
+
+Risques de perte de données
+---------------------------
+  * `migrate:fresh` est la seule voie pour aligner une base neuve sur le fichier
+    000010 ; elle détruit toutes les données.
+  * `down()` de 000010 ne supprime pas la séquence : résidu après rollback.
+  * `down()` de 000017 supprime la vue puis les tables : ordre correct, mais la
+    perte des compositions est définitive.
+
+Problèmes de compatibilité
+--------------------------
+  * `DB::unprepared` avec SQL brut est cohérent avec le style Phase 0, mais
+    interdit le `--pretend` fiable et rend le rollback partiel fragile.
+  * `gen_random_uuid()` est natif en PostgreSQL 16 (aucune extension requise) :
+    ce point est correct malgré l'absence de `pgcrypto`.
+
+================================================================================
+6. AUDIT DES MODÈLES ET RELATIONS
+================================================================================
+
+Cohérence avec les migrations
+-----------------------------
+  * `FamilleImpact` : `$fillable` et `$casts` désormais complets et cohérents
+    avec les colonnes réelles (`capacite_max`, `jour_reunion`, `heure_reunion`,
+    `lieu_reunion`, `responsable_id`, `adjoint_id`, `latitude`, `longitude`).
+    Relations `responsable()`, `adjoint()`, `affectations()` correctes.
+  * `FamilleDisciple` / `CompositionFamilleDisciple` : clés primaires, clés
+    étrangères, timestamps et casts cohérents avec 000017.
+  * `Membre` : INCOHÉRENT. `famille_impact_id` figure encore dans `$fillable`
+    (ligne 22) et la relation `familleImpact()` (lignes 37-40) référence une
+    colonne supprimée du schéma cible.
+  * `Membre::$casts['actif']` (ligne 29) référence une colonne qui n'existe pas.
+  * `FamilleImpact` caste `heure_reunion` en `datetime` alors que la colonne est
+    de type `TIME` : la valeur est interprétée avec la date du jour et le
+    fuseau de l'application. Fragile, non bloquant.
+
+Relations correctes
+-------------------
+  * `Personne` <-> `Membre` (1:1 via UNIQUE).
+  * `Famille` -> `Personne` (responsable légal).
+  * `FamilleImpact` -> `AffecterFamilleImpact` (1:N).
+  * `CompositionFamilleDisciple` -> `FamilleDisciple`, `Membre`, `Departement`.
+  * `HistoriqueStatutMembre` -> `User` (change_par).
+
+Relations incorrectes ou non vérifiées
+--------------------------------------
+  * `Membre::familleImpact()` : pointe vers une colonne absente du schéma cible.
+    CONFIRMÉ (statique).
+  * Aucune relation `FamilleDisciple::membres()` directe (passage obligatoire par
+    `compositions()`), ce qui est acceptable mais peu pratique.
+  * Aucune relation inverse `Departement::famillesDisciple()`.
+
+Conventions
+-----------
+  * Convention personnalisée assumée : PK `id_<table>`, UUID non incrémental,
+    timestamps `date_creation` / `date_modification`. Cohérente sur l'ensemble
+    du périmètre.
+  * `CompositionFamilleDisciple::$timestamps = false` est correct (la table n'a
+    ni `created_at` ni `updated_at`), mais `date_debut` reste nullable.
+
+Risques N+1
+-----------
+  * `SuiviMembreService::presences()` utilise `with('affectation.membre.personne')`
+    : correct.
+  * `MembreService::lister()` utilise `with('personne')` : correct.
+  * `CompositionFamilleDisciple` n'est jamais chargée en eager loading dans le
+    code examiné (pas d'usage API à ce jour).
+
+================================================================================
+7. AUDIT DES SEEDERS ET DES DONNÉES
+================================================================================
+
+Ordre d'exécution
+-----------------
+  `DatabaseSeeder` appelle `Phase0ScenarioSeeder` puis
+  `Sprint1MembresFamillesSeeder`.
+
+Cohérence avec les migrations et intégrité référentielle
+--------------------------------------------------------
+  * CORRECT : le seeder Sprint 1 génère explicitement les UUID et les passe aux
+    modèles (`id_famille`, `id_membre`, `id_affectation`, etc.), ce qui évite le
+    défaut Eloquent/PostgreSQL sur les UUID par défaut.
+  * CORRECT : le seeder est enveloppé dans `DB::transaction(...)`, donc un échec
+    annule les écritures du Sprint 1.
+  * INCORRECT : `Membre::create([... 'famille_impact_id' => null])` (ligne 124)
+    alimente une colonne absente du schéma cible. Vérifié par exécution PHP :
+    le mass assignment conserve bien l'attribut `famille_impact_id`, donc
+    l'INSERT l'inclut.
+  * INCORRECT : l'étape 8 dépend de `departement`, mais AUCUN seeder ne crée de
+    site ni de département. Preuve : `Phase0ScenarioSeeder` ne contient aucun
+    appel à `Site::` ou `Departement::` ; il ne crée que l'utilisateur, le rôle
+    et les permissions. Sur base neuve, `$departementsActifs` est vide et
+    l'étape 8 est silencieusement ignorée.
+  * INCORRECT : `change_par` est passé à `Membre::update()` (ligne 454) alors
+    que `change_par` n'est pas une colonne de `membre` et n'est pas dans
+    `$fillable`. Eloquent l'ignore silencieusement. Preuve en base :
+    12/12 lignes de `historique_statut_membre` ont `change_par IS NULL`.
+
+Validité des données générées (base `erp_eglise`)
+-------------------------------------------------
+  * Volumétrie réelle observée : 65 membres, 25 familles, 72 relations
+    familiales, 6 familles d'impact, 46 affectations, 251 présences,
+    12 historiques, 1 département, 1 site.
+  * 3 membres ont une `date_integration` FUTURE (maximum observé :
+    2026-12-26) à cause du tirage aléatoire 2020-2026.
+  * 14 membres au statut `inactif` ou `archive` possèdent encore une affectation
+    famille d'impact active.
+  * 2 doublons de présence observés (même `id_affectation`, même
+    `date_reunion`).
+  * 67 personnes pour 65 membres : les 2 personnes excédentaires proviennent de
+    l'environnement (utilisateur/compte), pas du seeder Sprint 1.
+
+Reproductibilité et idempotence
+-------------------------------
+  * Le seeder est aléatoire (`array_rand`, `rand`) sans seed Faker : deux
+    exécutions produisent des données différentes.
+  * Le seeder n'est pas idempotent : une seconde exécution viole
+    `famille_impact.code` / `famille_impact.nom` (UNIQUE) et échoue, avec
+    rollback de l'ensemble.
+  * Sur la base existante, `db:seed` échoue donc à l'étape 4 (codes déjà
+    présents) même si l'étape 1 passe (colonne encore présente).
+
+Dépendances entre seeders
+-------------------------
+  * Sprint 1 dépend de `User::first()` (fallback) : tolérant.
+  * Sprint 1 dépend de `departement` pour l'étape 8 : dépendance non satisfaite
+    par les seeders. C'est la cause directe du no-op.
+
+Risques
+-------
+  * Données de test non conformes aux règles métier (dates futures, archives
+    avec affectation active).
+  * Impossibilité de reconstruire un jeu de données de référence stable.
+  * Confiance excessive dans des volumétries non reproductibles.
+
+================================================================================
+8. AUDIT DES TRIGGERS, FONCTIONS ET VUES
+================================================================================
+
+Inventaire (base `erp_eglise`)
+------------------------------
+  Fonctions :
+    update_date_modification()            (Phase 0)
+    prevent_active_personne_delete()      (Phase 0)
+    generer_numero_membre()               (Sprint 1 — version COUNT(*))
+    enregistrer_historique_statut_membre()(Sprint 1)
+    prevent_active_membre_delete()        (Sprint 1)
+  Triggers sur `membre` :
+    trg_numero_membre_auto        BEFORE INSERT
+    trg_historique_statut_membre  AFTER UPDATE
+    trg_prevent_active_membre_delete BEFORE DELETE
+    trg_membre_modification       BEFORE UPDATE
+  Triggers sur `personne` :
+    trg_personne_modification, trg_prevent_active_personne_delete
+
+Rôle de chaque objet
+--------------------
+  * `generer_numero_membre` : génère `MEM-<année>-<séquence>` si le numéro est
+    vide. Version livrée en base : `COUNT(*) + 1` (fragile). Version du fichier :
+    `NEXTVAL('seq_numero_membre_2026')` (plus robuste).
+  * `enregistrer_historique_statut_membre` : insère une ligne à chaque
+    changement de statut, avec `change_par = NULL` codé en dur.
+  * `prevent_active_membre_delete` : interdit la suppression d'un membre actif.
+  * `trg_membre_modification` : met à jour `date_modification`.
+  * Vue `vue_completude_famille_disciple` : présente uniquement dans
+    `erp_eglise_test` ; exécution réussie, 5 colonnes, 0 ligne.
+
+Vérifications effectuées
+------------------------
+  * Lecture de `pg_proc.prosrc` : la base de dev utilise encore `COUNT(*)`.
+  * Lecture de `pg_sequences` : `seq_numero_membre_2026` absente.
+  * Lecture de `pg_trigger` / `\d membre` : 4 triggers présents.
+  * Exécution `SELECT * FROM vue_completude_famille_disciple` sur
+    `erp_eglise_test` : succès, colonnes conformes.
+
+Défauts observés
+----------------
+  * Le générateur `COUNT(*)` est incorrect après suppression : si un membre non
+    actif est supprimé, le compteur diminue et le prochain numéro réutilise une
+    valeur déjà attribuée -> violation UNIQUE. Confirmé par analyse.
+  * Le trigger d'historique ne peut pas connaître l'auteur (NULL en dur) ; la
+    correction applicative est faite a posteriori par `MembreService`
+    (UPDATE de la dernière ligne), ce qui est fragile.
+  * La vue ne vérifie pas l'appartenance réelle du membre au département.
+  * La vue ne filtre ni le statut du membre, ni `date_fin IS NULL` ; seule la
+    colonne `actif` de la composition est filtrée.
+  * Si aucun département n'est actif, la condition `>= 0` rend toutes les
+    familles « COMPLET » (vérité vacuelle).
+  * Alias accentué `nb_departements_représentes` : valide en PostgreSQL 16 mais
+    dépendant de l'encodage client et mal orthographié.
+
+Scénarios non vérifiés
+----------------------
+  * Comportement sous concurrence de deux INSERT simultanés (séquence vs COUNT).
+  * Rollback partiel d'une transaction contenant un changement de statut.
+  * Comportement de la vue après suppression d'un département (RESTRICT).
+  * Comportement du trigger de suppression combiné aux FK RESTRICT.
+
+================================================================================
+9. AUDIT DE SÉCURITÉ ET D'INTÉGRITÉ
+================================================================================
+
+Risques de sécurité
+-------------------
+  * Le rôle PostgreSQL `erp_user` est SUPERUSER, CREATEDB, CREATEROLE et
+    BYPASSRLS. Preuve : `SELECT rolname, rolsuper, ... FROM pg_roles`.
+    Impact : toute injection SQL ou compromission applicative donne le contrôle
+    total du cluster et de toutes les bases (dont `erp_eglise_test`).
+  * Identifiants de développement en clair dans des fichiers versionnés :
+      - docker-compose.yml (utilisateur/mot de passe PostgreSQL, Redis,
+        MinIO, pgAdmin) ;
+      - backend/phpunit.xml (utilisateur/mot de passe PostgreSQL) ;
+      - backend/tests/TestCase.php (mêmes identifiants en dur) ;
+      - backend/.env.example (valeurs par défaut) ;
+      - README.md (identifiants pgAdmin).
+    Les valeurs ne sont pas reproduites ici. Rotation et externalisation
+    recommandées.
+  * `backend/.env` n'est pas suivi (couvert par .gitignore) : point positif.
+  * `frontend/.env` est suivi : pas de secret observé, mais l'habitude est
+    risquée.
+  * `phpunit.xml` et `TestCase.php` forcent `DB_HOST=postgres` : les tests ne
+    peuvent pas tourner hors Docker et la configuration est dupliquée.
+
+Protection des données
+----------------------
+  * Les données personnelles (nom, prénom, date de naissance, téléphone,
+    adresse) sont stockées sans chiffrement applicatif : acceptable pour un ERP
+    interne, à documenter.
+  * Aucune policy RLS, aucune séparation de rôles en lecture/écriture.
+  * UUID exposés dans les URLs (l'API utilise `/membres/{uuid}`) : risque
+    d'énumération faible mais réel, déjà signalé dans la documentation.
+
+Intégrité relationnelle
+-----------------------
+  * FK nombreuses et correctement orientées.
+  * `affecter_famille_impact.id_famille_impact` est NOT NULL : correct.
+  * `composition_famille_disciple` utilise CASCADE sur `membre` et sur
+    `famille_disciple`, mais RESTRICT sur `departement` : politique hybride.
+  * `historique_statut_membre` est mutable (aucun trigger d'immuabilité) ;
+    l'API modifie la ligne pour renseigner `change_par`.
+
+Historisation
+-------------
+  * Le statut est historisé automatiquement : point fort.
+  * L'auteur n'est pas historisé par le trigger (NULL), et l'API corrige la
+    dernière ligne : perte possible en cas de concurrence.
+  * Les affectations et compositions ne sont pas historisées par trigger ;
+    seule la table elle-même conserve `date_debut`/`date_fin`/`actif`.
+  * `audit_log` existe mais aucun trigger ne l'alimente : la traçabilité
+    « automatique » annoncée n'est pas démontrée.
+
+Gestion des erreurs
+-------------------
+  * `MembreService::creer` attrape toute `QueryException` et renvoie 409
+    « déjà membre » : cela masque les erreurs SQL réelles (dont l'erreur
+    `undefined column`), ce qui rend le diagnostic difficile — et transforme la
+    régression actuelle en faux conflit métier.
+
+================================================================================
+10. AUDIT DES TESTS
+================================================================================
+
+Tests présents
+--------------
+  * 16 fichiers de tests, 69 méthodes.
+  * Un seul test aborde le Sprint 1 :
+    tests/Feature/Sprint1/Sprint1Test.php, méthode
+    `test_le_sprint_1_enregistre_membre_regroupement_et_presence`.
+  * Aucun test :
+      - de migration ;
+      - de trigger (numéro, historique, protection suppression) ;
+      - de contrainte CHECK/UNIQUE/FK ;
+      - de vue ;
+      - de seeder ;
+      - de transaction/rollback ;
+      - de concurrence.
+  * Une seule factory (`UserFactory`). Aucune factory pour `Personne`,
+    `Membre`, `Famille`, `FamilleImpact`, etc.
+
+Tests exécutés
+--------------
+  AUCUN. Exécution refusée volontairement : `RefreshDatabase` réinitialise la
+  base `erp_eglise_test`, ce qui constitue une altération de données et sort du
+  cadre de la mission.
+
+Résultats observés
+------------------
+  * Base `erp_eglise_test` : 18 migrations appliquées, `membre` SANS
+    `famille_impact_id`, tables `famille_disciple` présentes, vue fonctionnelle,
+    0 membre.
+  * Analyse statique du test Sprint 1 : il appelle
+    `POST /api/v1/personnes/{id}/membre`. `MembreService::creer` envoie
+    `famille_impact_id` dans l'INSERT. Sur le schéma de test (colonne absente),
+    l'erreur `SQLSTATE 42703` est attrapée par `catch (QueryException)` et
+    transformée en `abort(409)`. Le test attend `assertCreated()` (201) :
+    il est donc ROUGE.
+  * Le même test appelle `POST /api/v1/personnes/{id}/familles-impact`, qui
+    traverse `SuiviMembreService::ouvrir` et écrit `famille_impact_id` :
+    deuxième point de rupture.
+
+Couverture estimée
+------------------
+  * Couverture automatisée de la couche DB (migrations, triggers, contraintes,
+    vues, seeders) : 0 %.
+  * Couverture indirecte du Sprint 1 : 1 méthode sur 69 (≈ 1,4 %), non
+    exécutable en l'état.
+  * Méthode de calcul : inventaire exhaustif des méthodes `test*` par recherche
+    dans `backend/tests` et confrontation aux fichiers du périmètre.
+
+Scénarios manquants et tests recommandés
+----------------------------------------
+  Voir section 16.
+
+================================================================================
+11. AUDIT DOCKER ET GIT
+================================================================================
+
+Docker — points forts
+---------------------
+  * Projet Compose nommé, réseau dédié, volumes nommés, healthcheck Mailpit.
+  * PostgreSQL 16, Redis, MinIO, Mailpit, pgAdmin présents.
+  * Le backend monte `./backend` : le code est bien celui du dépôt.
+
+Docker — problèmes de configuration
+-----------------------------------
+  * DÉSYNCHRONISATION ENTRE LE FICHIER ET LA STACK EN COURS.
+    `docker compose ps` et `docker inspect` montrent :
+      - conteneurs `erp-postgres`, `erp-backend`, `erp-frontend`,
+        `erp-pgadmin`, `erp-redis`, `erp-minio`, `erp-mailpit` ;
+      - backend publié sur 8000 -> 8000 ;
+      - frontend publié sur 3000 -> 5173 ;
+      - pgAdmin publié sur 5050 -> 80 ;
+      - PostgreSQL publié sur 5432 (contrairement au README).
+    Le fichier `docker-compose.yml` déclare :
+      - `container_name: erp_centre_impact_chr-tienne-postgres` (etc.) ;
+      - backend 8000 -> 80 ;
+      - frontend 3000 -> 3000 ;
+      - pgAdmin 8088 -> 80 ;
+      - PostgreSQL non publié.
+    Les conteneurs ont été créés il y a 11 jours à partir d'une version
+    antérieure du fichier. Conséquence : le prochain `docker compose up -d`
+    recréera des conteneurs avec d'autres noms tout en laissant les anciens
+    orphelins ; deux conteneurs PostgreSQL pourraient se retrouver sur le même
+    volume nommé. Risque de corruption de données et d'indisponibilité.
+  * Le README décrit la configuration cible (non celle en cours) : préfixe
+    `erp_centre_impact_chr-tienne-`, port 8088, base non publiée.
+
+Persistance et reproductibilité
+-------------------------------
+  * Volumes nommés : correct.
+  * Aucun script d'initialisation SQL versionné ; tout passe par les migrations.
+  * Aucun healthcheck pour PostgreSQL, Redis, MinIO.
+  * Aucune CI (`.github` absent) : aucune vérification automatique des
+    migrations, du seeder ou des tests.
+
+Git et collaboration
+--------------------
+  * Historique lisible, messages explicites.
+  * Commit HEAD hors périmètre : sous un titre « périmètre Bienvenu uniquement »,
+    il inclut AGENTS.md, CLAUDE.md, composer.json, composer.lock, .mcp.json,
+    boost.json, opencode.json et un document Phase 0. Mélange de préoccupations
+    et de responsabilités.
+  * Ajout de la dépendance de développement `laravel/boost` dans ce même commit :
+    changement de dépendance non lié au schéma.
+  * Modification rétroactive de la migration 000010 après application : cas
+    typique de dérive de schéma, qui aurait dû passer par une NOUVELLE migration.
+  * Fichiers générés/outillage versionnés (`.mcp.json`, `boost.json`,
+    `opencode.json`) : à débattre, mais sans secret observé.
+
+Possibilité de retrouver l'état initial
+---------------------------------------
+  * Oui pour le code (Git).
+  * Non pour la base : l'état du schéma de `erp_eglise` n'est reproductible par
+    aucun chemin automatique documenté et fonctionnel.
+
+================================================================================
+12. AUDIT DOCUMENTAIRE
+================================================================================
+
+Documents cohérents avec le code
+--------------------------------
+  * `backend/docs/PHASE0_DOCUMENTATION_EQUIPE.md` reste exact sur les
+    migrations, les modèles et les triggers Phase 0 (structure).
+  * `backend/docs/SPRINT1_DOCUMENTATION_EQUIPE.md` est exact sur la structure
+    générale des tables créées avant les corrections.
+
+Affirmations non démontrées ou contredites
+------------------------------------------
+  1. SPRINT1, ligne 25 : `membre` possède encore `famille_impact_id` -> faux
+     dans le schéma cible.
+  2. SPRINT1, ligne 68 : `idx_membre_famille_impact` listé -> supprimé du
+     fichier de migration.
+  3. SPRINT1, ligne 101 : exemple de membre avec `famille_impact_id` -> faux.
+  4. SPRINT1, ligne 179 : relation `$membre->familleImpact` proposée à JF ->
+     pointe vers une colonne supprimée.
+  5. SPRINT1, lignes 290-300 : « 7 nouveaux fichiers » de migration -> 8 avec
+     000017.
+  6. SPRINT1, lignes 302-311 : « 6 nouveaux modèles » -> 8 avec
+     `FamilleDisciple` et `CompositionFamilleDisciple`.
+  7. SPRINT1, lignes 88-92 : volumétries « ~40-60 relations », « ~40
+     affectations », « ~150-200 présences » -> 72, 46 et 251 observés.
+  8. SPRINT1, lignes 373-379 : « 8 tables créées (+ 2 tables Familles des
+     Disciples) » -> double comptage ; « 11 scénarios validés » -> aucune
+     validation automatisée ; « 3 Familles des Disciples » -> impossible sur
+     base neuve par le seeder actuel.
+  9. SPRINT1, lignes 3 et 385-387 : date « 18 septembre 2026 » alors que le
+     commit de correction est daté du 31 octobre 2026.
+ 10. SPRINT1, ligne 64 : « Toutes les clés étrangères : ON DELETE RESTRICT ou
+     SET NULL » -> contredit les deux CASCADE de 000017.
+ 11. PHASE0, lignes 297-312 : 12 scénarios annoncés validés, dont site,
+     département, affectation, audit -> le `Phase0ScenarioSeeder` actuel ne crée
+     ni site, ni département, ni personne, ni audit.
+ 12. PHASE0, lignes 411-425 : volumétrie annoncée (2 sites, 1 département,
+     2 personnes, 1 audit) -> non produite par le seeder actuel.
+ 13. PHASE0, lignes 475-479 : « Phase 0 terminée et validée, 8/8 scénarios
+     passés » -> aucune preuve automatisée.
+
+Informations obsolètes ou manquantes
+------------------------------------
+  * Aucune mention de `appartenir_famille` (pourtant utilisée par l'API).
+  * Aucune mention de la dérive de schéma ni de la nécessité de `migrate:fresh`.
+  * Aucune procédure de rollback.
+  * Aucune procédure de vérification des triggers.
+  * Aucune indication sur les tests (absence de tests DB).
+
+================================================================================
+13. REGISTRE COMPLET DES CONSTATS
+================================================================================
+
+Format : ID | Domaine | Gravité | Statut | Confiance
+         Fichier(s)/ligne(s) | Problème | Preuve | Méthode | Impact |
+         Recommandation
+
+--------------------------------------------------------------------------------
+AUD-001 — CRITIQUE — CONFIRMÉ — Confiance élevée
+Domaine : Modèles / Seeders / API (contrat de données)
+Fichiers :
+  backend/app/Models/Membre.php:19-23 et 37-40
+  backend/database/seeders/Sprint1MembresFamillesSeeder.php:124
+  backend/app/services/Sprint1/MembreService.php:66
+  backend/app/services/Sprint1/SuiviMembreService.php:38, 41, 91
+  backend/app/Http/Resources/Sprint1/MembreResource.php:20
+Problème : `membre.famille_impact_id` a été retiré du fichier de migration 000010
+  mais reste utilisé partout dans le code.
+Preuve :
+  - la colonne est absente du schéma de `erp_eglise_test` ;
+  - `Membre::$fillable` contient `famille_impact_id` ;
+  - le seeder passe `famille_impact_id => null` ;
+  - exécution PHP : `(new Membre([...]))->getAttributes()` conserve
+    `famille_impact_id` ;
+  - trois services écrivent cette colonne.
+Méthode : analyse statique + exécution PHP ciblée + schéma de test.
+Impact : sur base neuve, `Membre::create()` produit un INSERT contenant une
+  colonne inexistante -> SQLSTATE 42703 -> `migrate:fresh --seed` échoue ;
+  `POST /membres` et l'affectation famille d'impact échouent (ou renvoient un
+  faux 409 à cause du catch générique).
+Recommandation : choisir la cible (colonne supprimée ou conservée), puis
+  aligner modèle, seeder, services, ressource et tests dans une seule migration
+  de convergence. Ne jamais laisser une colonne supprimée dans `$fillable`.
+
+--------------------------------------------------------------------------------
+AUD-002 — CRITIQUE — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : Migrations / Dérive de schéma
+Fichiers :
+  backend/database/migrations/2026_09_15_000010_create_erp_membre_table.php
+  (commit 33cf5fd)
+Problème : migration déjà appliquée modifiée rétroactivement (colonne retirée,
+  séquence ajoutée, trigger remplacé).
+Preuve (base `erp_eglise`) :
+  - `membre.famille_impact_id` et `idx_membre_famille_impact` existent encore ;
+  - `pg_sequences` ne contient PAS `seq_numero_membre_2026` ;
+  - `pg_proc.generer_numero_membre` contient encore `SELECT COUNT(*) FROM membre` ;
+  - `migrations` enregistre 000010 en batch 1, donc elle ne sera pas rejouée.
+Méthode : `\d membre`, `pg_sequences`, `pg_proc`, table `migrations`.
+Impact : la base de dev ne correspond ni à l'ancien ni au nouveau schéma ;
+  `php artisan migrate` ne corrige rien ; seule une reconstruction destructive
+  aligne la base.
+Recommandation : revenir à une stratégie de migrations additives. Une nouvelle
+  migration doit porter le `DROP COLUMN`, la création de séquence et le
+  remplacement de fonction ; documenter la procédure de convergence.
+
+--------------------------------------------------------------------------------
+AUD-003 — CRITIQUE — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : Migrations / Environnement
+Fichier : backend/database/migrations/2026_09_15_000017_create_familles_disciples.php
+Problème : la migration 000017 n'est pas appliquée dans la base de dev.
+Preuve :
+  - `to_regclass('public.famille_disciple')` = NULL dans `erp_eglise` ;
+  - absente de la table `migrations` de `erp_eglise` ;
+  - présente dans `erp_eglise_test`.
+Méthode : requêtes de catalogue + table `migrations`.
+Impact : les modèles `FamilleDisciple` / `CompositionFamilleDisciple` et le
+  seeder étape 8 échouent sur l'environnement courant ; l'application n'est pas
+  dans l'état décrit par la documentation.
+Recommandation : appliquer 000017 via `php artisan migrate` sur la base de dev
+  (action à autoriser explicitement), puis vérifier les objets.
+
+--------------------------------------------------------------------------------
+AUD-004 — ÉLEVÉ — CONFIRMÉ — Confiance élevée
+Domaine : Seeders / Dépendances
+Fichiers :
+  backend/database/seeders/Phase0ScenarioSeeder.php (aucun `Site::`/`Departement::`)
+  backend/database/seeders/Sprint1MembresFamillesSeeder.php:470-472
+Problème : aucun seeder ne crée de site ni de département, alors que l'étape 8
+  en dépend.
+Preuve : recherche exhaustive dans les seeders ; la base de dev contient 1 site
+  et 1 département créés le 2026-10-20, hors seeder ; le `Phase0ScenarioSeeder`
+  actuel ne crée que user/rôle/permissions.
+Méthode : analyse statique + données de la base.
+Impact : sur base neuve, `$departementsActifs` est vide -> 0 Famille des
+  Disciples créée, contrairement à la documentation.
+Recommandation : créer un seeder de référentiel (site + départements) exécuté
+  avant le Sprint 1, ou intégrer cette création à `Phase0ScenarioSeeder` avec
+  des gardes d'idempotence.
+
+--------------------------------------------------------------------------------
+AUD-005 — ÉLEVÉ — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : Historisation / Triggers
+Fichiers :
+  backend/database/migrations/2026_09_15_000010_create_erp_membre_table.php:57-58
+  backend/database/seeders/Sprint1MembresFamillesSeeder.php:450-455
+  backend/app/services/Sprint1/MembreService.php:89-96
+Problème : l'auteur d'un changement de statut n'est jamais enregistré.
+Preuve :
+  - le trigger insère `change_par = NULL` en dur ;
+  - le seeder passe `change_par` à `Membre::update()` : attribut non fillable et
+    colonne inexistante -> ignoré ;
+  - 12/12 lignes de `historique_statut_membre` ont `change_par IS NULL`.
+Méthode : lecture du trigger, exécution PHP du mass assignment, requête SQL.
+Impact : perte de traçabilité ; l'API compense en modifiant la « dernière »
+  ligne d'historique, ce qui est fragile en concurrence.
+Recommandation : propager l'utilisateur au trigger (ex. `SET LOCAL app.user_id`
+  lu par la fonction) ou insérer l'historique côté application dans la même
+  transaction.
+
+--------------------------------------------------------------------------------
+AUD-006 — ÉLEVÉ — CONFIRMÉ (statique) — Confiance élevée
+Domaine : Règle métier / Intégrité
+Fichiers :
+  backend/database/migrations/2026_09_15_000017_create_familles_disciples.php:24, 36-50
+Problème : la règle « au moins 1 membre de chaque département actif » n'est pas
+  garantie. `departement_origine_id` est déclaré librement dans la composition
+  et n'est jamais recoupé avec `affecter_departement`.
+Preuve : la vue ne s'appuie que sur `composition_famille_disciple` ; aucune FK
+  ou contrainte ne relie le membre au département déclaré.
+Méthode : lecture du DDL et de la vue.
+Impact : la règle est déclarative et contournable ; la vue peut afficher
+  « COMPLET » sans qu'aucun membre ne soit réellement affecté au département.
+Recommandation : vérifier l'appartenance réelle (jointure sur
+  `affecter_departement` avec `actif = TRUE`) ou imposer la cohérence par un
+  trigger/une contrainte applicative.
+
+--------------------------------------------------------------------------------
+AUD-007 — ÉLEVÉ — CONFIRMÉ — Confiance élevée
+Domaine : Tests / Qualité
+Fichiers : backend/tests/**, backend/tests/Feature/Sprint1/Sprint1Test.php:16
+Problème : aucun test de la couche base de données ; une seule méthode couvre
+  indirectement le Sprint 1 ; pas de CI.
+Preuve : 69 méthodes inventoriées, 0 test de migration/trigger/contrainte/vue/
+  seeder ; `.github` absent.
+Méthode : inventaire par recherche + inspection de l'arborescence.
+Impact : les régressions de schéma et de seed ne sont détectées qu'en manuel ;
+  la régression actuelle (AUD-001) n'a pas été bloquée.
+Recommandation : ajouter une suite `tests/Feature/Database` (migrations,
+  triggers, contraintes, vues, seeder) et une CI.
+
+--------------------------------------------------------------------------------
+AUD-008 — ÉLEVÉ — CONFIRMÉ — Confiance élevée
+Domaine : Documentation
+Fichier : backend/docs/SPRINT1_DOCUMENTATION_EQUIPE.md:25, 68, 101, 179,
+  290-311, 373-379, 3, 385-387
+Problème : contradictions avec le schéma cible et validations non démontrées.
+Preuve : voir section 12 (points 1 à 10).
+Méthode : comparaison ligne à ligne avec les migrations et la base.
+Impact : l'équipe (JF, Elie) développe contre un contrat de données faux.
+Recommandation : réécrire la documentation à partir du schéma réel, en séparant
+  « implémenté », « vérifié » et « à faire ».
+
+--------------------------------------------------------------------------------
+AUD-009 — ÉLEVÉ — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : Sécurité PostgreSQL
+Fichier : docker-compose.yml:7-14 (rôle applicatif)
+Problème : `erp_user` est SUPERUSER, CREATEDB, CREATEROLE et BYPASSRLS.
+Preuve : `pg_roles` (rolsuper = t, rolbypassrls = t).
+Méthode : requête de catalogue.
+Impact : compromission applicative = contrôle total du cluster.
+Recommandation : créer un rôle applicatif non superuser, avec les seuls droits
+  DML/DDL nécessaires ; réserver le superuser aux migrations.
+
+--------------------------------------------------------------------------------
+AUD-010 — MOYEN — CONFIRMÉ — Confiance élevée
+Domaine : Sécurité / Secrets
+Fichiers : docker-compose.yml:7-14, 38-39, 49-50, 21-22 ;
+  backend/phpunit.xml:27-31 ; backend/tests/TestCase.php:18-20 ;
+  backend/.env.example:13, 19, 24 ; README.md:47, 55, 67
+Problème : identifiants de développement en clair dans des fichiers versionnés
+  (PostgreSQL, Redis, MinIO, pgAdmin).
+Preuve : lecture des fichiers (valeurs non reproduites ici).
+Méthode : inspection.
+Impact : fuite de secrets, risque de réutilisation en production.
+Recommandation : valeurs générées, secrets hors dépôt, rotation, `.env.example`
+  sans secret réel, rôle PostgreSQL dédié.
+
+--------------------------------------------------------------------------------
+AUD-011 — MOYEN — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : Docker / Reproductibilité
+Fichiers : docker-compose.yml:7-14, 25-26, 74-75, 109-111 ; README.md:13-34
+Problème : le fichier Compose ne décrit pas la stack en cours.
+Preuve : `docker compose ps` / `docker inspect` (noms `erp-*`, 8000->8000,
+  3000->5173, 5050->80, 5432 publié) vs fichier (`erp_centre_impact_chr-tienne-*`,
+  8000->80, 3000->3000, 8088->80, 5432 non publié).
+Méthode : inspection Docker en lecture seule.
+Impact : prochain `up` = recréation avec noms différents, conteneurs orphelins,
+  double montage possible du volume PostgreSQL -> risque de corruption.
+Recommandation : aligner le fichier et la stack, ou documenter un `down` propre
+  avant `up`; ajouter un healthcheck PostgreSQL.
+
+--------------------------------------------------------------------------------
+AUD-012 — MOYEN — PROBABLE (non exécuté) — Confiance moyenne
+Domaine : Séquences / Reproductibilité
+Fichier : 2026_09_15_000010_create_erp_membre_table.php:27, 38, 90-100
+Problème : la séquence `seq_numero_membre_2026` n'est pas possédée par la table
+  et n'est pas supprimée par `down()` ; son nom fige l'année 2026 alors que le
+  préfixe suit l'année courante.
+Preuve : DDL de la migration ; comportement PostgreSQL connu (`DROP TABLE` ne
+  supprime pas une séquence autonome).
+Méthode : analyse (non exécutée, car destructive).
+Impact : après plusieurs `migrate:fresh`, la numérotation continue au lieu de
+  repartir à 0001 ; en 2027, préfixe `MEM-2027-` avec séquence « 2026 ».
+Recommandation : `ALTER SEQUENCE ... OWNED BY membre.numero_membre` (ou
+  séquence par année) + `DROP SEQUENCE` dans `down()`.
+
+--------------------------------------------------------------------------------
+AUD-013 — MOYEN — CONFIRMÉ — NON REPRODUIT — Confiance élevée
+Domaine : Migrations / Ordre
+Fichier : 000010:53-66 vs 000015
+Problème : le trigger d'historique est créé avant la table qu'il alimente.
+Preuve : ordre des migrations ; table créée en 000015.
+Méthode : analyse de l'ordre.
+Impact : échec de toute mise à jour de `membre` entre 000010 et 000015.
+Recommandation : déplacer la création du trigger dans 000015 (après la table).
+
+--------------------------------------------------------------------------------
+AUD-014 — MOYEN — CONFIRMÉ — Confiance élevée
+Domaine : Modèle de données / Redondance
+Fichiers : 000009 (appartenir_famille), 000013 (affecter_famille_impact),
+  AffectationFamilleService.php:33-41, SuiviMembreService.php:45-70
+Problème : deux tables d'appartenance à une famille d'impact coexistent et sont
+  alimentées par le même parcours applicatif.
+Preuve : `affecter()` écrit `appartenir_famille` puis `ouvrir()` écrit
+  `affecter_famille_impact`.
+Méthode : lecture des services.
+Impact : incohérences possibles, requêtes ambiguës, double maintenance.
+Recommandation : déprécier l'une des deux tables avec migration de convergence
+  et adapter l'API.
+
+--------------------------------------------------------------------------------
+AUD-015 — MOYEN — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : Intégrité / Présences
+Fichiers : 000014 (absence d'unicité), base `erp_eglise`
+Problème : doublons de présence pour une même affectation et une même date.
+Preuve : 2 groupes en doublon observés
+  (ex. `2026-10-01` et `2026-08-05`, comptés 2 fois).
+Méthode : requête `GROUP BY ... HAVING count(*) > 1`.
+Impact : taux de présence faussés.
+Recommandation : `UNIQUE (id_affectation, date_reunion)` + gestion `upsert`.
+
+--------------------------------------------------------------------------------
+AUD-016 — MOYEN — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : Cohérence métier
+Fichiers : 000010 (statuts), seeder:441-455, base `erp_eglise`
+Problème : 14 membres inactifs/archivés conservent une affectation active.
+Preuve : requête de jointure (`statut_membre IN ('archive','inactif')` et
+  `affecter_famille_impact.actif = TRUE`).
+Méthode : SQL lecture seule.
+Impact : les présences et statistiques incluent des membres sortis.
+Recommandation : clôturer automatiquement les affectations lors du passage à
+  `inactif`/`archive` (trigger ou service transactionnel).
+
+--------------------------------------------------------------------------------
+AUD-017 — MOYEN — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : Qualité des données
+Fichier : Sprint1MembresFamillesSeeder.php:100-103
+Problème : dates d'intégration futures.
+Preuve : 3 membres avec `date_integration > CURRENT_DATE`, maximum 2026-12-26.
+Méthode : SQL lecture seule.
+Impact : incohérence métier visible dans l'UI et les KPI.
+Recommandation : borner le tirage à `[2020-01-01, today]`.
+
+--------------------------------------------------------------------------------
+AUD-018 — MOYEN — CONFIRMÉ (statique) — Confiance élevée
+Domaine : Seeders / Reproductibilité
+Fichier : Sprint1MembresFamillesSeeder.php (ensemble)
+Problème : seeder aléatoire et non idempotent.
+Preuve : `rand`/`array_rand` sans seed ; `famille_impact.code` et `nom` UNIQUE ;
+  seconde exécution -> violation d'unicité -> rollback.
+Méthode : analyse + contraintes constatées en base.
+Impact : jeu de données non reproductible, impossible à rejouer.
+Recommandation : seed Faker fixe, `updateOrCreate`, garde `if exists`.
+
+--------------------------------------------------------------------------------
+AUD-019 — MOYEN — CONFIRMÉ — Confiance élevée
+Domaine : Contraintes / Familles des Disciples
+Fichier : 000017:28
+Problème : `UNIQUE (id_famille_disciple, id_membre)` interdit la réadhésion
+  après une sortie (`actif = FALSE`, `date_fin` renseignée).
+Preuve : DDL.
+Méthode : lecture.
+Impact : impossible de réintégrer un membre dans le même groupe.
+Recommandation : index unique partiel `WHERE actif = TRUE`.
+
+--------------------------------------------------------------------------------
+AUD-020 — MOYEN — CONFIRMÉ — Confiance élevée
+Domaine : Contraintes temporelles
+Fichier : 000017:12-16, 25-27
+Problème : aucune vérification `periode_fin >= periode_debut` ni
+  `date_fin >= date_debut`; `date_debut` nullable.
+Preuve : DDL.
+Méthode : lecture.
+Impact : périodes incohérentes acceptées.
+Recommandation : CHECK explicites + `date_debut NOT NULL DEFAULT NOW()`.
+
+--------------------------------------------------------------------------------
+AUD-021 — MOYEN — CONFIRMÉ — Confiance élevée
+Domaine : Performance / Traçabilité
+Fichier : 000017:9-17, 31-33
+Problème : `famille_disciple` n'a ni `date_modification` ni index sur
+  `responsable_id` ; `composition_*` n'a pas d'index sur `actif`/`date_fin`.
+Preuve : DDL et `\d` sur la base de test.
+Méthode : lecture.
+Impact : requêtes de filtrage moins efficaces ; pas de suivi de modification.
+Recommandation : ajouter les index et la colonne/trigger cohérents avec le reste
+  du schéma.
+
+--------------------------------------------------------------------------------
+AUD-022 — MOYEN — CONFIRMÉ — Confiance élevée
+Domaine : Intégrité / Suppression
+Fichier : 000017:22-23
+Problème : `ON DELETE CASCADE` sur `membre` et `famille_disciple`, alors que le
+  reste du schéma privilégie RESTRICT.
+Preuve : DDL vs 000013/000014/000015.
+Méthode : lecture.
+Impact : suppression d'un groupe = perte définitive des compositions.
+Recommandation : RESTRICT + archivage logique, ou documenter le choix.
+
+--------------------------------------------------------------------------------
+AUD-023 — MOYEN — CONFIRMÉ — Confiance élevée
+Domaine : Intégrité / Suppression membre
+Fichiers : 000010:69-81 ; 000013; 000014; 000015
+Problème : le trigger bloque les membres actifs, mais les FK RESTRICT bloquent
+  tout membre possédant un historique ou une affectation : la suppression est de
+  fait impossible dès la première historisation.
+Preuve : DDL.
+Méthode : lecture.
+Impact : la « suppression logique » annoncée n'a pas d'outillage cohérent.
+Recommandation : assumer l'archivage (jamais de DELETE) et le documenter, ou
+  adapter les FK.
+
+--------------------------------------------------------------------------------
+AUD-024 — MOYEN — CONFIRMÉ — Confiance élevée
+Domaine : Qualité / Dédoublonnage
+Fichiers : `\d personne`; PHASE0:327
+Problème : pas de colonne email, pas d'unicité nom/téléphone, pas d'endpoint de
+  fusion opérationnel.
+Preuve : schéma `personne` ; documentation Sprint 1 liste `/merge` comme « à
+  développer ».
+Méthode : catalogue + lecture.
+Impact : objectif « dédoublonnage » du Sprint 1 non livré.
+Recommandation : définir la clé de dédoublonnage, ajouter les index/contraintes
+  et la logique de fusion.
+
+--------------------------------------------------------------------------------
+AUD-025 — MOYEN — PROBABLE — Confiance moyenne
+Domaine : Concurrence / Historisation
+Fichier : MembreService.php:89-96
+Problème : l'auteur est écrit sur « la dernière ligne d'historique du membre »,
+  sans identifiant de corrélation.
+Preuve : `orderByDesc('date_changement')->first()`.
+Méthode : lecture.
+Impact : sous concurrence, la mauvaise ligne peut être mise à jour.
+Recommandation : faire écrire `change_par` par le trigger (contexte de session)
+  ou retourner l'ID de la ligne insérée.
+
+--------------------------------------------------------------------------------
+AUD-026 — MOYEN — CONFIRMÉ — Confiance élevée
+Domaine : Tests / Environnement
+Fichiers : backend/phpunit.xml:27-31 ; backend/tests/TestCase.php:13-25
+Problème : configuration DB dupliquée et figée sur l'hôte `postgres`.
+Preuve : lecture.
+Méthode : lecture.
+Impact : tests impossibles hors Docker ; risque de divergence entre les deux
+  configurations.
+Recommandation : une seule source (`phpunit.xml` + variables d'environnement).
+
+--------------------------------------------------------------------------------
+AUD-027 — FAIBLE — CONFIRMÉ — Confiance élevée
+Domaine : Qualité du code
+Fichier : Sprint1MembresFamillesSeeder.php:16, 19, 449, 481
+Problème : imports morts (`Site`, `HistoriqueStatutMembre`) et variables
+  inutilisées (`$ancienStatut`, `$familleDisciple`).
+Preuve : lecture.
+Méthode : lecture.
+Impact : bruit, confusion.
+Recommandation : nettoyage.
+
+--------------------------------------------------------------------------------
+AUD-028 — FAIBLE — CONFIRMÉ — Confiance élevée
+Domaine : Modèles
+Fichier : Membre.php:29
+Problème : cast `actif` sur une colonne inexistante.
+Preuve : `\d membre` + modèle.
+Méthode : lecture + catalogue.
+Impact : trompeur.
+Recommandation : supprimer le cast.
+
+--------------------------------------------------------------------------------
+AUD-029 — FAIBLE — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : SQL / Vues
+Fichier : 000017:40
+Problème : alias accentué `nb_departements_représentes` (et faute d'accord).
+Preuve : colonne de la vue en base de test.
+Méthode : information_schema + exécution.
+Impact : dépendance à l'encodage, gêne les clients/ORM.
+Recommandation : `nb_departements_presents`.
+
+--------------------------------------------------------------------------------
+AUD-030 — FAIBLE — CONFIRMÉ — Confiance élevée
+Domaine : Contraintes
+Fichier : 000017:15-16
+Problème : `statut` et `date_creation` nullables malgré un CHECK et un défaut.
+Preuve : DDL.
+Méthode : lecture.
+Impact : lignes sans statut possibles, invisibles dans la vue.
+Recommandation : `NOT NULL`.
+
+--------------------------------------------------------------------------------
+AUD-031 — FAIBLE — CONFIRMÉ PAR EXÉCUTION — Confiance élevée
+Domaine : Index
+Fichier : 000010:22
+Problème : `idx_membre_personne` redondant avec la contrainte UNIQUE.
+Preuve : `\d membre` (membre_id_personne_key + idx_membre_personne).
+Méthode : catalogue.
+Impact : écriture légèrement plus coûteuse.
+Recommandation : supprimer l'index redondant.
+
+--------------------------------------------------------------------------------
+AUD-032 — FAIBLE — CONFIRMÉ — Confiance élevée
+Domaine : Collaboration Git
+Commit : 33cf5fd
+Problème : commit « périmètre Bienvenu uniquement » contenant AGENTS.md,
+  CLAUDE.md, composer.json/lock, .mcp.json, boost.json, opencode.json et un
+  document Phase 0.
+Preuve : `git show --stat HEAD`.
+Méthode : Git lecture seule.
+Impact : revue et responsabilité brouillées.
+Recommandation : commits atomiques par périmètre.
+
+--------------------------------------------------------------------------------
+AUD-033 — FAIBLE — CONFIRMÉ — Confiance moyenne
+Domaine : Modèles / Types
+Fichier : FamilleImpact.php:27
+Problème : cast `datetime:H:i` sur une colonne `TIME`.
+Preuve : `\d famille_impact` (time without time zone).
+Méthode : lecture + catalogue.
+Impact : dépendance à la date du jour et au fuseau.
+Recommandation : exposer un format `H:i` sans cast datetime.
+
+--------------------------------------------------------------------------------
+AUD-034 — FAIBLE — CONFIRMÉ — Confiance élevée
+Domaine : Nommage des migrations
+Fichiers : 2026_10_18_000010_..., 2026_10_23_000011_...
+Problème : préfixes numériques 000010/000011 réutilisés pour des migrations
+  d'octobre, en plus de ceux du 15/09.
+Preuve : listing du dossier.
+Méthode : lecture.
+Impact : tri et lecture ambigus (le tri reste correct car l'horodatage précède).
+Recommandation : numérotation globale unique.
+
+--------------------------------------------------------------------------------
+AUD-035 — FAIBLE — CONFIRMÉ — Confiance élevée
+Domaine : Documentation
+Fichier : README.md:13-34, 67
+Problème : préfixes de conteneurs et ports obsolètes par rapport à la stack en
+  cours.
+Preuve : section 11.
+Méthode : comparaison.
+Impact : procédures de lancement/arrêt inadaptées.
+Recommandation : régénérer le README depuis le Compose réel.
+
+================================================================================
+14. POINTS POSITIFS À CONSERVER
+================================================================================
+  1. Modélisation métier claire et normalisée : personne / membre / famille /
+     famille d'impact / affectation / présence / historique.
+  2. Usage systématique de contraintes CHECK et de clés étrangères explicites.
+  3. Index partiel unique `uq_affectation_membre_active` : excellent choix pour
+     garantir « une seule affectation active ».
+  4. Triggers PostgreSQL nommés, isolés dans des fonctions, avec messages
+     d'erreur métier compréhensibles.
+  5. Génération explicite des UUID côté application : contournement propre et
+     documenté du comportement Eloquent/PostgreSQL.
+  6. Modèles alignés sur les tables, casts explicites, relations nommées.
+  7. Seeder Sprint 1 enveloppé dans une transaction : bon réflexe.
+  8. `tests/TestCase.php` protège la base de développement en forçant la base de
+     test (même si la duplication de configuration est à corriger).
+  9. Documentation structurée, lisible, orientée équipe.
+ 10. Docker isolé par projet (réseau et volumes nommés), healthcheck Mailpit.
+ 11. Migrations lisibles avec `down()` présent (sauf la séquence).
+ 12. Le dépôt est propre, l'historique Git est lisible et les messages de commit
+     sont explicites.
+
+================================================================================
+15. PLAN D'AMÉLIORATION PRIORISÉ (recommandations — aucune correction appliquée)
+================================================================================
+
+P0 — Urgence critique
+---------------------
+P0-1. Rétablir un chemin de reconstruction fonctionnel
+  Problème visé : AUD-001, AUD-002, AUD-003.
+  Résultat attendu : `migrate:fresh --seed` réussit sur une base jetable, et
+    l'API ne référence plus aucune colonne supprimée.
+  Dépendances : décision sur la source de vérité (`affecter_famille_impact`).
+  Critères de validation :
+    - aucun `famille_impact_id` dans `app/`, `database/` ;
+    - `php artisan migrate:fresh --seed` sort en code 0 ;
+    - `SELECT count(*) FROM membre = 65` et `famille_disciple = 3`.
+
+P0-2. Aligner la base de développement sur le code
+  Problème visé : AUD-002, AUD-003.
+  Résultat attendu : la base `erp_eglise` possède le schéma cible.
+  Dépendances : autorisation explicite d'exécuter `migrate` (et éventuellement
+    `migrate:fresh` après sauvegarde).
+  Critères : `to_regclass('famille_disciple')` non NULL,
+    `seq_numero_membre_2026` présente, `membre.famille_impact_id` absente.
+
+P0-3. Corriger la dépendance de l'étape 8 du seeder
+  Problème visé : AUD-004.
+  Résultat attendu : des départements existent avant l'étape 8.
+  Dépendances : seeder de référentiel (site + départements).
+  Critères : `SELECT count(*) FROM departement WHERE actif = TRUE >= 1` avant
+    l'étape 8 ; 3 Familles des Disciples créées ; vue = COMPLET.
+
+P0-4. Garantir l'unicité des présences
+  Problème visé : AUD-015.
+  Résultat attendu : aucun doublon possible.
+  Critères : contrainte UNIQUE présente ; `upsert` utilisé par les services.
+
+P1 — Priorité élevée
+--------------------
+P1-1. Tests de la couche DB (migrations, triggers, contraintes, vues, seeders).
+P1-2. Fiabiliser `change_par` (AUD-005).
+P1-3. Vérifier la règle des Familles des Disciples par `affecter_departement`
+      (AUD-006).
+P1-4. Corriger la vue : filtres statut membre/`date_fin`, cas 0 département,
+      alias sans accent (AUD-006, AUD-029).
+P1-5. Réécrire la documentation à partir du schéma réel (AUD-008, AUD-035).
+P1-6. Réduire les privilèges PostgreSQL (AUD-009) et externaliser les secrets
+      (AUD-010).
+P1-7. Réaligner `docker-compose.yml` et la stack en cours, avec procédure
+      d'arrêt propre (AUD-011).
+
+P2 — Priorité normale
+---------------------
+P2-1. Séquences : `OWNED BY`, `DROP SEQUENCE`, nom sans année (AUD-012).
+P2-2. Déplacer la création du trigger d'historique après sa table (AUD-013).
+P2-3. Déprécier `appartenir_famille` (AUD-014).
+P2-4. Clôturer les affectations lors du passage à inactif/archive (AUD-016).
+P2-5. Borner les dates d'intégration (AUD-017).
+P2-6. Rendre le seeder idempotent et reproductible (AUD-018).
+P2-7. Index partiel de réadhésion (AUD-019).
+P2-8. CHECK temporels et index manquants (AUD-020, AUD-021).
+P2-9. Politique de suppression cohérente (AUD-022, AUD-023).
+P2-10. Dédoublonnage (AUD-024).
+P2-11. Fiabiliser le lien historique <-> auteur (AUD-025).
+P2-12. Unifier la configuration de test (AUD-026).
+
+P3 — Amélioration ultérieure
+----------------------------
+P3-1. Nettoyage des imports/variables (AUD-027).
+P3-2. Suppression du cast fantôme (AUD-028).
+P3-3. NOT NULL sur `famille_disciple.statut`/`date_creation` (AUD-030).
+P3-4. Suppression de l'index redondant (AUD-031).
+P3-5. Commits atomiques (AUD-032).
+P3-6. Cast `heure_reunion` (AUD-033).
+P3-7. Numérotation globale des migrations (AUD-034).
+
+================================================================================
+16. SCÉNARIOS DE VALIDATION ULTÉRIEURE (environnement isolé)
+================================================================================
+À exécuter uniquement après autorisation, sur une base jetable (ex.
+`erp_eglise_audit`), jamais sur `erp_eglise` ni `erp_eglise_test` partagée.
+
+S1. Reconstruction complète
+    `php artisan migrate:fresh --seed`
+    Attendu : code 0 ; 65 membres ; 25 familles ; 6 familles d'impact ;
+    3 familles de disciples ; vue sans erreur.
+
+S2. Non-régression API (colonne supprimée)
+    `POST /api/v1/personnes/{id}/membre` -> 201
+    `POST /api/v1/personnes/{id}/familles-impact` -> 201
+    Attendu : aucune erreur `column "famille_impact_id" does not exist`.
+
+S3. Séquence de numérotation
+    Insérer 3 membres, supprimer un membre non actif, insérer 1 membre.
+    Attendu : 4 numéros distincts, croissants, sans réutilisation.
+
+S4. Concurrence
+    Deux INSERT simultanés (deux sessions) sur `membre`.
+    Attendu : deux numéros distincts, aucune violation UNIQUE.
+
+S5. Historisation et auteur
+    Changer le statut via l'API.
+    Attendu : 1 ligne d'historique, `change_par` = utilisateur, aucune ligne
+    modifiée a posteriori de façon ambiguë.
+
+S6. Règle Familles des Disciples
+    Créer 2 départements actifs, une famille avec 1 seul département.
+    Attendu : vue = INCOMPLET. Ajouter le 2e département -> COMPLET.
+    Retirer un membre (date_fin) -> INCOMPLET.
+
+S7. Cas 0 département actif
+    Désactiver tous les départements.
+    Attendu : comportement explicitement défini (ni COMPLET trompeur).
+
+S8. Contrainte de composition
+    Insérer deux fois le même membre dans la même famille.
+    Attendu : violation UNIQUE.
+    Réintégrer après `date_fin` : attendu autorisé (après correctif).
+
+S9. Présences
+    Insérer deux présences identiques (affectation + date).
+    Attendu : violation UNIQUE (après correctif).
+
+S10. Seeder idempotent
+    Exécuter `db:seed` deux fois de suite.
+    Attendu : même état final, aucune exception d'unicité.
+
+S11. Contraintes de suppression
+    Tenter de supprimer un membre actif -> exception.
+    Tenter de supprimer un membre inactif avec historique -> comportement
+    documenté et testé.
+
+S12. Vue et volumétrie
+    `SELECT * FROM vue_completude_famille_disciple;` -> colonnes sans accent,
+    statuts cohérents, aucun NULL inattendu.
+
+S13. Dates
+    `SELECT count(*) FROM membre WHERE date_integration > CURRENT_DATE;` -> 0.
+
+S14. Rôles PostgreSQL
+    Vérifier que le rôle applicatif n'est ni SUPERUSER ni BYPASSRLS.
+
+================================================================================
+17. VERDICT FINAL
+================================================================================
+Le périmètre Bienvenu n'est PAS livrable en l'état.
+
+Ce qui peut être considéré comme fiable :
+  * la conception relationnelle et la nomenclature ;
+  * les contraintes d'intégrité et les index déjà en place ;
+  * la logique des triggers (numéro, historique, protection, date de
+    modification) ;
+  * les modèles `FamilleImpact`, `FamilleDisciple`,
+    `CompositionFamilleDisciple` ;
+  * la migration 000017 sur une base neuve (schéma et vue valides, vérifiés en
+    base de test).
+
+Ce qui reste incertain :
+  * le comportement exact de `migrate:fresh` vis-à-vis de la séquence autonome ;
+  * le comportement concurrent du générateur de numéro et de l'historisation ;
+  * la portée réelle des données de la base de dev (créées hors seeder) ;
+  * l'impact complet sur l'API, faute d'exécution de la suite de tests.
+
+Ce qui nécessite une intervention :
+  * la suppression inachevée de `membre.famille_impact_id` (bloquant) ;
+  * la dérive de schéma entre le fichier 000010 et la base de dev (bloquant) ;
+  * l'absence de départements dans les seeders (bloquant pour l'étape 8) ;
+  * l'absence de tests DB et de CI (risque structurel) ;
+  * la documentation non conforme (risque de contrat) ;
+  * le rôle PostgreSQL superuser et les secrets versionnés (risque sécurité).
+
+Conclusion : les fondations sont bonnes, mais la livraison est incomplète et
+non reconstructible. Un effort ciblé P0 (alignement du modèle, migration de
+convergence, référentiel site/départements, reconstruction verte) est
+indispensable avant de déclarer le Sprint 1 opérationnel ou de poursuivre sur
+le Sprint 2.
+
+================================================================================
+FIN DU RAPPORT
+================================================================================

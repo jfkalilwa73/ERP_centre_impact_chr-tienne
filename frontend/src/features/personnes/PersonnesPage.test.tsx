@@ -194,7 +194,7 @@ describe('écran Personnes', () => {
       await user.click(screen.getByRole('button', { name: 'Exporter PDF' }))
       expect(written[0]).toContain('Jean KABILA')
       expect(written[0]).toContain('Coordonnées')
-      expect(written[0]).toContain('data:image/png')
+      expect(written[0]).toContain('https://mock.local/profile-photos/')
       expect(popup.print).toHaveBeenCalled()
 
       await user.click(screen.getByRole('link', { name: 'Retour aux personnes' }))

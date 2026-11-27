@@ -38,6 +38,15 @@ export async function updatePersonne(personneId: string, payload: PersonneUpdate
   return data
 }
 
+export async function uploadPersonnePhoto(personneId: string, photo: File): Promise<Personne> {
+  const formData = new FormData()
+  formData.append('photo', photo)
+  const { data } = await api.post<Personne>(`/personnes/${personneId}/photo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
 export async function deletePersonne(personneId: string): Promise<void> {
   await api.delete(`/personnes/${personneId}`)
 }

@@ -11,6 +11,7 @@ return new class extends Migration {
                 user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
                 nom VARCHAR(100) NOT NULL,
                 prenom VARCHAR(100) NOT NULL,
+                postnom VARCHAR(100),
                 date_naissance DATE,
                 sexe CHAR(1) CHECK (sexe IN (\'M\', \'F\')),
                 telephone VARCHAR(20),

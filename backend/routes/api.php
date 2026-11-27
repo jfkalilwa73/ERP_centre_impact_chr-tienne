@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\SessionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Identite\PersonneController;
 use App\Http\Controllers\Api\V1\Identite\CompteController;
+use App\Http\Controllers\Api\V1\Identite\PersonnePhotoController;
 use App\Http\Controllers\Api\V1\Acces\RoleController;
 use App\Http\Controllers\Api\V1\Acces\PermissionController;
 use App\Http\Controllers\Api\V1\Acces\AffectationRoleController;
@@ -25,6 +26,10 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [SessionController::class, 'login'])
         ->middleware('throttle:5,1');
 
+    Route::get('/personnes/{personneId}/photo', [PersonnePhotoController::class, 'show'])
+        ->middleware('signed')
+        ->name('personnes.photo');
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/logout', [SessionController::class, 'logout']);
         Route::get('/auth/me', [SessionController::class, 'me']);
@@ -34,6 +39,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/personnes/{personneId}/departements', [AffectationDepartementController::class, 'index']);
         Route::post('/personnes', [PersonneController::class, 'store']);
         Route::post('/identite/personnes', [PersonneController::class, 'store']);
+        Route::post('/personnes/{personneId}/photo', [PersonnePhotoController::class, 'store']);
         Route::get('/comptes', [CompteController::class, 'index']);
         Route::get('/comptes/{compteId}', [CompteController::class, 'show']);
         Route::patch('/comptes/{compteId}', [CompteController::class, 'update']);

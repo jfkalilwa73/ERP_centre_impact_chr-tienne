@@ -13,7 +13,6 @@ class FamilleImpactResource extends JsonResource
             'idFamille' => $this->id_famille,
             'code' => $this->code,
             'nom' => $this->nom,
-            'zone' => $this->zone,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'description' => $this->description,

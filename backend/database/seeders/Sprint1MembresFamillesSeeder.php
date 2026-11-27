@@ -66,6 +66,7 @@ class Sprint1MembresFamillesSeeder extends Seeder
                 'Anna', 'Noé', 'Rose',
             ];
 
+            $postnoms = ['Mbuyi', 'Kalala', 'Ilunga', 'Kabasele', 'Tshibanda', 'Mukendi'];
             $sexes = ['M', 'F'];
             $communes = ['Mont-Ngafula', 'Lemba', 'Ngaliema', 'Kalamu', 'Kimbanseke', 'Nsele', 'Masina', 'Ndjili'];
 
@@ -76,6 +77,7 @@ class Sprint1MembresFamillesSeeder extends Seeder
             for ($i = 0; $i < $nombreMembres; $i++) {
                 $nom = $noms[array_rand($noms)];
                 $prenom = $prenoms[array_rand($prenoms)];
+                $postnom = $postnoms[array_rand($postnoms)];
                 $sexe = $sexes[array_rand($sexes)];
                 $anneeNaissance = rand(1965, 2005);
                 $moisNaissance = rand(1, 12);
@@ -89,6 +91,7 @@ class Sprint1MembresFamillesSeeder extends Seeder
                     'id_personne' => $personneId,
                     'nom' => $nom,
                     'prenom' => $prenom,
+                    'postnom' => $postnom,
                     'date_naissance' => $dateNaissance,
                     'sexe' => $sexe,
                     'telephone' => $telephone,
@@ -124,7 +127,7 @@ class Sprint1MembresFamillesSeeder extends Seeder
                     'famille_impact_id' => null,
                 ]);
 
-                $personnesCrees[] = ['id' => $personneId, 'nom' => $nom, 'prenom' => $prenom, 'sexe' => $sexe];
+                $personnesCrees[] = ['id' => $personneId, 'nom' => $nom, 'prenom' => $prenom, 'postnom' => $postnom, 'sexe' => $sexe];
                 $membresCrees[] = [
                     'id' => $membreId,
                     'id_personne' => $personneId,
@@ -255,7 +258,6 @@ class Sprint1MembresFamillesSeeder extends Seeder
                 [
                     'code' => 'FI-UPN-01',
                     'nom' => 'Famille d\'Impact UPN Centre',
-                    'zone' => 'Zone UPN',
                     'responsable_id' => null,
                     'adjoint_id' => null,
                     'capacite_max' => 40,
@@ -266,7 +268,6 @@ class Sprint1MembresFamillesSeeder extends Seeder
                 [
                     'code' => 'FI-LEMBA-02',
                     'nom' => 'Famille d\'Impact Lemba Nord',
-                    'zone' => 'Zone Lemba',
                     'responsable_id' => null,
                     'adjoint_id' => null,
                     'capacite_max' => 35,
@@ -277,7 +278,6 @@ class Sprint1MembresFamillesSeeder extends Seeder
                 [
                     'code' => 'FI-NGALIEMA-03',
                     'nom' => 'Famille d\'Impact Ngaliema Ouest',
-                    'zone' => 'Zone Ngaliema',
                     'responsable_id' => null,
                     'adjoint_id' => null,
                     'capacite_max' => 30,
@@ -288,7 +288,6 @@ class Sprint1MembresFamillesSeeder extends Seeder
                 [
                     'code' => 'FI-KALAMU-04',
                     'nom' => 'Famille d\'Impact Kalamu Est',
-                    'zone' => 'Zone Kalamu',
                     'responsable_id' => null,
                     'adjoint_id' => null,
                     'capacite_max' => 25,
@@ -299,7 +298,6 @@ class Sprint1MembresFamillesSeeder extends Seeder
                 [
                     'code' => 'FI-KIMBANSEKE-05',
                     'nom' => 'Famille d\'Impact Kimbanseke Sud',
-                    'zone' => 'Zone Kimbanseke',
                     'responsable_id' => null,
                     'adjoint_id' => null,
                     'capacite_max' => 45,
@@ -310,7 +308,6 @@ class Sprint1MembresFamillesSeeder extends Seeder
                 [
                     'code' => 'FI-NSELE-06',
                     'nom' => 'Famille d\'Impact Nsele Rural',
-                    'zone' => 'Zone Nsele',
                     'responsable_id' => null,
                     'adjoint_id' => null,
                     'capacite_max' => 20,
@@ -343,8 +340,7 @@ class Sprint1MembresFamillesSeeder extends Seeder
                     'id_famille' => (string) Str::uuid(),
                     'code' => $fi['code'],
                     'nom' => $fi['nom'],
-                    'zone' => $fi['zone'],
-                    'description' => 'Famille d\'impact communautaire — ' . $fi['zone'],
+                    'description' => 'Famille d\'impact communautaire — ' . $fi['nom'],
                     'responsable_id' => $responsableId,
                     'adjoint_id' => $adjoint ? $adjoint['id'] : null,
                     'capacite_max' => $fi['capacite_max'],
@@ -357,7 +353,6 @@ class Sprint1MembresFamillesSeeder extends Seeder
                 $famillesImpactCrees[] = [
                     'id' => $familleImpact->id_famille,
                     'nom' => $fi['nom'],
-                    'zone' => $fi['zone'],
                     'responsable_id' => $responsableId,
                 ];
             }

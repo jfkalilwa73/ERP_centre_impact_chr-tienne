@@ -43,6 +43,7 @@ class CreerPersonneTest extends TestCase
         $response = $this->postJson('/api/v1/identite/personnes', [
             'nom' => 'Nuru',
             'prenom' => 'Jean',
+            'postnom' => 'Mbuyi',
             'date_naissance' => '1990-05-15',
             'sexe' => 'M',
             'telephone' => '+243819999999',
@@ -52,9 +53,14 @@ class CreerPersonneTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.nom', 'Nuru')
             ->assertJsonPath('data.prenom', 'Jean')
+            ->assertJsonPath('data.postnom', 'Mbuyi')
             ->assertJsonPath('data.statut', 'actif')
             ->assertJsonPath('data.user_id', null);
 
         $this->assertNotEmpty($response->json('data.id_personne'));
+        $this->assertDatabaseHas('personne', [
+            'id_personne' => $response->json('data.id_personne'),
+            'postnom' => 'Mbuyi',
+        ]);
     }
 }

@@ -98,6 +98,26 @@ export interface paths {
         patch: operations["updatePersonne"];
         trace?: never;
     };
+    "/personnes/{personneId}/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personneId: components["parameters"]["PersonneId"];
+            };
+            cookie?: never;
+        };
+        /** Lire une photo de profil avec une URL temporaire signée */
+        get: operations["showPersonnePhoto"];
+        put?: never;
+        /** Téléverser la photo de profil d'une personne */
+        post: operations["uploadPersonnePhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/personnes/{personneId}/departements": {
         parameters: {
             query?: never;
@@ -624,6 +644,8 @@ export interface components {
             nom: string;
             /** @example Jean */
             prenom: string;
+            /** @example Mbuyi */
+            postnom?: string;
             /**
              * Format: date
              * @example 1995-08-12
@@ -645,6 +667,7 @@ export interface components {
         PersonneUpdate: {
             nom?: string;
             prenom?: string;
+            postnom?: string;
             /** Format: date */
             dateNaissance?: string;
             /** @enum {string} */
@@ -725,7 +748,10 @@ export interface components {
             pagination: components["schemas"]["Pagination"];
         };
         RoleCreate: {
-            /** @example ADMIN_FONCTIONNEL */
+            /**
+             * @description Code du rôle. Référence métier du cahier des charges : ADMIN_FONCTIONNEL, ADMIN_TECHNIQUE, PASTEUR, CONSEIL_PASTORAL, MEMBRE_DGE, SUPERVISEUR, CHEF_DEPARTEMENT, RESPONSABLE_PROJETS, FINANCE_COMPTABLE, CAISSIER, RH, ACHATS, LOGISTIQUE, PROTOCOLE_PASTEUR, AUDIT_COMPLIANCE, SECRETARIAT, ARCHIVISTE, TECHNICIEN, BENEVOLE, MEMBRE. Une personne peut cumuler plusieurs rôles ; les permissions s'additionnent sans lever les restrictions de confidentialité (notes pastorales, salaires). SUPERVISEUR : au-dessus des chefs, uniquement les départements affectés sauf permission explicite supplémentaire (consultation équipes, activités, objectifs, budgets, projets, rapports, consolidation, performances, demandes, alertes). CHEF_DEPARTEMENT : équipe, activités, demandes, objectifs, budget, projets et rapports de son département uniquement.
+             * @example ADMIN_FONCTIONNEL
+             */
             code: string;
             /** @example Administrateur fonctionnel */
             nom: string;
@@ -903,9 +929,9 @@ export interface components {
             nom: string;
             /** @example Nord */
             zone?: string;
-            /** @example -4.348 */
+            /** Format: double */
             latitude?: number | null;
-            /** @example 15.246 */
+            /** Format: double */
             longitude?: number | null;
             description?: string;
             /** @default true */
@@ -924,11 +950,15 @@ export interface components {
             code?: string;
             nom?: string;
             zone?: string;
+            /** Format: double */
             latitude?: number | null;
+            /** Format: double */
             longitude?: number | null;
             description?: string;
             actif?: boolean;
+            /** Format: uuid */
             responsableId?: string | null;
+            /** Format: uuid */
             adjointId?: string | null;
             capaciteMax?: number | null;
             jourReunion?: string | null;
@@ -1256,6 +1286,70 @@ export interface operations {
                 };
             };
             403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    showPersonnePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personneId: components["parameters"]["PersonneId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fichier image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description URL de lecture invalide ou expirée */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFoundError"];
+        };
+    };
+    uploadPersonnePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personneId: components["parameters"]["PersonneId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    photo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Photo enregistrée; renvoie la personne avec une URL temporaire de lecture */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Personne"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
             404: components["responses"]["NotFoundError"];
             422: components["responses"]["ValidationError"];
         };

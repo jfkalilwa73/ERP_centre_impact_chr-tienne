@@ -13,7 +13,7 @@ class FamilleImpactService
         $query = FamilleImpact::query()->orderBy('nom');
         if ($recherche) {
             $terme = '%'.$recherche.'%';
-            $query->where(fn ($q) => $q->where('nom', 'ilike', $terme)->orWhere('code', 'ilike', $terme)->orWhere('zone', 'ilike', $terme));
+            $query->where(fn ($q) => $q->where('nom', 'ilike', $terme)->orWhere('code', 'ilike', $terme)->orWhere('description', 'ilike', $terme));
         }
         return $query->paginate($limit, ['*'], 'page', $page);
     }

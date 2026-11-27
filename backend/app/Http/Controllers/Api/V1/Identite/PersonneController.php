@@ -54,6 +54,7 @@ class PersonneController extends Controller
                 properties: [
                     new OA\Property(property: 'nom', type: 'string', example: 'Nuru'),
                     new OA\Property(property: 'prenom', type: 'string', example: 'Jean'),
+                    new OA\Property(property: 'postnom', type: 'string', example: 'Mbuyi', nullable: true),
                     new OA\Property(property: 'date_naissance', type: 'string', format: 'date', example: '1990-05-15', nullable: true),
                     new OA\Property(property: 'sexe', type: 'string', enum: ['M', 'F'], example: 'M', nullable: true),
                     new OA\Property(property: 'telephone', type: 'string', example: '+243819999999', nullable: true),

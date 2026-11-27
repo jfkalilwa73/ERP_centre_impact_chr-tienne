@@ -18,7 +18,7 @@ class Personne extends Model
     const UPDATED_AT = 'date_modification';
 
     protected $fillable = [
-        'id_personne','user_id', 'nom', 'prenom', 'date_naissance', 'sexe', 
+        'id_personne','user_id', 'nom', 'prenom', 'postnom', 'date_naissance', 'sexe',
         'telephone', 'adresse', 'photo_url', 'statut'
     ];
 

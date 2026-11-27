@@ -90,7 +90,7 @@ export function churchLogoSrc() {
 
 export function buildFichePdfHtml(model: FichePdfModel) {
   const { personne, photoSrc, email, sexeLabel, famille, complement, personnes, affectationsActives } = model
-  const fullName = `${personne.prenom} ${personne.nom}`
+  const fullName = [personne.prenom, personne.postnom, personne.nom].filter(Boolean).join(' ')
   const logoSrc = model.logoSrc ?? churchLogoSrc()
   const photo = photoSrc
     ? `<img class="photo" src="${escapeHtml(photoSrc)}" alt="${escapeHtml(fullName)}" />`

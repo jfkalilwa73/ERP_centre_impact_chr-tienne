@@ -239,6 +239,7 @@ components:
       properties:
         nom: { type: string, minLength: 1, maxLength: 100, example: KABILA }
         prenom: { type: string, minLength: 1, maxLength: 100, example: Jean }
+        postnom: { type: string, maxLength: 100, example: Mbuyi }
         dateNaissance: { type: string, format: date, example: '1995-08-12' }
         sexe: { type: string, enum: [M, F], example: M }
         telephone: { type: string, maxLength: 20, example: '+243810000000' }
@@ -253,6 +254,7 @@ components:
       properties:
         nom: { type: string, minLength: 1, maxLength: 100 }
         prenom: { type: string, minLength: 1, maxLength: 100 }
+        postnom: { type: string, maxLength: 100 }
         dateNaissance: { type: string, format: date }
         sexe: { type: string, enum: [M, F] }
         telephone: { type: string, maxLength: 20 }
@@ -837,6 +839,45 @@ paths:
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
         '409': { $ref: '#/components/responses/ConflictError' }
+
+  /personnes/{personneId}/photo:
+    parameters:
+      - { $ref: '#/components/parameters/PersonneId' }
+    post:
+      tags: [Personnes]
+      operationId: uploadPersonnePhoto
+      summary: Téléverser la photo de profil d'une personne
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo: { type: string, format: binary }
+      responses:
+        '200':
+          description: Photo enregistrée; renvoie la personne avec une URL temporaire de lecture
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Personne' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    get:
+      tags: [Personnes]
+      operationId: showPersonnePhoto
+      summary: Lire une photo de profil avec une URL temporaire signée
+      responses:
+        '200':
+          description: Fichier image
+          content:
+            image/jpeg: {}
+            image/png: {}
+            image/webp: {}
+        '403': { description: URL de lecture invalide ou expirée }
+        '404': { $ref: '#/components/responses/NotFoundError' }
 
   /personnes/{personneId}/departements:
     parameters:

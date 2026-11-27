@@ -25,6 +25,7 @@ class StorePersonneRequest extends FormRequest
         return [
             'nom' => ['required', 'string', 'max:100'],
             'prenom' => ['required', 'string', 'max:100'],
+            'postnom' => ['nullable', 'string', 'max:100'],
             'date_naissance' => ['nullable', 'date'],
             'sexe' => ['nullable', Rule::in(['M', 'F'])],
             'telephone' => ['nullable', 'string', 'max:20'],

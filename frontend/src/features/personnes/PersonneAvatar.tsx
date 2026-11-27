@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn'
 import type { Personne } from '@/types'
-import { initials } from './duplicates'
+import { initials, personneDisplayName } from './duplicates'
 import { usePersonnePhoto } from './photos'
 
 export function PersonneAvatar({
@@ -13,7 +13,7 @@ export function PersonneAvatar({
   initialsClassName?: string
 }) {
   const photo = usePersonnePhoto(personne.idPersonne, personne.photoUrl)
-  const name = `${personne.prenom} ${personne.nom}`
+  const name = personneDisplayName(personne)
 
   if (photo) {
     return (

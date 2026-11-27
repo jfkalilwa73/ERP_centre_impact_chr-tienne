@@ -19,6 +19,7 @@ export const personneSchema = z.object({
     .trim()
     .min(1, 'Le prénom est obligatoire.')
     .max(100, 'Le prénom ne peut pas dépasser 100 caractères.'),
+  postnom: z.string().trim().max(100, 'Le postnom ne peut pas dépasser 100 caractères.'),
   dateNaissance: z.string(),
   sexe: z.union([z.literal(''), sexeSchema]),
   telephone: z.string().trim().max(20, 'Le numéro ne peut pas dépasser 20 caractères.'),
@@ -31,6 +32,7 @@ export type PersonneFormValues = z.input<typeof personneSchema>
 export const emptyPersonneForm: PersonneFormValues = {
   nom: '',
   prenom: '',
+  postnom: '',
   dateNaissance: '',
   sexe: '',
   telephone: '',
@@ -77,6 +79,7 @@ export function toPersonneCreate(values: PersonneFormValues): PersonneCreate {
   return {
     nom: values.nom.trim(),
     prenom: values.prenom.trim(),
+    postnom: optionalText(values.postnom),
     dateNaissance: optionalText(values.dateNaissance),
     sexe: values.sexe === '' ? undefined : values.sexe,
     telephone: optionalText(values.telephone),

@@ -33,6 +33,7 @@ class UpdatePersonneRequest extends FormRequest
         return [
             'nom' => ['sometimes', 'required', 'string', 'max:100'],
             'prenom' => ['sometimes', 'required', 'string', 'max:100'],
+            'postnom' => ['sometimes', 'nullable', 'string', 'max:100'],
             'date_naissance' => ['sometimes', 'nullable', 'date'],
             'sexe' => ['sometimes', 'nullable', Rule::in(['M', 'F'])],
             'telephone' => ['sometimes', 'nullable', 'string', 'max:20'],

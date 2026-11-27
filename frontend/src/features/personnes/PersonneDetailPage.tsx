@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,7 +20,7 @@ import { showSuccessFeedback } from '@/lib/successFeedback'
 import { useHasPermission } from '@/stores/authStore'
 import type { AffectationDepartement, Personne } from '@/types'
 import { PersonneFormDialog } from './PersonneFormDialog'
-import { initials } from './duplicates'
+import { initials, personneDisplayName } from './duplicates'
 import { activeFamilleId, familleLabel } from './familles'
 import {
   FORMATIONS,
@@ -51,6 +51,7 @@ import {
   useUnassignDepartement,
   useUnassignFamille,
   useUpdatePersonne,
+  useUploadPersonnePhoto,
 } from './hooks'
 import { ROLES_DEPARTEMENT, roleDepartement } from '@/features/departements/roles'
 import { MembrePanel } from '@/features/sprint1/MembrePanel'
@@ -59,7 +60,7 @@ import { useEnregistrerLien, useMembre, useRegroupement } from '@/features/sprin
 import { TYPE_RELATION_LABELS } from '@/features/sprint1/types'
 import { formatDate, formatDateLong, STATUT_LABELS, statutBadgeClass } from './labels'
 import { PersonneAvatar } from './PersonneAvatar'
-import { readImageAsDataUrl, setPersonnePhoto, usePersonnePhoto } from './photos'
+import { validateProfilePhoto } from './photos'
 import { exportFichePdf } from './printFiche'
 import {
   affectationSchema,
@@ -126,21 +127,25 @@ function ProfilePhoto({
 }: {
   personne: Personne
   canUpdate: boolean
-  onImported: (dataUrl: string) => void
+  onImported: (file: File) => Promise<void>
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string>()
+  const [uploading, setUploading] = useState(false)
 
   const onFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
     try {
-      const dataUrl = await readImageAsDataUrl(file)
-      onImported(dataUrl)
+      validateProfilePhoto(file)
+      setUploading(true)
+      await onImported(file)
       setError(undefined)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Impossible d'importer la photo.")
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -159,6 +164,7 @@ function ProfilePhoto({
               className="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full bg-brand-600 text-white shadow-sm hover:bg-brand-700"
               aria-label="Importer une photo de profil"
               onClick={() => inputRef.current?.click()}
+              disabled={uploading}
             >
               <Camera className="size-3.5" aria-hidden="true" />
             </button>
@@ -168,6 +174,7 @@ function ProfilePhoto({
               accept="image/png,image/jpeg,image/webp"
               aria-label="Fichier photo de profil"
               className="sr-only"
+              disabled={uploading}
               onChange={onFile}
             />
           </>
@@ -221,7 +228,7 @@ function FicheImpression({
           )}
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">
-              {personne.prenom} {personne.nom}
+              {personneDisplayName(personne)}
             </h1>
           </div>
         </div>
@@ -308,16 +315,17 @@ export function PersonneDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
-  const [complement, setComplement] = useState(emptyFicheComplement)
   const [lienSearch, setLienSearch] = useState('')
   const [lienErreur, setLienErreur] = useState<string | null>(null)
   const [historyTick, setHistoryTick] = useState(0)
 
   const canUpdate = useHasPermission(PERMISSIONS.MEMBRES_UPDATE)
-  const canAssignDepartement = canUpdate || useHasPermission(PERMISSIONS.ROLES_MANAGE)
-  const canDelete =
-    useHasPermission(PERMISSIONS.MEMBRES_DELETE) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
-  const canReadDepartements =useHasPermission(PERMISSIONS.DEPARTEMENTS_READ) || useHasPermission(PERMISSIONS.ROLES_MANAGE)
+  const canManageRoles = useHasPermission(PERMISSIONS.ROLES_MANAGE)
+  const canAssignDepartement = canUpdate || canManageRoles
+  const canDeletePersonne = useHasPermission(PERMISSIONS.MEMBRES_DELETE)
+  const canDelete = canDeletePersonne || canManageRoles
+  const canReadDepartementsBase = useHasPermission(PERMISSIONS.DEPARTEMENTS_READ)
+  const canReadDepartements = canReadDepartementsBase || canManageRoles
   const canReadFamilles = useHasPermission(PERMISSIONS.FAMILLES_READ)
   const canReadComptes = useHasPermission(PERMISSIONS.COMPTES_READ)
 
@@ -332,15 +340,12 @@ export function PersonneDetailPage() {
   const famillesQuery = useFamilles({ page: 1, limit: 100 }, canReadFamilles)
   const comptesQuery = useComptes({ page: 1, limit: 100 }, canReadComptes)
 
-  useEffect(() => {
-    setComplement(personneId ? getFicheComplement(personneId) : emptyFicheComplement)
-  }, [personneId])
-  const photoSrc = usePersonnePhoto(personneId ?? '', personneQuery.data?.photoUrl)
   const assignMutation = useAssignDepartement(personneId ?? '')
   const unassignMutation = useUnassignDepartement(personneId ?? '')
   const assignFamilleMutation = useAssignFamille(personneId ?? '')
   const unassignFamilleMutation = useUnassignFamille(personneId ?? '')
   const updateMutation = useUpdatePersonne()
+  const uploadPhotoMutation = useUploadPersonnePhoto(personneId ?? '')
   const deleteMutation = useDeletePersonne()
 
   const {
@@ -375,7 +380,11 @@ export function PersonneDetailPage() {
     return comptesQuery.data?.data.find((compte) => compte.idPersonne === personne.idPersonne)?.email
   }, [canReadComptes, comptesQuery.data?.data, personne])
 
-  const displayedPhoto = photoSrc
+  const displayedPhoto = personne?.photoUrl
+  const complement = useMemo(
+    () => (personneId ? getFicheComplement(personneId) : emptyFicheComplement),
+    [personneId, historyTick],
+  )
   const liens = complement.liens
   const qualite = personne ? criteresFiche({ personne, complement, idFamille: currentFamilleId }) : null
 
@@ -438,7 +447,7 @@ export function PersonneDetailPage() {
 
   const persistFicheLocale = (values: PersonneEditFormValues) => {
     if (!personne) return
-    setComplement(saveFicheComplement(personne.idPersonne, complementFromEdit(values, complement)))
+    saveFicheComplement(personne.idPersonne, complementFromEdit(values, complement))
     addFicheEvenement(personne.idPersonne, {
       categorie: 'modification',
       libelle: 'Modification des informations générales',
@@ -473,9 +482,9 @@ export function PersonneDetailPage() {
     )
   }
 
-  const onPhotoImported = (dataUrl: string) => {
+  const onPhotoImported = async (file: File) => {
     if (!personne) return
-    setPersonnePhoto(personne.idPersonne, dataUrl)
+    await uploadPhotoMutation.mutateAsync(file)
     addFicheEvenement(personne.idPersonne, {
       categorie: 'modification',
       libelle: 'Photo de profil mise à jour',
@@ -487,7 +496,7 @@ export function PersonneDetailPage() {
   const onChangeLien = (idProche: string, typeLien: string) => {
     if (!personne) return
     if (!typeLien) {
-      setComplement(removeLienFamilial(personne.idPersonne, idProche))
+      removeLienFamilial(personne.idPersonne, idProche)
       removeLienFamilial(idProche, personne.idPersonne)
       setHistoryTick((current) => current + 1)
       void enregistrerLien
@@ -496,7 +505,7 @@ export function PersonneDetailPage() {
         .catch((error: Error) => setLienErreur(error.message))
       return
     }
-    setComplement(upsertLienFamilial(personne.idPersonne, { idPersonne: idProche, lien: typeLien }))
+    upsertLienFamilial(personne.idPersonne, { idPersonne: idProche, lien: typeLien })
     const inverse = LIEN_INVERSE[typeLien]
     if (inverse) {
       upsertLienFamilial(idProche, { idPersonne: personne.idPersonne, lien: inverse })
@@ -552,7 +561,7 @@ export function PersonneDetailPage() {
               <ProfilePhoto personne={personne} canUpdate={canUpdate} onImported={onPhotoImported} />
               <div>
                 <h1 className="text-2xl font-semibold text-slate-900">
-                  {personne.prenom} {personne.nom}
+                  {personneDisplayName(personne)}
                 </h1>
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                   <span>ID: {membreQuery.data?.numeroMembre ?? memberCode(personne)}</span>
@@ -761,7 +770,8 @@ export function PersonneDetailPage() {
                             className="shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                             aria-label="Supprimer la note"
                             onClick={() => {
-                              setComplement(deleteNotePastorale(personne.idPersonne, note.id))
+                              deleteNotePastorale(personne.idPersonne, note.id)
+                              setHistoryTick((current) => current + 1)
                               showSuccessFeedback('La note pastorale a bien été supprimée.')
                             }}
                           >
@@ -1000,7 +1010,7 @@ export function PersonneDetailPage() {
             </Alert>
           )}
           <p className="text-sm text-slate-600">
-            {personne.prenom} {personne.nom} est au statut {STATUT_LABELS[statut]}.
+            {personneDisplayName(personne)} est au statut {STATUT_LABELS[statut]}.
           </p>
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
@@ -1106,7 +1116,8 @@ export function PersonneDetailPage() {
               event.preventDefault()
               const texte = noteDraft.trim()
               if (!texte) return
-              setComplement(addNotePastorale(personne.idPersonne, texte))
+              addNotePastorale(personne.idPersonne, texte)
+              setHistoryTick((current) => current + 1)
               setNoteDraft('')
               setNoteOpen(false)
               showSuccessFeedback('La note pastorale a bien été enregistrée.')

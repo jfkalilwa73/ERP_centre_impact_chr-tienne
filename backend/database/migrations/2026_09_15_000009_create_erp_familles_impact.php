@@ -11,7 +11,6 @@ return new class extends Migration {
                 id_famille UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 code VARCHAR(20) UNIQUE NOT NULL,
                 nom VARCHAR(100) NOT NULL UNIQUE,
-                zone VARCHAR(100),
                 description TEXT,
                 actif BOOLEAN NOT NULL DEFAULT TRUE,
                 date_creation TIMESTAMPTZ NOT NULL DEFAULT NOW()

@@ -22,7 +22,7 @@ function normalizePhone(value: string) {
 }
 
 function identityKey(personne: Personne) {
-  return `${normalizeName(personne.prenom)} ${normalizeName(personne.nom)}`
+  return `${normalizeName(personne.prenom)} ${normalizeName(personne.postnom ?? '')} ${normalizeName(personne.nom)}`
 }
 
 class UnionFind {
@@ -124,6 +124,10 @@ export function initials(personne: Pick<Personne, 'nom' | 'prenom'>) {
   return `${personne.prenom.at(0) ?? ''}${personne.nom.at(0) ?? ''}`.toUpperCase()
 }
 
+export function personneDisplayName(personne: Pick<Personne, 'nom' | 'prenom' | 'postnom'>) {
+  return [personne.prenom, personne.postnom, personne.nom].filter(Boolean).join(' ')
+}
+
 export const duplicateReasonLabels: Record<DuplicateReason, string> = {
   nom: 'Même nom et prénom',
   telephone: 'Même numéro de téléphone',
@@ -132,7 +136,7 @@ export const duplicateReasonLabels: Record<DuplicateReason, string> = {
 export function matchesPersonneSearch(personne: Personne, query: string) {
   const needle = query.trim().toLowerCase()
   if (!needle) return true
-  return [personne.nom, personne.prenom, personne.telephone ?? '']
+  return [personne.nom, personne.prenom, personne.postnom ?? '', personne.telephone ?? '']
     .join(' ')
     .toLowerCase()
     .includes(needle)

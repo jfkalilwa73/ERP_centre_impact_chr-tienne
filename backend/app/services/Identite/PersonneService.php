@@ -6,6 +6,8 @@ use App\Models\Personne;
 use Illuminate\Support\Str;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class PersonneService
 {
@@ -15,6 +17,7 @@ class PersonneService
             'id_personne' => (string) Str::uuid(),
             'nom' => $donnees['nom'],
             'prenom' => $donnees['prenom'],
+            'postnom' => $donnees['postnom'] ?? null,
             'date_naissance' => $donnees['date_naissance'] ?? null,
             'sexe' => $donnees['sexe'] ?? null,
             'telephone' => $donnees['telephone'] ?? null,
@@ -25,6 +28,8 @@ class PersonneService
     }
     public function supprimer(Personne $personne): void
     {
+        $photoPath = $personne->photo_url;
+
         try {
             DB::transaction(function () use ($personne) {
                 $personne->delete();
@@ -56,6 +61,14 @@ class PersonneService
 
             throw $e;
         }
+
+        $prefix = "personnes/{$personne->id_personne}/";
+        if (is_string($photoPath) && str_starts_with($photoPath, $prefix) && ! Storage::disk()->delete($photoPath)) {
+            Log::warning('Impossible de supprimer la photo de profil après suppression de la personne.', [
+                'personne_id' => $personne->id_personne,
+                'photo_path' => $photoPath,
+            ]);
+        }
     }
 
     public function modifier(Personne $personne, array $donnees): Personne
@@ -79,6 +92,7 @@ class PersonneService
             $requete->where(function ($q) use ($terme) {
                 $q->where('nom', 'ilike', $terme)
                     ->orWhere('prenom', 'ilike', $terme)
+                    ->orWhere('postnom', 'ilike', $terme)
                     ->orWhere('telephone', 'ilike', $terme);
             });
         }

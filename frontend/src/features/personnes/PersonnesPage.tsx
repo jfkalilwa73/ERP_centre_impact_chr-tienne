@@ -19,6 +19,7 @@ import {
   findDuplicateGroups,
   isThisMonth,
   matchesPersonneSearch,
+  personneDisplayName,
 } from './duplicates'
 import { activeFamilleId, familleById, familleLabel } from './familles'
 import { useCreatePersonne, usePersonnes, usePersonnesAffectations, usePersonnesFamilles } from './hooks'
@@ -401,7 +402,7 @@ export function PersonnesPage() {
                               to={`/personnes/${personne.idPersonne}`}
                               className="font-medium text-slate-900 hover:text-brand-700"
                             >
-                              {personne.prenom} {personne.nom}
+                              {personneDisplayName(personne)}
                             </Link>
                             <p className="text-xs text-slate-500">{personne.telephone ?? '—'}</p>
                             {duplicateIds.has(personne.idPersonne) && (
@@ -423,7 +424,7 @@ export function PersonnesPage() {
                         <div className="flex justify-end">
                           <Link
                             to={`/personnes/${personne.idPersonne}`}
-                            aria-label={`Voir la fiche de ${personne.prenom} ${personne.nom}`}
+                            aria-label={`Voir la fiche de ${personneDisplayName(personne)}`}
                             className="inline-flex h-8 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-brand-700"
                           >
                             <Eye className="size-4" aria-hidden="true" />
@@ -495,7 +496,7 @@ export function PersonnesPage() {
                     <li key={personne.idPersonne} className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-slate-900">
-                          {personne.prenom} {personne.nom}
+                          {personneDisplayName(personne)}
                         </p>
                         <p className="text-xs text-slate-500">{personne.telephone ?? 'Sans téléphone'}</p>
                       </div>

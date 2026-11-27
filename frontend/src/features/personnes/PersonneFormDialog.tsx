@@ -45,6 +45,7 @@ function valuesFromPersonne(
   return {
     nom: personne.nom,
     prenom: personne.prenom,
+    postnom: personne.postnom ?? '',
     dateNaissance: personne.dateNaissance ?? '',
     sexe: personne.sexe ?? '',
     telephone: personne.telephone ?? '',
@@ -107,7 +108,7 @@ export function PersonneFormDialog({
         title={isEditing ? 'Modifier la personne' : 'Nouvelle personne'}
         description={
           isEditing
-            ? 'Les champs civils, familiaux et de formation complètent la fiche. Seuls nom, prénom, naissance, sexe, téléphone, adresse et statut sont envoyés à l’API Phase 0.'
+            ? 'Les champs civils, familiaux et de formation complètent la fiche. Les champs d’identité pris en charge sont envoyés à l’API.'
             : "L'identité physique est distincte du compte de connexion, qui sera créé ensuite."
         }
         className={isEditing ? 'max-h-[90vh] max-w-2xl overflow-y-auto' : undefined}
@@ -138,6 +139,16 @@ export function PersonneFormDialog({
                 hasError={Boolean(errors.prenom)}
                 aria-describedby={errors.prenom ? errorId('personne-prenom') : undefined}
                 {...register('prenom')}
+              />
+            </FormField>
+            <FormField id="personne-postnom" label="Postnom" error={errors.postnom?.message}>
+              <Input
+                id="personne-postnom"
+                autoComplete="additional-name"
+                placeholder="Mbuyi"
+                hasError={Boolean(errors.postnom)}
+                aria-describedby={errors.postnom ? errorId('personne-postnom') : undefined}
+                {...register('postnom')}
               />
             </FormField>
           </div>

@@ -22,6 +22,7 @@ import {
   listPersonnes,
   unassignPersonneDepartement,
   unassignPersonneFamille,
+  uploadPersonnePhoto,
   updatePersonne,
   type ListPersonnesParams,
 } from './api'
@@ -92,6 +93,18 @@ export function useUpdatePersonne() {
   return useMutation<Personne, ApiError, { personneId: string; payload: PersonneUpdate }>({
     mutationFn: ({ personneId, payload }) => updatePersonne(personneId, payload),
     onSuccess: (_data, variables) => invalidatePersonnes(queryClient, variables.personneId),
+  })
+}
+
+export function useUploadPersonnePhoto(personneId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation<Personne, ApiError, File>({
+    mutationFn: (photo) => uploadPersonnePhoto(personneId, photo),
+    onSuccess: (personne) => {
+      queryClient.setQueryData(personneKeys.detail(personneId), personne)
+      invalidatePersonnes(queryClient, personneId)
+    },
   })
 }
 

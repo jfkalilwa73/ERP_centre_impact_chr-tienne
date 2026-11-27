@@ -123,6 +123,7 @@ export const personneHandlers = [
       idPersonne: crypto.randomUUID(),
       nom,
       prenom,
+      postnom: payload.postnom?.trim() || undefined,
       dateNaissance: payload.dateNaissance || undefined,
       sexe: payload.sexe,
       telephone: telephone || undefined,
@@ -146,6 +147,29 @@ export const personneHandlers = [
 
     const personne = mockDb.personnes.find((candidate) => candidate.idPersonne === params.personneId)
     if (!personne) return errorResponse(404, 'NOT_FOUND', 'Personne introuvable.')
+
+    return HttpResponse.json(personne, { status: 200 })
+  }),
+
+  http.post(apiUrl('personnes/:personneId/photo'), async ({ params, request }) => {
+    await delay(200)
+
+    const result = authenticate(request.headers.get('Authorization'))
+    if (!result.authenticated) return unauthenticated('POST /personnes/:id/photo', result.reason)
+    if (!requirePermission(result.account, PERMISSIONS.MEMBRES_UPDATE)) return forbidden()
+
+    const personne = mockDb.personnes.find((candidate) => candidate.idPersonne === params.personneId)
+    if (!personne) return errorResponse(404, 'NOT_FOUND', 'Personne introuvable.')
+
+    if (!request.headers.get('Content-Type')?.startsWith('multipart/form-data;')) {
+      return errorResponse(422, 'VALIDATION_ERROR', 'La photo doit être envoyée au format multipart.')
+    }
+
+    Object.assign(personne, {
+      photoUrl: `https://mock.local/profile-photos/${personne.idPersonne}`,
+      dateModification: new Date().toISOString(),
+    })
+    syncAccountPersonne(personne)
 
     return HttpResponse.json(personne, { status: 200 })
   }),
@@ -176,6 +200,7 @@ export const personneHandlers = [
     Object.assign(personne, {
       ...(payload.nom !== undefined ? { nom: payload.nom.trim() } : {}),
       ...(payload.prenom !== undefined ? { prenom: payload.prenom.trim() } : {}),
+      ...(payload.postnom !== undefined ? { postnom: payload.postnom.trim() || undefined } : {}),
       ...(payload.dateNaissance !== undefined ? { dateNaissance: payload.dateNaissance || undefined } : {}),
       ...(payload.sexe !== undefined ? { sexe: payload.sexe } : {}),
       ...(payload.telephone !== undefined ? { telephone: payload.telephone.trim() || undefined } : {}),
